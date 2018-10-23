@@ -1,0 +1,314 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ChangeListManager">
+    <list default="true" id="64d61899-5241-40a9-808e-f34089bb9b8e" name="Default Changelist" comment="" />
+    <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FUSProjectUsageTrigger">
+    <session id="439630486">
+      <usages-collector id="statistics.lifecycle.project">
+        <counts>
+          <entry key="project.open.time.15" value="1" />
+          <entry key="project.opened" value="1" />
+        </counts>
+      </usages-collector>
+      <usages-collector id="statistics.file.extensions.open">
+        <counts>
+          <entry key="py" value="7" />
+        </counts>
+      </usages-collector>
+      <usages-collector id="statistics.file.types.open">
+        <counts>
+          <entry key="Python" value="7" />
+        </counts>
+      </usages-collector>
+      <usages-collector id="statistics.file.extensions.edit">
+        <counts>
+          <entry key="py" value="4123" />
+        </counts>
+      </usages-collector>
+      <usages-collector id="statistics.file.types.edit">
+        <counts>
+          <entry key="Python" value="4123" />
+        </counts>
+      </usages-collector>
+    </session>
+  </component>
+  <component name="FileEditorManager">
+    <leaf>
+      <file pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/ElectrometerController.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="423">
+              <caret line="192" column="19" lean-forward="true" selection-start-line="192" selection-start-column="19" selection-end-line="192" selection-end-column="19" />
+              <folding>
+                <marker date="1540312007397" expanded="true" signature="74:157" ph="..." />
+                <marker date="1540312007397" expanded="true" signature="5457:5510" ph="..." />
+                <marker date="1540312007397" expanded="true" signature="5529:5530" ph="..." />
+                <marker date="1540312007397" expanded="true" signature="5583:5713" ph="..." />
+                <marker date="1540312007397" expanded="true" signature="5730:5735" ph="..." />
+                <marker date="1540312007397" expanded="true" signature="6032:6068" ph="..." />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/ElectrometerUnitTest.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="474">
+              <caret line="271" column="41" selection-start-line="271" selection-start-column="41" selection-end-line="271" selection-end-column="41" />
+              <folding>
+                <element signature="e#0#15#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+    </leaf>
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Python Script" />
+      </list>
+    </option>
+  </component>
+  <component name="FindInProjectRecents">
+    <findStrings>
+      <find>ec.ElectrometerCommand</find>
+      <find>integ</find>
+      <find>electrometerController</find>
+      <find>if</find>
+      <find>enabl</find>
+      <find>integra</find>
+    </findStrings>
+    <replaceStrings>
+      <replace>electrometerController</replace>
+      <replace>self.electrometerController</replace>
+    </replaceStrings>
+  </component>
+  <component name="IdeDocumentHistory">
+    <option name="CHANGED_PATHS">
+      <list>
+        <option value="$PROJECT_DIR$/ElectrometerController.py" />
+        <option value="$PROJECT_DIR$/ElectrometerUnitTest.py" />
+      </list>
+    </option>
+  </component>
+  <component name="ProjectFrameBounds">
+    <option name="x" value="574" />
+    <option name="width" value="1400" />
+    <option name="height" value="1047" />
+  </component>
+  <component name="ProjectView">
+    <navigator proportions="" version="1">
+      <foldersAlwaysOnTop value="true" />
+    </navigator>
+    <panes>
+      <pane id="ProjectPane">
+        <subPane>
+          <expand>
+            <path>
+              <item name="ts_electrometer3" type="b2602c69:ProjectViewProjectNode" />
+              <item name="ts_electrometer3" type="462c0819:PsiDirectoryNode" />
+            </path>
+          </expand>
+          <select />
+        </subPane>
+      </pane>
+      <pane id="Scope" />
+    </panes>
+  </component>
+  <component name="RunDashboard">
+    <option name="ruleStates">
+      <list>
+        <RuleState>
+          <option name="name" value="ConfigurationTypeDashboardGroupingRule" />
+        </RuleState>
+        <RuleState>
+          <option name="name" value="StatusDashboardGroupingRule" />
+        </RuleState>
+      </list>
+    </option>
+  </component>
+  <component name="RunManager" selected="Python tests.Unittests in ElectrometerUnitTest.py">
+    <configuration name="ElectrometerController" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <module name="ts_electrometer3" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/ElectrometerController.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="Unittests for ElectrometerUnitTest.TestFilterCommands.test_setBufferSize" type="tests" factoryName="Unittests" temporary="true" nameIsGenerated="true">
+      <module name="ts_electrometer3" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="_new_additionalArguments" value="&quot;&quot;" />
+      <option name="_new_target" value="&quot;ElectrometerUnitTest.TestFilterCommands.test_setBufferSize&quot;" />
+      <option name="_new_targetType" value="&quot;PYTHON&quot;" />
+      <method v="2" />
+    </configuration>
+    <configuration name="Unittests in ElectrometerUnitTest.py" type="tests" factoryName="Unittests" temporary="true" nameIsGenerated="true">
+      <module name="ts_electrometer3" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="_new_additionalArguments" value="&quot;&quot;" />
+      <option name="_new_target" value="&quot;$PROJECT_DIR$/ElectrometerUnitTest.py&quot;" />
+      <option name="_new_targetType" value="&quot;PATH&quot;" />
+      <method v="2" />
+    </configuration>
+    <list>
+      <item itemvalue="Python.ElectrometerController" />
+      <item itemvalue="Python tests.Unittests in ElectrometerUnitTest.py" />
+      <item itemvalue="Python tests.Unittests for ElectrometerUnitTest.TestFilterCommands.test_setBufferSize" />
+    </list>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Python tests.Unittests in ElectrometerUnitTest.py" />
+        <item itemvalue="Python tests.Unittests for ElectrometerUnitTest.TestFilterCommands.test_setBufferSize" />
+        <item itemvalue="Python.ElectrometerController" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SvnConfiguration">
+    <configuration />
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="64d61899-5241-40a9-808e-f34089bb9b8e" name="Default Changelist" comment="" />
+      <created>1540295805527</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1540295805527</updated>
+    </task>
+    <servers />
+  </component>
+  <component name="TestHistory">
+    <history-entry file="Unittests_in_ElectrometerUnitTest_py - 2018.10.23 at 12h 50m 16s.xml">
+      <configuration name="Unittests in ElectrometerUnitTest.py" configurationId="tests" />
+    </history-entry>
+    <history-entry file="Unittests_in_ElectrometerUnitTest_py - 2018.10.23 at 12h 51m 23s.xml">
+      <configuration name="Unittests in ElectrometerUnitTest.py" configurationId="tests" />
+    </history-entry>
+    <history-entry file="Unittests_in_ElectrometerUnitTest_py - 2018.10.23 at 12h 51m 45s.xml">
+      <configuration name="Unittests in ElectrometerUnitTest.py" configurationId="tests" />
+    </history-entry>
+    <history-entry file="Unittests_in_ElectrometerUnitTest_py - 2018.10.23 at 12h 52m 48s.xml">
+      <configuration name="Unittests in ElectrometerUnitTest.py" configurationId="tests" />
+    </history-entry>
+    <history-entry file="Unittests_in_ElectrometerUnitTest_py - 2018.10.23 at 12h 56m 30s.xml">
+      <configuration name="Unittests in ElectrometerUnitTest.py" configurationId="tests" />
+    </history-entry>
+    <history-entry file="Unittests_in_ElectrometerUnitTest_py - 2018.10.23 at 13h 00m 32s.xml">
+      <configuration name="Unittests in ElectrometerUnitTest.py" configurationId="tests" />
+    </history-entry>
+    <history-entry file="Unittests_in_ElectrometerUnitTest_py - 2018.10.23 at 13h 25m 52s.xml">
+      <configuration name="Unittests in ElectrometerUnitTest.py" configurationId="tests" />
+    </history-entry>
+    <history-entry file="Unittests_in_ElectrometerUnitTest_py - 2018.10.23 at 13h 35m 34s.xml">
+      <configuration name="Unittests in ElectrometerUnitTest.py" configurationId="tests" />
+    </history-entry>
+    <history-entry file="Unittests_in_ElectrometerUnitTest_py - 2018.10.23 at 13h 37m 32s.xml">
+      <configuration name="Unittests in ElectrometerUnitTest.py" configurationId="tests" />
+    </history-entry>
+    <history-entry file="Unittests_in_ElectrometerUnitTest_py - 2018.10.23 at 13h 37m 52s.xml">
+      <configuration name="Unittests in ElectrometerUnitTest.py" configurationId="tests" />
+    </history-entry>
+  </component>
+  <component name="ToolWindowManager">
+    <frame x="543" y="0" width="1400" height="1047" extended-state="0" />
+    <editor active="true" />
+    <layout>
+      <window_info id="Favorites" order="0" side_tool="true" />
+      <window_info content_ui="combo" id="Project" order="1" visible="true" weight="0.2496329" />
+      <window_info id="Structure" order="2" side_tool="true" weight="0.25" />
+      <window_info anchor="bottom" id="Terminal" order="0" />
+      <window_info anchor="bottom" id="Event Log" order="1" side_tool="true" />
+      <window_info anchor="bottom" id="Python Console" order="2" />
+      <window_info anchor="bottom" id="Message" order="3" />
+      <window_info anchor="bottom" id="Find" order="4" />
+      <window_info anchor="bottom" id="Version Control" order="5" show_stripe_button="false" />
+      <window_info active="true" anchor="bottom" id="Run" order="6" visible="true" weight="0.35377875" />
+      <window_info anchor="bottom" id="Debug" order="7" weight="0.3991323" />
+      <window_info anchor="bottom" id="Cvs" order="8" weight="0.25" />
+      <window_info anchor="bottom" id="Inspection" order="9" weight="0.4" />
+      <window_info anchor="bottom" id="TODO" order="10" />
+      <window_info anchor="right" id="Commander" internal_type="SLIDING" order="0" type="SLIDING" weight="0.4" />
+      <window_info anchor="right" id="Ant Build" order="1" weight="0.25" />
+      <window_info anchor="right" content_ui="combo" id="Hierarchy" order="2" weight="0.25" />
+    </layout>
+  </component>
+  <component name="VcsContentAnnotationSettings">
+    <option name="myLimit" value="2678400000" />
+  </component>
+  <component name="editorHistoryManager">
+    <entry file="file://$USER_HOME$/AppData/Local/Programs/Python/Python36-32/Lib/enum.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="173">
+          <caret line="323" selection-start-line="323" selection-end-line="323" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$USER_HOME$/AppData/Local/Programs/Python/Python36-32/Lib/unittest/case.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="126">
+          <caret line="442" column="8" selection-start-line="442" selection-start-column="8" selection-end-line="442" selection-end-column="8" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/ElectrometerUnitTest.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="474">
+          <caret line="271" column="41" selection-start-line="271" selection-start-column="41" selection-end-line="271" selection-end-column="41" />
+          <folding>
+            <element signature="e#0#15#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/ElectrometerController.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="423">
+          <caret line="192" column="19" lean-forward="true" selection-start-line="192" selection-start-column="19" selection-end-line="192" selection-end-column="19" />
+          <folding>
+            <marker date="1540312007397" expanded="true" signature="74:157" ph="..." />
+            <marker date="1540312007397" expanded="true" signature="5457:5510" ph="..." />
+            <marker date="1540312007397" expanded="true" signature="5529:5530" ph="..." />
+            <marker date="1540312007397" expanded="true" signature="5583:5713" ph="..." />
+            <marker date="1540312007397" expanded="true" signature="5730:5735" ph="..." />
+            <marker date="1540312007397" expanded="true" signature="6032:6068" ph="..." />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+  </component>
+</project>
