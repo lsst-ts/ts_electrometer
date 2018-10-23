@@ -1,0 +1,3 @@
+[submodule "pythonCommunicator"]
+	path = pythonCommunicator
+	url = https://github.com/lsst-ts/pythonCommunicator.git
