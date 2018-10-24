@@ -1,0 +1,10 @@
+port: "/dev/ttyACM1"
+baudrate: 57600
+parity: 0
+stopBits: 10
+byteSize: 8
+byteToRead: 1
+timeout: 3.3
+xonxoff: 0
+dsrdtr: 0
+termChar: "\n"
