@@ -4,3 +4,6 @@
 [submodule "pythonFileReader"]
 	path = pythonFileReader
 	url = https://github.com/lsst-ts/pythonFileReader.git
+[submodule "salobj"]
+	path = salobj
+	url = https://github.com/lsst-ts/salobj.git
