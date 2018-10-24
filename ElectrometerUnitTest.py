@@ -1,5 +1,5 @@
 import unittest
-import ElectrometerController as ec
+import ElectrometerCommands as ec
 
 class TestFilterCommands(unittest.TestCase):
 
