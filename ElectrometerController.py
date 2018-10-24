@@ -1,6 +1,6 @@
 import ElectrometerCommands as ec
-from pythonCommunicator.SerialCommunicator import SerialCommunicatorEndChar
-from configurationFileReader.ConfigurationFileReaderYaml import FileReaderYaml
+from pythonCommunicator.SerialCommunicator import SerialCommunicator
+from pythonFileReader.ConfigurationFileReaderYaml import FileReaderYaml
 import IElectrometerController as iec
 from datetime import datetime
 from asyncio import sleep
@@ -9,21 +9,21 @@ class ElectrometerController(iec.IElectrometerController):
 
     def __init__(self):
 
-        self.mode = UnitMode.CURR
+        self.mode = ec.UnitMode.CURR
         self.range = 0.1
         self.integrationTime = 0.01
         self.state = iec.ElectrometerStates.STANDBYSTATE
         self.medianFilterActive = False
-        self.avgFilterMode = AverFilterType.NONE
+        self.avgFilterMode = ec.AverFilterType.NONE
         self.avgFilterActive = False
         self.autoRange = False
 
         self.readFreq = 0.1
 
         self.commands = ec.ElectrometerCommand()
-        self.serialPort = SerialCommunicatorEndChar()
-        self.SerialConfiguration = FileReaderYaml("..\\settingFiles", "Test", 1) #Needs to be updated at start
-        self.SerialConfiguration.loadFile("serialConfiguration")
+        self.serialPort = None
+        self.SerialConfiguration = FileReaderYaml("settingFiles", "Test", 1) #Needs to be updated at start
+        #self.SerialConfiguration.loadFile("serialConfiguration")
         self.state = iec.ElectrometerStates.STANDBYSTATE
         self.lastValue = 0
         self.stopReading = False
@@ -39,11 +39,11 @@ class ElectrometerController(iec.IElectrometerController):
         xonxoff = self.SerialConfiguration.readValue('xonxoff')
         dsrdtr = self.SerialConfiguration.readValue('dsrdtr')
         termChar = self.SerialConfiguration.readValue('termChar')
-        self.serialPort = SerialCommunicatorEndChar(port, baudrate, parity, stopBits, byteSize, byteToRead, dsrdtr, xonxoff, timeout, termChar)
+        self.serialPort = SerialCommunicator(port=port, baudrate=baudrate, parity=parity, stopbits=stopBits, bytesize=byteSize, byteToRead=byteToRead, dsrdtr=dsrdtr, xonxoff=xonxoff, timeout=timeout, termChar=termChar)
 
     def connect(self):
-        self.serialPort.connect()
-        return iec.ElectrometerErrors.NOERROR
+        ERROR, e = self.serialPort.connect()
+        return ERROR, e
 
     def disconnect(self):
         self.serialPort.disconnect()
@@ -263,3 +263,13 @@ class ElectrometerController(iec.IElectrometerController):
         self.serialPort.sendMessage(ec.ElectrometerCommand.setBufferSize())
         self.serialPort.sendMessage(ec.ElectrometerCommand.alwaysRead())
         return iec.ElectrometerErrors.NOERROR.value
+
+    def setIntegrationTime(self, integrationTime):
+        if (self.state.value != iec.ElectrometerStates.NOTREADING): return iec.ElectrometerErrors.REJECTED
+        self.state.value = iec.ElectrometerStates.CONFIGURINGSTATE
+
+        self.serialPort.sendMessage(ec.ElectrometerCommand.integrationTime(self.mode, integrationTime))
+
+        self.state.value = iec.ElectrometerStates.NOTREADING
+        self.integrationTime = integrationTime
+        return iec.ElectrometerErrors.NOERROR
