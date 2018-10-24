@@ -1,3 +1,6 @@
 [submodule "pythonCommunicator"]
 	path = pythonCommunicator
 	url = https://github.com/lsst-ts/pythonCommunicator.git
+[submodule "pythonFileReader"]
+	path = pythonFileReader
+	url = https://github.com/lsst-ts/pythonFileReader.git
