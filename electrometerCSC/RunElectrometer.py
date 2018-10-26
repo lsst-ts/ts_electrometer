@@ -1,9 +1,8 @@
-from electrometerCSC.ElectrometerCSC import MtAtElectrometerCsc
-import SALPY_MtAtElectrometer
+from electrometerCSC.ElectrometerCSC import ElectrometerCsc
 import asyncio
 import salobj.python.salobj as salobj
 
-csc = MtAtElectrometerCsc(1, salobj.State.STANDBY)
+csc = ElectrometerCsc(1, salobj.State.STANDBY)
 
 loop = asyncio.get_event_loop()
 
