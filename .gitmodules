@@ -7,3 +7,6 @@
 [submodule "salobj"]
 	path = salobj
 	url = https://github.com/lsst-ts/salobj.git
+[submodule "pythonFitsfile"]
+	path = pythonFitsfile
+	url = https://github.com/lsst-ts/pythonFitsfile.git

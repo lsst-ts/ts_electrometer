@@ -147,7 +147,7 @@ class ElectrometerController(iec.IElectrometerController):
         self.state = iec.ElectrometerStates.NOTREADING
         return iec.ElectrometerErrors.NOERROR, values
 
-    def readManual(self, maxtime=600):
+    def readManual(self):
         if (self.state != iec.ElectrometerStates.NOTREADING): return iec.ElectrometerErrors.REJECTED, []
         self.state != iec.ElectrometerStates.MANUALREADINGSTATE
         start = datetime.now()

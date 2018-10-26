@@ -42,7 +42,7 @@ class IElectrometerController(ABC):
         pass
 
     @abstractmethod
-    def readManual(self, maxtime):
+    def readManual(self):
         pass
 
     @abstractmethod
@@ -126,8 +126,8 @@ class ElectrometerStates(Enum):
     MANUALREADINGSTATE = 6
     DURATIONREADINGSTATE = 7
     CONFIGURINGSTATE = 8
-    NOTREADING = 9
-    READINGBUFFER = 10
+    NOTREADINGSTATE = 9
+    READINGBUFFERSTATE = 10
 
 class ElectrometerErrors(Enum):
     NOERROR = 1
