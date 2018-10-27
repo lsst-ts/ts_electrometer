@@ -53,7 +53,7 @@ class ElectrometerCsc(base_csc.BaseCsc):
 
         #CSC declarations
         self.summary_state = initial_state
-        self.configuration = FileReaderYaml("../", "Test", 1)
+        self.configuration = FileReaderYaml("../settingFiles", "Test", 1)
 
         #Loops
         self.stateCheckLoopfrequency = 0.2
@@ -97,6 +97,9 @@ class ElectrometerCsc(base_csc.BaseCsc):
         self.publish_settingVersions(self.configuration.getRecommendedSettings())
         self.log.debug("Start done...")
 
+    def do_enterControl(self, id_data):
+        pass
+
     def do_disable(self, id_data):
         super().do_disable(id_data)
         self.electrometer.updateState(iec.ElectrometerStates.DISABLEDSTATE)
@@ -119,7 +122,7 @@ class ElectrometerCsc(base_csc.BaseCsc):
         self.log.debug("exitControl done...")
 
     async def do_startScanDt(self, id_data):
-        values, times = self.electrometer.readDuringTime(id_data.data.scanDuration)
+        values, times = await self.electrometer.readDuringTime(id_data.data.scanDuration)
         self.publishLFO_and_createFitsFile(values, times)
         self.log.debug("Start scan DT done...")
 
@@ -158,7 +161,7 @@ class ElectrometerCsc(base_csc.BaseCsc):
         self.log.debug("setRange done...")
 
     async def do_stopScan(self, id_data):
-        values, times = self.electrometer.stopReading()
+        values, times = await self.electrometer.stopReading()
         self.publishLFO_and_createFitsFile(values, times)
         self.log.debug("stopScan done...")
 
@@ -202,26 +205,22 @@ class ElectrometerCsc(base_csc.BaseCsc):
 
     def devideModeToSalMode(self, mode):
         if(mode == ecomm.UnitMode.CURR):
-            modeToPublish = SALPY_Electrometer.Electrometer_shared_Mode_Current
+            modeToPublish = SALPY_Electrometer.Electrometer_shared_UnitToRead_Current
         elif(mode == ecomm.UnitMode.CHAR):
-            modeToPublish = SALPY_Electrometer.Electrometer_shared_Mode_Charge
-        elif(mode == ecomm.UnitMode.VOLT):
-            modeToPublish = SALPY_Electrometer.Electrometer_shared_Mode_Voltage
+            modeToPublish = SALPY_Electrometer.Electrometer_shared_UnitToRead_Charge
         else:
-            modeToPublish = SALPY_Electrometer.Electrometer_shared_Mode_Resistance
+            raise ValueError(f"Unit not implemented")
         return modeToPublish
 
     def SalModeToDeviceMode(self, mode):
         deviceMode = ecomm.UnitMode.CURR
 
-        if(mode == SALPY_Electrometer.Electrometer_shared_Mode_Current):
+        if(mode == SALPY_Electrometer.Electrometer_shared_UnitToRead_Current):
             deviceMode = ecomm.UnitMode.CURR
-        elif(mode == SALPY_Electrometer.Electrometer_shared_Mode_Charge):
+        elif(mode == SALPY_Electrometer.Electrometer_shared_UnitToRead_Charge):
             deviceMode == ecomm.UnitMode.CHAR
-        elif(mode == SALPY_Electrometer.Electrometer_shared_Mode_Voltage):
-            deviceMode == ecomm.UnitMode.VOLT
         else:
-            deviceMode == ecomm.UnitMode.RES
+            raise ValueError(f"Unit not implemented")
         return deviceMode
 
     def publish_integrationTime(self, integrationTime):
@@ -253,7 +252,7 @@ class ElectrometerCsc(base_csc.BaseCsc):
         elif(self.detailed_state == iec.ElectrometerStates.MANUALREADINGSTATE):
             self.evt_detailedState_data.detailedState = SALPY_Electrometer.Electrometer_shared_DetailedState_ManualReadingState  
         elif(self.detailed_state == iec.ElectrometerStates.DURATIONREADINGSTATE):
-            self.evt_detailedState_data.detailedState = SALPY_Electrometer.Electrometer_shared_DetailedState_DurationReadingState 
+            self.evt_detailedState_data.detailedState = SALPY_Electrometer.Electrometer_shared_DetailedState_SetDurationReadingState 
         elif(self.detailed_state == iec.ElectrometerStates.CONFIGURINGSTATE):
             self.evt_detailedState_data.detailedState = SALPY_Electrometer.Electrometer_shared_DetailedState_ConfiguringState
         elif(self.detailed_state == iec.ElectrometerStates.NOTREADINGSTATE):
@@ -298,6 +297,6 @@ class ElectrometerCsc(base_csc.BaseCsc):
         self.evt_settingsAppliedSerConf_data.termChar = termChar
         self.evt_settingsAppliedSerConf.put(self.evt_settingsAppliedSerConf_data)
 
-    def publish_settingVersions(self, recommendedSettingsVersion):
-        self.evt_settingVersions_data.recommendedSettingsVersion
+    def publish_settingVersions(self, recommendedSettingVersion):
+        self.evt_settingVersions_data.recommendedSettingVersion = recommendedSettingVersion
         self.evt_settingVersions.put(self.evt_settingVersions_data)
