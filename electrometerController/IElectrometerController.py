@@ -22,7 +22,7 @@ class IElectrometerController(ABC):
 
     #Apply initial device configuration
     @abstractmethod
-    def initialize(self, mode, range, integrationTime, medianFilterActive, avgFilterMode, avgFilterActive):
+    def initialize(self, mode, range, integrationTime, medianFilterActive, avgFilterMode, avgFilterActive, filterActive):
         pass
 
     @abstractmethod
@@ -102,11 +102,19 @@ class IElectrometerController(ABC):
         pass
 
     @abstractmethod
+    def activateFilter(self, activate):
+        pass
+
+    @abstractmethod
     def getAverageFilterStatus(self):
         pass
 
     @abstractmethod
     def getMedianFilterStatus(self):
+        pass
+
+    @abstractmethod
+    def getFilterStatus(self):
         pass
 
     @abstractmethod

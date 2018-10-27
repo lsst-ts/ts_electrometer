@@ -3,6 +3,7 @@ from electrometerController.ElectrometerCommands import UnitMode, AverFilterType
 from random import randint
 from asyncio import sleep
 from datetime import datetime
+import time
 from pythonFileReader.ConfigurationFileReaderYaml import FileReaderYaml
 
 class ElectrometerSimulator(iec.IElectrometerController):
@@ -13,6 +14,7 @@ class ElectrometerSimulator(iec.IElectrometerController):
         self.integrationTime = 0.01
         self.state = iec.ElectrometerStates.STANDBYSTATE
         self.medianFilterActive = False
+        self.filterActive = False
         self.avgFilterMode = AverFilterType.NONE
         self.avgFilterActive = False
         self.connected = False
@@ -55,15 +57,19 @@ class ElectrometerSimulator(iec.IElectrometerController):
         self.stopReadingValue = False
         self.state = iec.ElectrometerStates.READINGBUFFERSTATE
         values = []
+        times = []
+        initialTime = time.time()
         iterations = 1000
         for i in range(iterations):
             self.lastValue = self.getValue()[0]
             values.append(self.lastValue)
+            dt = time.time() - initialTime
+            times.append(dt)
             sleep(self.integrationTime)
         self.state = iec.ElectrometerStates.NOTREADINGSTATE
         self.stopReadingValue = False
         print("Command readBuffer executed...")
-        return values
+        return values, times
 
 
     def readManual(self):
@@ -75,8 +81,8 @@ class ElectrometerSimulator(iec.IElectrometerController):
     def stopReading(self):
         print("Command stopReading executed...")
         self.stopReadingValue = True
-        values = self.readBuffer()
-        return values
+        values, times = self.readBuffer()
+        return values, times
 
 
     def startStoringToBuffer(self):
@@ -95,10 +101,10 @@ class ElectrometerSimulator(iec.IElectrometerController):
             if(self.stopReadingValue):
                 break
             dt = datetime.now() - start
-        error, values = self.readBuffer()
+        values, times = self.readBuffer()
         print("Command readDuringTime executed...")
         self.state = iec.ElectrometerStates.NOTREADINGSTATE
-        return values
+        return values, times
 
     def stopStoringToBuffer(self):
         print("Command stopStoringToBuffer executed...")
@@ -151,13 +157,21 @@ class ElectrometerSimulator(iec.IElectrometerController):
     def activateAverageFilter(self, activate):
         self.avgFilterActive = activate
         print("Command activateAverageFilter executed...")
-        return iec.ElectrometerErrors.NOERROR.value, self.avgFilterActive
+        return self.avgFilterActive
+
+    def activateFilter(self, activate):
+        self.filterActive = activate
+        print("Command activateFilter executed...")
+        return self.avgFilterActive
 
     def getAverageFilterStatus(self):
         return self.avgFilterMode, self.avgFilterActive
 
     def getMedianFilterStatus(self):
         return self.medianFilterActive
+
+    def getFilterStatus(self):
+        return self.filterActive
 
     def updateSerialConfiguration(self, path, settingsSet, settingsVersion):
         self.SerialConfiguration = FileReaderYaml(path, settingsSet, settingsVersion)

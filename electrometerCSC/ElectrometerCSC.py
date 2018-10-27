@@ -25,7 +25,7 @@ import logging
 from electrometerController.ElectrometerControllerSimulator import ElectrometerSimulator
 import electrometerController.IElectrometerController as iec
 import electrometerController.ElectrometerCommands as ecomm
-from astropy.io import fits
+from pythonFileReader.ConfigurationFileReaderYaml import FileReaderYaml
 
 try:
     import SALPY_Electrometer
@@ -50,16 +50,21 @@ class ElectrometerCsc(base_csc.BaseCsc):
         if initial_state not in base_csc.State:
             raise ValueError(f"intial_state={initial_state} is not a salobj.State enum")
         super().__init__(SALPY_Electrometer, index)
+
+        #CSC declarations
         self.summary_state = initial_state
-        self.detailed_state = iec.ElectrometerStates.OFFLINESTATE
-        self.stop_triggered = False
+        self.configuration = FileReaderYaml("../", "Test", 1)
+
+        #Loops
         self.stateCheckLoopfrequency = 0.2
         self.telemetryLoop = 0.2
 
+        #Loggins start
         self.log = logging.getLogger(__name__)
         self.log.debug("logger initialized")
         self.log.info("Electrometer CSC initialized")
 
+        #Events declaration
         self.evt_appliedSettingsMatchStart_data = self.evt_appliedSettingsMatchStart.DataType()
         self.evt_detailedState_data = self.evt_detailedState.DataType()
         self.evt_digitalFilterChange_data = self.evt_digitalFilterChange.DataType()
@@ -73,10 +78,13 @@ class ElectrometerCsc(base_csc.BaseCsc):
         self.evt_settingsAppliedSerConf_data = self.evt_settingsAppliedSerConf.DataType()
         self.evt_settingVersions_data = self.evt_settingVersions.DataType()
 
-        for i in range(1000):
-            print(self.getCurrentTime())
+        #Electrometer declarations
         self.electrometer = ElectrometerSimulator()
         self.appliedSettingsMatchStart = False
+        self.detailed_state = iec.ElectrometerStates.OFFLINESTATE
+        self.stop_triggered = False
+
+        #Loop initialization
         asyncio.ensure_future(self.init_stateLoop())
         asyncio.ensure_future(self.init_intensityLoop())
 
@@ -85,6 +93,8 @@ class ElectrometerCsc(base_csc.BaseCsc):
         self.electrometer.updateState(iec.ElectrometerStates.DISABLEDSTATE)
         self.publish_appliedSettingsMatchStart(True)
 
+        self.configuration.setSettingsFromLabel(id_data.data.settingsToApply)
+        self.publish_settingVersions(self.configuration.getRecommendedSettings())
         self.log.debug("Start done...")
 
     def do_disable(self, id_data):
@@ -109,7 +119,8 @@ class ElectrometerCsc(base_csc.BaseCsc):
         self.log.debug("exitControl done...")
 
     async def do_startScanDt(self, id_data):
-        ack, value = self.electrometer.readDuringTime(id_data.data.scanDuration)
+        values, times = self.electrometer.readDuringTime(id_data.data.scanDuration)
+        self.publishLFO_and_createFitsFile(values, times)
         self.log.debug("Start scan DT done...")
 
     async def do_startScan(self, id_data):
@@ -117,31 +128,38 @@ class ElectrometerCsc(base_csc.BaseCsc):
         self.log.debug("startScan done...")
 
     async def do_performZeroCalib(self, id_data):
-	
         self.electrometer.performZeroCorrection()
         self.log.debug("performZeroCalib done...")
 
     async def do_setDigitalFilter(self, id_data):
         self.publish_appliedSettingsMatchStart(False)
+        self.electrometer.activateMedianFilter(id_data.data.activateMedFilter)
+        self.electrometer.activateAverageFilter(id_data.data.activateAvgFilter)
+        self.electrometer.activateFilter(id_data.data.activateFilter)
+        self.publish_digitalFilterChange(self.electrometer.getAverageFilterStatus(), self.electrometer.getFilterStatus(), self.electrometer.getMedianFilterStatus())
         self.log.debug("setDigitalFilter done...")
 
     async def do_setIntegrationTime(self, id_data):
         self.publish_appliedSettingsMatchStart(False)
         self.electrometer.setIntegrationTime(id_data.data.intTime)
+        self.publish_integrationTime(self.electrometer.getIntegrationTime())
         self.log.debug("setIntegrationTime done...")
 
     async def do_setMode(self, id_data):
         self.publish_appliedSettingsMatchStart(False)
+        self.electrometer.setMode(self.SalModeToDeviceMode(id_data.data.mode))
+        self.publish_measureType(self.electrometer.getMode())
         self.log.debug("setMode done...")
 
     async def do_setRange(self, id_data):
         self.publish_appliedSettingsMatchStart(False)
         self.electrometer.setRange(id_data.data.setRange)
+        self.publish_measureRange(self.electrometer.getRange())
         self.log.debug("setRange done...")
 
     async def do_stopScan(self, id_data):
-        value = self.electrometer.stopReading()
-        print(value)
+        values, times = self.electrometer.stopReading()
+        self.publishLFO_and_createFitsFile(values, times)
         self.log.debug("stopScan done...")
 
     async def init_stateLoop(self): 
@@ -177,31 +195,45 @@ class ElectrometerCsc(base_csc.BaseCsc):
         self.evt_measureRange.put(self.evt_measureRange_data)
 
     def publish_measureType(self, mode):
-        modeToPublish = 0
-        if(mode.value == ecomm.UnitMode.CURR):
-            modeToPublish = SALPY_Electrometer.Electrometer_shared_Mode_Current
-        elif(mode.value == ecomm.UnitMode.CHAR):
-            modeToPublish = SALPY_Electrometer.Electrometer_shared_Mode_Charge
-        elif(mode.value == ecomm.UnitMode.VOLT):
-            modeToPublish = SALPY_Electrometer.Electrometer_shared_Mode_Voltage
-        else:
-            modeToPublish = SALPY_Electrometer.Electrometer_shared_Mode_Resistance
-
+        modeToPublish = self.devideModeToSalMode(mode)
         self.evt_measureType_data = self.evt_measureType.DataType()
         self.evt_measureType_data.mode = modeToPublish
         self.evt_measureType.put(self.evt_measureType_data)
 
+    def devideModeToSalMode(self, mode):
+        if(mode == ecomm.UnitMode.CURR):
+            modeToPublish = SALPY_Electrometer.Electrometer_shared_Mode_Current
+        elif(mode == ecomm.UnitMode.CHAR):
+            modeToPublish = SALPY_Electrometer.Electrometer_shared_Mode_Charge
+        elif(mode == ecomm.UnitMode.VOLT):
+            modeToPublish = SALPY_Electrometer.Electrometer_shared_Mode_Voltage
+        else:
+            modeToPublish = SALPY_Electrometer.Electrometer_shared_Mode_Resistance
+        return modeToPublish
+
+    def SalModeToDeviceMode(self, mode):
+        deviceMode = ecomm.UnitMode.CURR
+
+        if(mode == SALPY_Electrometer.Electrometer_shared_Mode_Current):
+            deviceMode = ecomm.UnitMode.CURR
+        elif(mode == SALPY_Electrometer.Electrometer_shared_Mode_Charge):
+            deviceMode == ecomm.UnitMode.CHAR
+        elif(mode == SALPY_Electrometer.Electrometer_shared_Mode_Voltage):
+            deviceMode == ecomm.UnitMode.VOLT
+        else:
+            deviceMode == ecomm.UnitMode.RES
+        return deviceMode
 
     def publish_integrationTime(self, integrationTime):
         self.evt_integrationTime_data = self.evt_integrationTime.DataType()
         self.evt_integrationTime_data.intTime = integrationTime
         self.evt_integrationTime.put(self.evt_integrationTime_data)
 
-    def publish_digitalFilterChange(self, avgFilterActive, filterStatus, medFilterActive):
+    def publish_digitalFilterChange(self, activateAvgFilter, activateFilter, activateMedFilter):
         self.evt_digitalFilterChange_data = self.evt_digitalFilterChange.DataType()
-        self.evt_digitalFilterChange_data.avgFilterActive = avgFilterActive
-        self.evt_digitalFilterChange_data.filterStatus = filterStatus
-        self.evt_digitalFilterChange_data.medFilterActive = medFilterActive
+        self.evt_digitalFilterChange_data.activateAverageFilter = activateAvgFilter
+        self.evt_digitalFilterChange_data.activateFilter = activateFilter
+        self.evt_digitalFilterChange_data.activateMedianFilter = activateMedFilter
         self.evt_digitalFilterChange.put(self.evt_digitalFilterChange_data)
 
     def update_deviceState(self, newState):
@@ -232,3 +264,40 @@ class ElectrometerCsc(base_csc.BaseCsc):
 
     def getCurrentTime(self):
         return self.salinfo.manager.getCurrentTime()
+
+    def publishLFO_and_createFitsFile(self, values, times):
+        pass
+
+    def publish_largeFileObjectAvailable(self, url, generator, version, checkSum, mimeType, byteSize, id):
+        self.evt_largeFileObjectAvailable_data.url = url
+        self.evt_largeFileObjectAvailable_data.generator = generator
+        self.evt_largeFileObjectAvailable_data.version = version
+        self.evt_largeFileObjectAvailable_data.checkSum = checkSum
+        self.evt_largeFileObjectAvailable_data.mimeType = mimeType
+        self.evt_largeFileObjectAvailable_data.byteSize = byteSize
+        self.evt_largeFileObjectAvailable_data.id = id
+
+        self.evt_largeFileObjectAvailable.put(self.evt_largeFileObjectAvailable_data)
+
+    def publish_settingsAppliedReadSets(self,filterActive,avgFilterActive,inputRange,integrationTime,medianFilterActive,mode):
+        self.evt_settingsAppliedReadSets_data.filterActive = filterActive
+        self.evt_settingsAppliedReadSets_data.avgFilterActive = avgFilterActive
+        self.evt_settingsAppliedReadSets_data.inputRange = inputRange
+        self.evt_settingsAppliedReadSets_data.integrationTime = integrationTime
+        self.evt_settingsAppliedReadSets_data.medianFilterActive =medianFilterActive
+        self.evt_settingsAppliedReadSets_data.mode = mode
+        self.evt_settingsAppliedReadSets.put(self.evt_settingsAppliedReadSets_data)
+
+    def publish_settingsAppliedSerConf(self,visaResource,baudRate,parity,dataBits,stopBits,flowControl,termChar):
+        self.evt_settingsAppliedSerConf_data.visaResource = visaResource
+        self.evt_settingsAppliedSerConf_data.baudRate = baudRate
+        self.evt_settingsAppliedSerConf_data.parity = parity
+        self.evt_settingsAppliedSerConf_data.dataBits = dataBits
+        self.evt_settingsAppliedSerConf_data.stopBits = stopBits
+        self.evt_settingsAppliedSerConf_data.flowControl = flowControl
+        self.evt_settingsAppliedSerConf_data.termChar = termChar
+        self.evt_settingsAppliedSerConf.put(self.evt_settingsAppliedSerConf_data)
+
+    def publish_settingVersions(self, recommendedSettingsVersion):
+        self.evt_settingVersions_data.recommendedSettingsVersion
+        self.evt_settingVersions.put(self.evt_settingVersions_data)

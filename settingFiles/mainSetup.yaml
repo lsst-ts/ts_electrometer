@@ -3,10 +3,10 @@ recommendedSettings:
     - "Default2"
 aliases:
     Default1:
-        settingSet: "Test"
+        settingSet: "Test1"
         settingVersion: 1
     Default2:
-        settingSet: "Test"
+        settingSet: "Test2"
         settingVersion: 2
 salId: 1
-filePath: "C:\Users\aanania\PycharmProjects\ts_electrometer3\fitsFiles"
+filePath: "C:\\Users\\aanania\\PycharmProjects\\ts_electrometer3\\fitsFiles"
