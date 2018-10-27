@@ -9,4 +9,4 @@ aliases:
         settingSet: "Test2"
         settingVersion: 2
 salId: 1
-filePath: "C:\\Users\\aanania\\PycharmProjects\\ts_electrometer3\\fitsFiles"
+filePath: "/home/andres/electrometer/electrometerFitsFiles"

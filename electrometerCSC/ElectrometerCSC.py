@@ -26,12 +26,17 @@ from electrometerController.ElectrometerControllerSimulator import ElectrometerS
 import electrometerController.IElectrometerController as iec
 import electrometerController.ElectrometerCommands as ecomm
 from pythonFileReader.ConfigurationFileReaderYaml import FileReaderYaml
+from numpy import array as nparray
+import socket
+from pythonFitsfile.PythonFits import PythonFits
 
 try:
     import SALPY_Electrometer
 except ImportError:
     warnings.warn("Could not import SALPY_Electrometer; ElectrometerCSC will not work")
 from salobj.python.salobj import base_csc
+
+VERSION = 1.0
 
 class ElectrometerCsc(base_csc.BaseCsc):
     """Electrometer CSC
@@ -47,13 +52,17 @@ class ElectrometerCsc(base_csc.BaseCsc):
 
     """
     def __init__(self, index, initial_state=base_csc.State.STANDBY):
+        #Pre-SAL setup
+        self.configuration = FileReaderYaml("../settingFiles", "Test", 1)
+        self.fitsDirectory = str(self.configuration.getValueFromMainSettings('filePath'))
+        self.salId = self.configuration.getValueFromMainSettings('salId')
+
         if initial_state not in base_csc.State:
             raise ValueError(f"intial_state={initial_state} is not a salobj.State enum")
-        super().__init__(SALPY_Electrometer, index)
+        super().__init__(SALPY_Electrometer, self.salId)
 
         #CSC declarations
         self.summary_state = initial_state
-        self.configuration = FileReaderYaml("../settingFiles", "Test", 1)
 
         #Loops
         self.stateCheckLoopfrequency = 0.2
@@ -265,16 +274,36 @@ class ElectrometerCsc(base_csc.BaseCsc):
         return self.salinfo.manager.getCurrentTime()
 
     def publishLFO_and_createFitsFile(self, values, times):
-        pass
+        dataArray = nparray([times, values])
+        name = str(self.salId)+"-"+str(self.getCurrentTime())
+        fitsFile = PythonFits(self.fitsDirectory, name, separator='/')
+        fitsFile.addData(dataArray)
+        fitsFile.addHeader("Column1", "Time", "Time in seconds")
+        fitsFile.addHeader("Column2", "Intensity", "")
+        fitsFile.saveToFile()
+        fitsFile.closeFile()
+        host = socket.gethostbyname(socket.gethostname())
+        checksum = fitsFile.getChecksum()
+        size = fitsFile.getFileSize()
 
-    def publish_largeFileObjectAvailable(self, url, generator, version, checkSum, mimeType, byteSize, id):
+        url = "https://"+host+"/"+name
+        generator = "electrometer"+str(self.salId)
+        version = float(VERSION)
+        checkSum = str(checksum)
+        mimeType = "electrometer"
+        byteSize = size
+        salId = str(self.salId)
+
+        self.publish_largeFileObjectAvailable(url, generator, version, checkSum, mimeType, byteSize, salId)
+
+    def publish_largeFileObjectAvailable(self, url, generator, version, checkSum, mimeType, byteSize, salId):
         self.evt_largeFileObjectAvailable_data.url = url
         self.evt_largeFileObjectAvailable_data.generator = generator
         self.evt_largeFileObjectAvailable_data.version = version
         self.evt_largeFileObjectAvailable_data.checkSum = checkSum
         self.evt_largeFileObjectAvailable_data.mimeType = mimeType
         self.evt_largeFileObjectAvailable_data.byteSize = byteSize
-        self.evt_largeFileObjectAvailable_data.id = id
+        self.evt_largeFileObjectAvailable_data.id = salId
 
         self.evt_largeFileObjectAvailable.put(self.evt_largeFileObjectAvailable_data)
 
