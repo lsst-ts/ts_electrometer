@@ -3,10 +3,10 @@ recommendedSettings:
     - "Default2"
 aliases:
     Default1:
-        settingSet: "Test1"
+        settingSet: "Test"
         settingVersion: 1
     Default2:
-        settingSet: "Test2"
+        settingSet: "Test"
         settingVersion: 2
 salId: 1
 filePath: "/home/andres/electrometer/electrometerFitsFiles"

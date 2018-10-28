@@ -52,10 +52,15 @@ class ElectrometerCsc(base_csc.BaseCsc):
 
     """
     def __init__(self, index, initial_state=base_csc.State.STANDBY):
+
+        #Configuration initialization
+        self.localConfiguration = FileReaderYaml("../settingFiles", "Test", 1)
+        self.mainConfiguration = FileReaderYaml("../settingFiles", "", "")
+        self.mainConfiguration.loadFile("mainSetup")
+
         #Pre-SAL setup
-        self.configuration = FileReaderYaml("../settingFiles", "Test", 1)
-        self.fitsDirectory = str(self.configuration.getValueFromMainSettings('filePath'))
-        self.salId = self.configuration.getValueFromMainSettings('salId')
+        self.fitsDirectory = str(self.mainConfiguration.readValue('filePath'))
+        self.salId = self.mainConfiguration.readValue('salId')
 
         if initial_state not in base_csc.State:
             raise ValueError(f"intial_state={initial_state} is not a salobj.State enum")
@@ -98,12 +103,13 @@ class ElectrometerCsc(base_csc.BaseCsc):
         asyncio.ensure_future(self.init_intensityLoop())
 
     def do_start(self, id_data):
-        super().do_start(id_data)
-        self.electrometer.updateState(iec.ElectrometerStates.DISABLEDSTATE)
+        self.localConfiguration.setSettingsFromLabel(id_data.data.settingsToApply, self.mainConfiguration)
+        self.publish_settingVersions(self.mainConfiguration.getRecommendedSettings())
+        self.apply_serialConfigurationSettings()
+        self.apply_initialSetupSettings()
         self.publish_appliedSettingsMatchStart(True)
-
-        self.configuration.setSettingsFromLabel(id_data.data.settingsToApply)
-        self.publish_settingVersions(self.configuration.getRecommendedSettings())
+        self.electrometer.updateState(iec.ElectrometerStates.DISABLEDSTATE)
+        super().do_start(id_data)
         self.log.debug("Start done...")
 
     def do_enterControl(self, id_data):
@@ -204,6 +210,7 @@ class ElectrometerCsc(base_csc.BaseCsc):
 
     def publish_measureRange(self, value):
         self.evt_measureRange_data = self.evt_measureRange.DataType()
+        self.evt_measureRange_data.rangeValue = value
         self.evt_measureRange.put(self.evt_measureRange_data)
 
     def publish_measureType(self, mode):
@@ -227,7 +234,7 @@ class ElectrometerCsc(base_csc.BaseCsc):
         if(mode == SALPY_Electrometer.Electrometer_shared_UnitToRead_Current):
             deviceMode = ecomm.UnitMode.CURR
         elif(mode == SALPY_Electrometer.Electrometer_shared_UnitToRead_Charge):
-            deviceMode == ecomm.UnitMode.CHAR
+            deviceMode = ecomm.UnitMode.CHAR
         else:
             raise ValueError(f"Unit not implemented")
         return deviceMode
@@ -329,3 +336,56 @@ class ElectrometerCsc(base_csc.BaseCsc):
     def publish_settingVersions(self, recommendedSettingVersion):
         self.evt_settingVersions_data.recommendedSettingVersion = recommendedSettingVersion
         self.evt_settingVersions.put(self.evt_settingVersions_data)
+
+    def apply_serialConfigurationSettings(self):
+        self.localConfiguration.loadFile("serialConfiguration")
+        port = self.localConfiguration.readValue('port')
+        baudrate = self.localConfiguration.readValue('baudrate')
+        parity = self.localConfiguration.readValue('parity')
+        stopBits = self.localConfiguration.readValue('stopBits')
+        dataBits = self.localConfiguration.readValue('byteSize')
+        byteToRead = self.localConfiguration.readValue('byteToRead')
+        timeout = self.localConfiguration.readValue('timeout')
+        xonxoff = self.localConfiguration.readValue('xonxoff')
+        dsrdtr = self.localConfiguration.readValue('dsrdtr')
+        if(xonxoff == 0 and dsrdtr == 0):
+            flowControl = 1
+        elif(xonxoff == 1 and dsrdtr == 0):
+            flowControl = 2
+        elif(xonxoff == 0 and dsrdtr == 1):
+            flowControl = 3
+        else:
+            flowControl = 4
+        termChar = self.localConfiguration.readValue('termChar')
+
+        self.electrometer.configureCommunicator(visaResource=port,baudRate=baudrate,parity=parity,dataBits=dataBits,stopBits=stopBits,flowControl=flowControl,termChar=termChar)
+        self.publish_settingsAppliedSerConf(port,baudrate,1,dataBits,stopBits,flowControl,0) #Fix parity and termChar
+
+    def apply_initialSetupSettings(self):
+        self.localConfiguration.loadFile("initialElectrometerSetup")
+        mode = self.localConfiguration.readValue('mode')
+        range_v = self.localConfiguration.readValue('range')
+        integrationTime = self.localConfiguration.readValue('integrationTime')
+        medianFilterActive = self.localConfiguration.readValue('medianFilterActive')
+        filterActive = self.localConfiguration.readValue('filterActive')
+        avgFilterActive = self.localConfiguration.readValue('avgFilterActive')
+
+        filterActiveIsActive = (filterActive==1)
+        avgFilterActiveIsActive = (avgFilterActive==1)
+        medianFilterActiveIsActive = (medianFilterActive==1)
+
+        self.electrometer.activateFilter(filterActiveIsActive, True)
+        self.electrometer.activateAverageFilter(avgFilterActiveIsActive, True)
+        self.electrometer.activateMedianFilter(medianFilterActiveIsActive, True)
+        self.electrometer.setRange(range_v, True)
+        self.electrometer.setMode(self.SalModeToDeviceMode(mode), True)
+        self.electrometer.setIntegrationTime(integrationTime, True)
+
+        self.publish_digitalFilterChange(self.electrometer.getAverageFilterStatus(),
+                                         self.electrometer.getFilterStatus(), self.electrometer.getMedianFilterStatus())
+        self.publish_measureType(self.electrometer.getMode())
+        self.publish_measureRange(self.electrometer.getRange())
+        self.publish_integrationTime(self.electrometer.getIntegrationTime())
+
+        self.publish_settingsAppliedReadSets(filterActiveIsActive,avgFilterActiveIsActive,range_v,integrationTime,medianFilterActiveIsActive,mode)
+

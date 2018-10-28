@@ -17,11 +17,10 @@ class ElectrometerSimulator(iec.IElectrometerController):
         self.avgFilterMode = AverFilterType.NONE
         self.avgFilterActive = False
         self.connected = False
-        self.SerialConfiguration = FileReaderYaml("../settingFiles", "Test", 1) #Needs to be updated at start
-        self.SerialConfiguration.loadFile("serialConfiguration")
         self.lastValue = 0
         self.readFreq = 0.1
         self.stopReadingValue = False
+        self.configurationDelay = 0.1
 
     def connect(self):
         self.connected = True
@@ -34,7 +33,8 @@ class ElectrometerSimulator(iec.IElectrometerController):
     def isConnected(self):
         return self.connected
 
-    def configureCommunicator(self):
+    def configureCommunicator(self, visaResource,baudRate,parity,dataBits,stopBits,flowControl,termChar):
+        self.connect()
         return
 
     def initialize(self, mode, range, integrationTime, medianFilterActive, avgFilterMode, avgFilterActive):
@@ -52,7 +52,7 @@ class ElectrometerSimulator(iec.IElectrometerController):
         return
 
     async def readBuffer(self):
-        if(self.state != iec.ElectrometerStates.DURATIONREADINGSTATE and self.state != iec.ElectrometerStates.MANUALREADINGSTATE): raise ValueError(f"enable not allowed in {self.getState().name} state")
+        self.verifyValidState(iec.CommandValidStates.readBufferValidStates)
         self.stopReadingValue = False
         self.state = iec.ElectrometerStates.READINGBUFFERSTATE
         values = []
@@ -72,12 +72,13 @@ class ElectrometerSimulator(iec.IElectrometerController):
 
 
     def readManual(self):
-        if (self.state != iec.ElectrometerStates.NOTREADINGSTATE): raise ValueError(f"enable not allowed in {self.getState().name} state")
+        self.verifyValidState(iec.CommandValidStates.readManualValidStates)
         self.stopReadingValue = False
         self.state = iec.ElectrometerStates.MANUALREADINGSTATE
         return 
 
     async def stopReading(self):
+        self.verifyValidState(iec.CommandValidStates.stopReadingValidStates)
         print("Command stopReading executed...")
         self.stopReadingValue = True
         values, times = await self.readBuffer()
@@ -89,15 +90,13 @@ class ElectrometerSimulator(iec.IElectrometerController):
         return 
 
     async def readDuringTime(self, readTime):
-        if (self.state != iec.ElectrometerStates.NOTREADINGSTATE): raise ValueError(f"enable not allowed in {self.getState().name} state")
+        self.verifyValidState(iec.CommandValidStates.readDuringTimeValidStates)
         self.state = iec.ElectrometerStates.DURATIONREADINGSTATE
         start = time.time()
         values = []
         dt = 0
         while (dt < readTime):
             await sleep(self.readFreq)
-            if(self.stopReadingValue):
-                break
             dt = time.time() - start
         values, times = await self.readBuffer()
         print("Command readDuringTime executed...")
@@ -129,36 +128,65 @@ class ElectrometerSimulator(iec.IElectrometerController):
     def getIntegrationTime(self):
         return self.integrationTime
 
-    def setIntegrationTime(self, integrationTime):
+    def setIntegrationTime(self, integrationTime, skipState=False):
+        self.verifyValidState(iec.CommandValidStates.setIntegrationTimeValidStates, skipState)
+        self.state = iec.ElectrometerStates.CONFIGURINGSTATE
         self.integrationTime = integrationTime
+        sleep(self.configurationDelay)
         print("Command setIntegrationTime executed...")
+        self.state = iec.ElectrometerStates.NOTREADINGSTATE
         return self.integrationTime
 
     def getErrorList(self):
         return [0]
 
-    def setMode(self, mode):
+    def setMode(self, mode, skipState=False):
+        self.verifyValidState(iec.CommandValidStates.setModeValidStates, skipState)
+        self.state = iec.ElectrometerStates.CONFIGURINGSTATE
         self.mode = mode
+        sleep(self.configurationDelay)
         print("Command setMode executed...")
+        self.state = iec.ElectrometerStates.NOTREADINGSTATE
         return self.mode
 
-    def setRange(self, range):
+    def setRange(self, range, skipState=False):
+        self.verifyValidState(iec.CommandValidStates.setRangeValidStates, skipState)
+        self.state = iec.ElectrometerStates.CONFIGURINGSTATE
         self.range = range
+        sleep(self.configurationDelay)
         print("Command setRange executed...")
+        self.state = iec.ElectrometerStates.NOTREADINGSTATE
         return self.range
 
-    def activateMedianFilter(self, activate):
+    def activateMedianFilter(self, activate, skipState=False):
+        self.verifyValidState(iec.CommandValidStates.activateMedianFilterValidStates, skipState)
+        self.state = iec.ElectrometerStates.CONFIGURINGSTATE
         self.medianFilterActive = activate
+        sleep(self.configurationDelay)
         print("Command activateMedianFilter executed...")
+        self.state = iec.ElectrometerStates.NOTREADINGSTATE
         return self.medianFilterActive
 
-    def activateAverageFilter(self, activate):
+    def activateAverageFilter(self, activate, skipState=False):
+        self.verifyValidState(iec.CommandValidStates.activateAverageFilterValidStates, skipState)
+        self.state = iec.ElectrometerStates.CONFIGURINGSTATE
         self.avgFilterActive = activate
+        sleep(self.configurationDelay)
         print("Command activateAverageFilter executed...")
+        self.state = iec.ElectrometerStates.NOTREADINGSTATE
         return self.avgFilterActive
 
-    def activateFilter(self, activate):
+    def activateFilter(self, activate, skipState=False):
+        self.verifyValidState(iec.CommandValidStates.activateFilterValidStates, skipState)
+
+        self.state = iec.ElectrometerStates.CONFIGURINGSTATE
         self.filterActive = activate
+        self.state = iec.ElectrometerStates.NOTREADINGSTATE
+
+        self.activateMedianFilter(activate)
+        self.activateAverageFilter(activate)
+
+        sleep(self.configurationDelay)
         print("Command activateFilter executed...")
         return self.filterActive
 
@@ -170,12 +198,6 @@ class ElectrometerSimulator(iec.IElectrometerController):
 
     def getFilterStatus(self):
         return self.filterActive
-
-    def updateSerialConfiguration(self, path, settingsSet, settingsVersion):
-        self.SerialConfiguration = FileReaderYaml(path, settingsSet, settingsVersion)
-        self.SerialConfiguration.loadFile("serialConfiguration")
-        print("Updated Serial Configuration:\npath: "+path+"\nsettingsSet: "+settingsSet+"\nsettingsVersion:"+settingsVersion)
-        return 
 
     def restartBuffer(self):
         print("Command restartBuffer executed...")

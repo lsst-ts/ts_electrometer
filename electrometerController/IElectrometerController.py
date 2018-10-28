@@ -4,6 +4,9 @@ from enum import Enum
 
 class IElectrometerController(ABC):
 
+    def __init__(self):
+        self.state = self.ElectrometerStates.OFFLINESTATE
+
     @abstractmethod
     def connect(self):
         pass
@@ -14,10 +17,6 @@ class IElectrometerController(ABC):
 
     @abstractmethod
     def isConnected(self):
-        pass
-
-    @abstractmethod
-    def configureCommunicator(self):
         pass
 
     #Apply initial device configuration
@@ -118,12 +117,16 @@ class IElectrometerController(ABC):
         pass
 
     @abstractmethod
-    def updateSerialConfiguration(self, settingsSet, settingsVersion):
+    def configureCommunicator(self, visaResource,baudRate,parity,dataBits,stopBits,flowControl,termChar):
         pass
 
     @abstractmethod
     def restartBuffer(self):
         pass
+
+    def verifyValidState(self, validStates, skipVerification=False):
+        if(skipVerification):   return
+        if(self.getState() not in validStates): raise ValueError(f"enable not allowed in {self.getState().name} state")
 
 class ElectrometerStates(Enum):
     DISABLEDSTATE = 1
@@ -141,3 +144,20 @@ class ElectrometerErrors(Enum):
     NOERROR = 1
     ERROR = -1
     REJECTED = -2
+
+class CommandValidStates():
+    activateFilterValidStates = [ElectrometerStates.NOTREADINGSTATE]
+    activateAverageFilterValidStates = [ElectrometerStates.NOTREADINGSTATE]
+    activateMedianFilterValidStates = [ElectrometerStates.NOTREADINGSTATE]
+    setRangeValidStates = [ElectrometerStates.NOTREADINGSTATE]
+    setModeValidStates = [ElectrometerStates.NOTREADINGSTATE]
+    readDuringTimeValidStates = [ElectrometerStates.NOTREADINGSTATE]
+    performZeroCorrectionValidStates = [ElectrometerStates.NOTREADINGSTATE]
+    readManualValidStates = [ElectrometerStates.NOTREADINGSTATE]
+    setIntegrationTimeValidStates = [ElectrometerStates.NOTREADINGSTATE]
+    stopReadingValidStates = [ElectrometerStates.MANUALREADINGSTATE]
+    readBufferValidStates = [ElectrometerStates.MANUALREADINGSTATE,
+                                  ElectrometerStates.DURATIONREADINGSTATE]
+
+    def __init__(self):
+        pass
