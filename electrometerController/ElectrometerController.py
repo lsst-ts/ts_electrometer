@@ -217,21 +217,23 @@ class ElectrometerController(iec.IElectrometerController):
         return activate
 
     def getAverageFilterStatus(self):
-        self.serialPort.sendMessage(self.commands.getAvgFilterStatus(self.mode))
-        self.avgFilterActive = True if self.serialPort.getMessage().__contains__("ON") else False
+        self.serialPort.sendMessage(self.commands.getFilterStatus(self.mode, ec.Filter.AVER))
+        response = self.serialPort.getMessage() 
+        self.avgFilterActive = True if response.__contains__('1') else False
         return self.avgFilterActive
 
     def getMedianFilterStatus(self):
-        self.serialPort.sendMessage(self.commands.getMedFilterStatus(self.mode))
-        self.medianFilterActive = True if self.serialPort.getMessage().__contains__("ON") else False
+        self.serialPort.sendMessage(self.commands.getFilterStatus(self.mode, ec.Filter.MED))
+        response = self.serialPort.getMessage()
+        self.medianFilterActive = True if response.__contains__('1') else False
         return self.medianFilterActive
 
     def getFilterStatus(self):
         self.serialPort.sendMessage(self.commands.getAvgFilterStatus(self.mode))
-        self.avgFilterActive = True if self.serialPort.getMessage().__contains__("ON") else False
+        self.avgFilterActive = True if self.serialPort.getMessage().__contains__("1") else False
 
         self.serialPort.sendMessage(self.commands.getMedFilterStatus(self.mode))
-        self.medianFilterActive = True if self.serialPort.getMessage().__contains__("ON") else False
+        self.medianFilterActive = True if self.serialPort.getMessage().__contains__("1") else False
         return (self.medianFilterActive or self.avgFilterActive)
 
     def restartBuffer(self):
@@ -286,4 +288,5 @@ class ElectrometerController(iec.IElectrometerController):
     def getBufferQuantity(self):
         self.serialPort.sendMessage(self.commands.getBufferQuantity())
         return int(self.serialPort.getMessage())
+
 
