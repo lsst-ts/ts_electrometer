@@ -33,7 +33,7 @@ class ElectrometerSimulator(iec.IElectrometerController):
     def isConnected(self):
         return self.connected
 
-    def configureCommunicator(self, visaResource,baudRate,parity,dataBits,stopBits,flowControl,termChar):
+    def configureCommunicator(self, port, baudrate, parity, stopbits, bytesize, byteToRead=1024, dsrdtr=False, xonxoff=False, timeout=2, termChar="\n"):
         self.connect()
         return
 
@@ -63,7 +63,6 @@ class ElectrometerSimulator(iec.IElectrometerController):
         print("Command readBuffer executed...")
         return values, times
 
-
     def readManual(self):
         self.verifyValidState(iec.CommandValidStates.readManualValidStates)
         self.stopReadingValue = False
@@ -87,6 +86,10 @@ class ElectrometerSimulator(iec.IElectrometerController):
         print("Command startStoringToBuffer executed...")
         return 
 
+    def stopStoringToBuffer(self):
+        print("Command stopStoringToBuffer executed...")
+        return
+
     async def readDuringTime(self, readTime):
         self.verifyValidState(iec.CommandValidStates.readDuringTimeValidStates)
         self.state = iec.ElectrometerStates.DURATIONREADINGSTATE
@@ -102,10 +105,6 @@ class ElectrometerSimulator(iec.IElectrometerController):
         print("Command readDuringTime executed...")
         self.state = iec.ElectrometerStates.NOTREADINGSTATE
         return values, times
-
-    def stopStoringToBuffer(self):
-        print("Command stopStoringToBuffer executed...")
-        return 
 
     def updateState(self, newState):
         self.state = newState

@@ -2,48 +2,36 @@ import electrometerController.ElectrometerCommands as ec
 from pythonCommunicator.SerialCommunicator import SerialCommunicator
 from pythonFileReader.ConfigurationFileReaderYaml import FileReaderYaml
 import electrometerController.IElectrometerController as iec
-from datetime import datetime
+from time import time
 from asyncio import sleep
 
 class ElectrometerController(iec.IElectrometerController):
 
     def __init__(self):
-
-        self.mode = ec.UnitMode.CURR
+        self.mode = UnitMode.CURR
         self.range = 0.1
-        self.integrationTime = 0.001
+        self.integrationTime = 0.01
         self.state = iec.ElectrometerStates.STANDBYSTATE
         self.medianFilterActive = False
-        self.avgFilterMode = ec.AverFilterType.NONE
+        self.filterActive = False
+        self.avgFilterMode = AverFilterType.NONE
         self.avgFilterActive = False
+        self.connected = False
+        self.lastValue = 0
+        self.readFreq = 0.01
+        self.stopReadingValue = False
+        self.configurationDelay = 0.1
+        self.startAndEndScanValues = [[0,0], [0,0]] #[temperature, unit]
         self.autoRange = False
 
-        self.readFreq = 0.1
 
-        self.commands = ec.ElectrometerCommand()
         self.serialPort = None
-        self.SerialConfiguration = FileReaderYaml("settingFiles", "Test", 1) #Needs to be updated at start
-        #self.SerialConfiguration.loadFile("serialConfiguration")
         self.state = iec.ElectrometerStates.STANDBYSTATE
         self.lastValue = 0
         self.stopReadingValue = False
 
-    def configureCommunicator(self):
-        baudrate = self.SerialConfiguration.readValue('baudrate')
-        port = self.SerialConfiguration.readValue('port')
-        parity = self.SerialConfiguration.readValue('parity')
-        stopBits = self.SerialConfiguration.readValue('stopBits')
-        byteSize = self.SerialConfiguration.readValue('byteSize')
-        byteToRead = self.SerialConfiguration.readValue('byteToRead')
-        timeout = self.SerialConfiguration.readValue('timeout')
-        xonxoff = self.SerialConfiguration.readValue('xonxoff')
-        dsrdtr = self.SerialConfiguration.readValue('dsrdtr')
-        termChar = self.SerialConfiguration.readValue('termChar')
-        self.serialPort = SerialCommunicator(port=port, baudrate=baudrate, parity=parity, stopbits=stopBits, bytesize=byteSize, byteToRead=byteToRead, dsrdtr=dsrdtr, xonxoff=xonxoff, timeout=timeout, termChar=termChar)
-
     def connect(self):
-        ERROR, e = self.serialPort.connect()
-        return ERROR, e
+        self.serialPort.connect()
 
     def disconnect(self):
         self.serialPort.disconnect()
@@ -51,32 +39,15 @@ class ElectrometerController(iec.IElectrometerController):
     def isConnected(self):
         return self.serialPort.isConnected()
 
-    def initialize(self, mode, range, integrationTime, medianFilterActive, avgFilterMode, avgFilterActive):
+    def configureCommunicator(self, port, baudrate, parity, stopbits, bytesize, byteToRead=1024, dsrdtr=False, xonxoff=False, timeout=2, termChar="\n"):
+        self.serialPort = SerialCommunicator(port=port, baudrate=baudrate, parity=parity, stopbits=stopbits, bytesize=bytesize, byteToRead=byteToRead, dsrdtr=dsrdtr, xonxoff=xonxoff, timeout=timeout, termChar=termChar)
 
-        if(self.state.value != iec.ElectrometerStates.NOTREADING): return iec.ElectrometerErrors.REJECTED
-
-        #Update state to configuring
-        self.updateState(iec.ElectrometerStates.CONFIGURINGSTATE)
-
-        self.setMode(mode)
-        self.setRange(range)
-        self.setIntegrationTime(integrationTime)
-        self.activateAverageFilter(avgFilterMode, avgFilterActive)
-        self.activateMedianFilter(medianFilterActive)
-
-        #Update state to not reading and ready for next command
-        self.updateState(iec.ElectrometerStates.NOTREADING)
-        self.mode = mode
-        self.range = range
-        self.integrationTime = integrationTime
-        self.avgFilterActive = avgFilterActive
-        return iec.ElectrometerErrors.NOERROR
-
-    def stopReading(self):
-        self.stopReadingValue = True
+    def getHardwareInfo(self):
+        self.serialPort.sendMessage(ec.ElectrometerCommand.getHardwareInfo())
+        return self.serialPort.getMessage()
 
     def performZeroCorrection(self):
-        if (self.state.value != iec.ElectrometerStates.NOTREADING): return iec.ElectrometerErrors.REJECTED
+        self.verifyValidState(iec.CommandValidStates.performZeroCorrectionValidStates)
         self.state.value = iec.ElectrometerStates.CONFIGURINGSTATE
 
         self.serialPort.sendMessage(ec.ElectrometerCommand.enableZeroCheck(True))
@@ -86,87 +57,71 @@ class ElectrometerController(iec.IElectrometerController):
         self.serialPort.sendMessage(ec.ElectrometerCommand.enableZeroCheck(False))
 
         self.state.value = iec.ElectrometerStates.NOTREADING
-        return iec.ElectrometerErrors.NOERROR
+
+    async def readBuffer(self):
+        self.verifyValidState(iec.CommandValidStates.readBufferValidStates)
+        self.state = iec.ElectrometerStates.READINGBUFFER
+        start = time()
+        dt = 0
+        self.restartBuffer()
+        response = ""
+        while(dt < 600): #Can't stay reading for longer thatn 10 minutes....
+            await sleep(self.readFreq)
+            self.serialPort.sendMessage(ec.ElectrometerCommand.readBuffer())
+            response += self.serialPort.getMessage()
+            dt = time() - start
+            if(response.endswith(self.serialPort.termChar)): #Check if termination character is present
+                break
+
+        values, times = self.parseGetValues(response)
+        self.state = iec.ElectrometerStates.NOTREADING
+        return values, times
+
+    def readManual(self):
+        self.verifyValidState(iec.CommandValidStates.readManualValidStates)
+        self.state = iec.ElectrometerStates.MANUALREADINGSTATE
+        self.restartBuffer()
+        self.stopReadingValue = False
+        self.updateLastAndEndValue(iec.InitialEndValue.INITIAL)
+
+    def updateLastAndEndValue(self, InitialEncIdex : iec.InitialEndValue):
+        value, temperature, unit = self.getValue()
+        self.startAndEndScanValues[InitialEncIdex.value] = [temperature, unit]
+
+    async def stopReading(self):
+        self.verifyValidState(iec.CommandValidStates.stopReadingValidStates)
+        self.stopReadingValue = True
+        self.stopStoringToBuffer()
+        self.updateLastAndEndValue(iec.InitialEndValue.END)
+        values, times = await self.readBuffer()
+        return values, times
 
     def startStoringToBuffer(self):
         self.serialPort.sendMessage(ec.ElectrometerCommand.alwaysRead())
-        return iec.ElectrometerErrors.NOERROR
 
     def stopStoringToBuffer(self):
         self.serialPort.sendMessage(ec.ElectrometerCommand.stopReadingBuffer())
-        return iec.ElectrometerErrors.NOERROR
 
-    def updateState(self, newState):
-        self.state = newState
-
-    def readDuringTime(self, time):
-        if (self.state != iec.ElectrometerStates.NOTREADING): return iec.ElectrometerErrors.REJECTED, []
+    async def readDuringTime(self, time):
+        self.verifyValidState(iec.CommandValidStates.readDuringTimeValidStates)
         self.state = iec.ElectrometerStates.DURATIONREADINGSTATE
-        start = datetime.now()
+        start = time()
         dt = 0
         values = []
         self.restartBuffer()
         while(dt < time):
             sleep(self.readFreq)
-            self.serialPort.sendMessage(ec.ElectrometerCommand.getMeasure(ec.readingOption.LATEST))
-            response = self.serialPort.getMessage()
-            intensity, temperature, unit = self.parseGetValues(response)
-            self.lastValue = intensity
-            if(self.stopReadingValue):
-                break
-            dt = datetime.now() - start
-
-        self.stopReadingValue = False
+            dt = time() - start
+        self.stopStoringToBuffer()
+        values, times = await self.readBuffer()
         self.state = iec.ElectrometerStates.NOTREADING
-        return iec.ElectrometerErrors.NOERROR, values
+        return values, times
+
+    def updateState(self, newState):
+        self.state = newState
 
     def getState(self):
         return self.state
-
-    def getValue(self):
-        return self.lastValue
-
-    def readBuffer(self):
-        if (self.state != iec.ElectrometerStates.NOTREADING): return iec.ElectrometerErrors.REJECTED, []
-        self.state != iec.ElectrometerStates.READINGBUFFER
-        start = datetime.now()
-        dt = 0
-        values = []
-        self.restartBuffer()
-        while(dt < 600): #Can't stay reading for longer thatn 10 minutes....
-            sleep(self.readFreq)
-            self.serialPort.sendMessage(ec.ElectrometerCommand.readBuffer())
-            response = self.serialPort.getMessage()
-            intensity, temperature, unit = self.parseGetValues(response)
-            self.lastValue = intensity
-            if(self.stopReadingValue):
-                break
-            dt = datetime.now() - start
-
-        self.stopReadingValue = False
-        self.state = iec.ElectrometerStates.NOTREADING
-        return iec.ElectrometerErrors.NOERROR, values
-
-    def readManual(self):
-        if (self.state != iec.ElectrometerStates.NOTREADING): return iec.ElectrometerErrors.REJECTED, []
-        self.state != iec.ElectrometerStates.MANUALREADINGSTATE
-        start = datetime.now()
-        dt = 0
-        values = []
-        self.restartBuffer()
-        while(dt < maxtime):
-            sleep(self.readFreq)
-            self.serialPort.sendMessage(ec.ElectrometerCommand.getMeasure(ec.readingOption.LATEST))
-            response = self.serialPort.getMessage()
-            intensity, temperature, unit = self.parseGetValues(response)
-            self.lastValue = intensity
-            if(self.stopReadingValue):
-                break
-            dt = datetime.now() - start
-
-        self.stopReadingValue = False
-        self.state = iec.ElectrometerStates.NOTREADING
-        return iec.ElectrometerErrors.NOERROR, values
 
     def getMode(self):
         self.serialPort.sendMessage(ec.ElectrometerCommand.getMode())
@@ -180,20 +135,82 @@ class ElectrometerController(iec.IElectrometerController):
         else:
             mode = ec.UnitMode.RES
         self.mode = mode
-        return iec.ElectrometerErrors.NOERROR, mode
+        return mode
 
     def getRange(self):
         self.serialPort.sendMessage(ec.ElectrometerCommand.getRange(self.mode))
         self.range = float(self.serialPort.getMessage())
         return self.range
 
+    def getValue(self):
+        self.serialPort.sendMessage(ec.ElectrometerCommand.getMeasure(ec.readingOption.LATEST))
+        response = self.serialPort.getMessage()
+        self.lastValue, temperature, unit = self.parseGetValues(response)
+        return self.lastValue, temperature, unit
+
     def getIntegrationTime(self):
         self.serialPort.sendMessage(ec.ElectrometerCommand.getIntegrationTime(self.mode))
         self.integrationTime = float(self.serialPort.getMessage())
-        return self.range
+        return self.integrationTime
+
+    def setIntegrationTime(self, integrationTime, skipState=False):
+        self.verifyValidState(iec.CommandValidStates.setIntegrationTimeValidStates, skipState)
+        self.state.value = iec.ElectrometerStates.CONFIGURINGSTATE
+        self.serialPort.sendMessage(ec.ElectrometerCommand.integrationTime(self.mode, integrationTime))
+        self.state.value = iec.ElectrometerStates.NOTREADING
+        self.integrationTime = integrationTime
 
     def getErrorList(self):
-        pass
+        completeResponse = ""
+        for i in range(100): #Maximum of 100
+            self.serialPort.sendMessage(ec.ElectrometerCommand.getIntegrationTime(self.mode))
+            reponse = self.serialPort.getMessage()
+            if(len(reponse)==0): #break if there are no more errors in the queue (empty response)
+                break
+            completeResponse += reponse
+        errorCodes, errorMessages = self.parseErrorString(response)
+        return
+
+    def setMode(self, mode, skipState=False):
+        self.verifyValidState(iec.CommandValidStates.setModeValidStates, skipState)
+        self.state.value = iec.ElectrometerStates.CONFIGURINGSTATE
+        self.serialPort.sendMessage(ec.ElectrometerCommand.setMode(self.mode))
+        self.state.value = iec.ElectrometerStates.NOTREADING
+        self.mode = mode
+        return self.mode
+
+    def setRange(self, range, skipState=False):
+        self.verifyValidState(iec.CommandValidStates.setRangeValidStates, skipState)
+        auto = True if range<0 else False
+        self.state.value = iec.ElectrometerStates.CONFIGURINGSTATE
+        self.serialPort.sendMessage(ec.ElectrometerCommand.setRange(auto, range, self.mode))
+        self.state.value = iec.ElectrometerStates.NOTREADING
+        self.range = range
+        self.autoRange = auto
+        return self.range
+
+    def activateMedianFilter(self, activate, skipState=False):
+        self.verifyValidState(iec.CommandValidStates.activateMedianFilterValidStates, skipState)
+        self.state.value = iec.ElectrometerStates.CONFIGURINGSTATE
+        self.serialPort.sendMessage(ec.ElectrometerCommand.activateFilter(self.mode, ec.Filter.MED, activate))
+        self.state.value = iec.ElectrometerStates.NOTREADING
+        self.medianFilterActive = activate
+        return activate
+
+    def activateAverageFilter(self, activate, skipState=False):
+        self.verifyValidState(iec.CommandValidStates.activateAverageFilterValidStates, skipState)
+        self.state.value = iec.ElectrometerStates.CONFIGURINGSTATE
+        self.serialPort.sendMessage(ec.ElectrometerCommand.activateFilter(self.mode, ec.Filter.AVER, activate))
+        self.state.value = iec.ElectrometerStates.NOTREADING
+        self.avgFilterActive = activate
+        return activate
+
+    def activateFilter(self, activate, skipState=False):
+        self.verifyValidState(iec.CommandValidStates.activateFilterValidStates, skipState)
+        self.activateMedianFilter(activate)
+        self.activateAverageFilter(activate)
+        self.filterActive = activate
+        return activate
 
     def getAverageFilterStatus(self):
         self.serialPort.sendMessage(ec.ElectrometerCommand.getAvgFilterStatus(self.mode))
@@ -205,71 +222,24 @@ class ElectrometerController(iec.IElectrometerController):
         self.medianFilterActive = True if self.serialPort.getMessage().__contains__("ON") else False
         return self.medianFilterActive
 
-
-    def parseGetValues(self, response):
-        print("Create parser!!!")
-        intensity, temperature, unit = 0, 0, "A"
-        return 0, 0, 0
-
-    def setMode(self, mode):
-        if (self.state.value != iec.ElectrometerStates.NOTREADING): return iec.ElectrometerErrors.REJECTED
-        self.state.value = iec.ElectrometerStates.CONFIGURINGSTATE
-
-        self.serialPort.sendMessage(ec.ElectrometerCommand.setMode(self.mode))
-
-        self.state.value = iec.ElectrometerStates.NOTREADING
-        self.mode = mode
-        return iec.ElectrometerErrors.NOERROR
-
-    def setRange(self, auto, range):
-        if (self.state.value != iec.ElectrometerStates.NOTREADING): return iec.ElectrometerErrors.REJECTED
-        self.state.value = iec.ElectrometerStates.CONFIGURINGSTATE
-
-        self.serialPort.sendMessage(ec.ElectrometerCommand.setRange(auto, range, self.mode))
-
-        self.state.value = iec.ElectrometerStates.NOTREADING
-        self.range = range
-        self.autoRange = auto
-
-        return iec.ElectrometerErrors.NOERROR
-
-    def activateMedianFilter(self, activate):
-        if (self.state.value != iec.ElectrometerStates.NOTREADING): return iec.ElectrometerErrors.REJECTED
-        self.state.value = iec.ElectrometerStates.CONFIGURINGSTATE
-
-        self.serialPort.sendMessage(ec.ElectrometerCommand.activateFilter(self.mode, ec.Filter.MED, activate))
-
-        self.state.value = iec.ElectrometerStates.NOTREADING
-        self.medianFilterActive = activate
-        return iec.ElectrometerErrors.NOERROR
-
-    def activateAverageFilter(self, activate):
-        if (self.state.value != iec.ElectrometerStates.NOTREADING): return iec.ElectrometerErrors.REJECTED
-        self.state.value = iec.ElectrometerStates.CONFIGURINGSTATE
-
-        self.serialPort.sendMessage(ec.ElectrometerCommand.activateFilter(self.mode, ec.Filter.AVER, activate))
-
-        self.state.value = iec.ElectrometerStates.NOTREADING
-        self.avgFilterActive = activate
-        return iec.ElectrometerErrors.NOERROR
-
-    def updateSerialConfiguration(self, path, settingsSet, settingsVersion):
-        self.SerialConfiguration = FileReaderYaml(path, settingsSet, settingsVersion)
-        self.SerialConfiguration.loadFile("serialConfiguration")
-        return iec.ElectrometerErrors.NOERROR.value
-
     def restartBuffer(self):
         self.serialPort.sendMessage(ec.ElectrometerCommand.clearBuffer())
         self.serialPort.sendMessage(ec.ElectrometerCommand.setBufferSize())
         self.serialPort.sendMessage(ec.ElectrometerCommand.alwaysRead())
-        return iec.ElectrometerErrors.NOERROR.value
 
-    def setIntegrationTime(self, integrationTime):
-        if (self.state.value != iec.ElectrometerStates.NOTREADING): return iec.ElectrometerErrors.REJECTED
-        self.state.value = iec.ElectrometerStates.CONFIGURINGSTATE
+    def getLastScanValues(self):
+        #Returns values stored at the beggining of the manual and time scan
+        return self.startAndEndScanValues
 
-        self.serialPort.sendMessage(ec.ElectrometerCommand.integrationTime(self.mode, integrationTime))
+    def parseErrorString(self, errorMessage):
+        print("Create parseErrorString parser!!!")
+        return [0], "Reading available"
 
-        self.state.value = iec.ElectrometerStates.NOTREADING
-        self.integrationTime = integrationTime
-        return iec.ElectrometerErrors.NOERROR
+    def parseGetValues(self, response):
+        print("Create parseGetValues parser!!!")
+        intensity, temperature, unit = 0, 0, 0, "A"
+        return intensity, time, temperature, unit
+
+if __name__ == "__main__":
+    electrometer = ElectrometerController()
+    electrometer.configureCommunicator(port="/dev/electrometer", baudrate=57600, parity=1, stopbits=1, bytesize=8, byteToRead=128, dsrdtr=0, xonxoff=0, timeout=1, termChar="\r")

@@ -379,7 +379,7 @@ class ElectrometerCsc(base_csc.BaseCsc):
             flowControl = 4
         termChar = self.localConfiguration.readValue('termChar')
 
-        self.electrometer.configureCommunicator(visaResource=port,baudRate=baudrate,parity=parity,dataBits=dataBits,stopBits=stopBits,flowControl=flowControl,termChar=termChar)
+        self.electrometer.configureCommunicator(visaResource=port, baudRate=baudrate, parity=parity, dataBits=byteToRead, stopBits=stopBits, xonxoff=xonxoff, dsrdtr=dsrdtr, timeout=2, termChar=termChar)
         self.publish_settingsAppliedSerConf(port,baudrate,1,dataBits,stopBits,flowControl,0) #Fix parity and termChar
 
     def apply_initialSetupSettings(self):

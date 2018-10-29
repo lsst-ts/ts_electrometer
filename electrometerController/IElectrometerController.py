@@ -100,7 +100,7 @@ class IElectrometerController(ABC):
         pass
 
     @abstractmethod
-    def configureCommunicator(self, visaResource,baudRate,parity,dataBits,stopBits,flowControl,termChar):
+    def configureCommunicator(self, port, baudrate, parity, stopbits, bytesize, byteToRead=1024, dsrdtr=False, xonxoff=False, timeout=2, termChar="\n"):
         pass
 
     @abstractmethod

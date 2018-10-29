@@ -4,5 +4,7 @@
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/pythonCommunicator" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/pythonFileReader" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/pythonFitsfile" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/salobj" vcs="Git" />
   </component>
 </project>
