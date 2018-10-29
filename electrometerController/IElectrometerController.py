@@ -19,21 +19,8 @@ class IElectrometerController(ABC):
     def isConnected(self):
         pass
 
-    #Apply initial device configuration
-    @abstractmethod
-    def initialize(self, mode, range, integrationTime, medianFilterActive, avgFilterMode, avgFilterActive, filterActive):
-        pass
-
     @abstractmethod
     def performZeroCorrection(self):
-        pass
-
-    @abstractmethod
-    def readBuffer(self):
-        pass
-
-    @abstractmethod
-    def startStoringToBuffer(self):
         pass
 
     @abstractmethod
@@ -46,10 +33,6 @@ class IElectrometerController(ABC):
 
     @abstractmethod
     def stopReading(self):
-        pass
-
-    @abstractmethod
-    def stopStoringToBuffer(self):
         pass
 
     @abstractmethod

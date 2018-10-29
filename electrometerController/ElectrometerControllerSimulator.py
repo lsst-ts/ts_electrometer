@@ -40,16 +40,6 @@ class ElectrometerSimulator(iec.IElectrometerController):
     def getHardwareInfo(self):
         return "Simulation"
 
-    def initialize(self, mode, range, integrationTime, medianFilterActive, avgFilterMode, avgFilterActive):
-        self.mode = mode
-        self.range = range
-        self.integrationTime = integrationTime
-        self.medianFilterActive = medianFilterActive
-        self.avgFilterMode = avgFilterMode
-        self.avgFilterActive = avgFilterActive
-        print("Initialize executed...")
-        return
-
     def performZeroCorrection(self):
         print("Command performZeroCorrection executed...")
         return
