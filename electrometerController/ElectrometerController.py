@@ -72,7 +72,6 @@ class ElectrometerController(iec.IElectrometerController):
             await sleep(self.readFreq)
             temporaryResponse = self.serialPort.getMessage()
             response += temporaryResponse
-            print(temporaryResponse)
             dt = time() - start
             if(temporaryResponse.endswith(self.serialPort.termChar) or temporaryResponse == "" ): #Check if termination character is present
                 break
@@ -131,9 +130,9 @@ class ElectrometerController(iec.IElectrometerController):
         modeStr = self.serialPort.getMessage()
         if(str(modeStr).__contains__("VOLT")):
             mode = ec.UnitMode.VOLT
-        if(str(modeStr).__contains__("CURR")):
+        elif(str(modeStr).__contains__("CURR")):
             mode = ec.UnitMode.CURR
-        if(str(modeStr).__contains__("CHAR")):
+        elif(str(modeStr).__contains__("CHAR")):
             mode = ec.UnitMode.CHAR
         else:
             mode = ec.UnitMode.RES
@@ -158,10 +157,11 @@ class ElectrometerController(iec.IElectrometerController):
 
     def setIntegrationTime(self, integrationTime, skipState=False):
         self.verifyValidState(iec.CommandValidStates.setIntegrationTimeValidStates, skipState)
-        self.state.value = iec.ElectrometerStates.CONFIGURINGSTATE
+        self.updateState(iec.ElectrometerStates.CONFIGURINGSTATE)
         self.serialPort.sendMessage(self.commands.integrationTime(self.mode, integrationTime))
-        self.state.value = iec.ElectrometerStates.NOTREADING
+        self.updateState(iec.ElectrometerStates.NOTREADINGSTATE)
         self.integrationTime = integrationTime
+        return integrationTime
 
     def getErrorList(self):
         errorCodes, errorMessages = [], []
@@ -177,35 +177,35 @@ class ElectrometerController(iec.IElectrometerController):
 
     def setMode(self, mode, skipState=False):
         self.verifyValidState(iec.CommandValidStates.setModeValidStates, skipState)
-        self.state.value = iec.ElectrometerStates.CONFIGURINGSTATE
-        self.serialPort.sendMessage(self.commands.setMode(self.mode))
-        self.state.value = iec.ElectrometerStates.NOTREADING
+        self.updateState(iec.ElectrometerStates.CONFIGURINGSTATE)
+        self.serialPort.sendMessage(self.commands.setMode(mode))
+        self.updateState(iec.ElectrometerStates.NOTREADINGSTATE)
         self.mode = mode
         return self.mode
 
-    def setRange(self, range, skipState=False):
+    def setRange(self, rangeValue, skipState=False):
         self.verifyValidState(iec.CommandValidStates.setRangeValidStates, skipState)
-        auto = True if range<0 else False
-        self.state.value = iec.ElectrometerStates.CONFIGURINGSTATE
-        self.serialPort.sendMessage(self.commands.setRange(auto, range, self.mode))
-        self.state.value = iec.ElectrometerStates.NOTREADING
-        self.range = range
-        self.autoRange = auto
+        autoValue = True if rangeValue<0 else False
+        self.updateState(iec.ElectrometerStates.CONFIGURINGSTATE)
+        self.serialPort.sendMessage(self.commands.setRange(autoValue, rangeValue, self.mode))
+        self.updateState(iec.ElectrometerStates.NOTREADINGSTATE)
+        self.range = rangeValue
+        self.autoRange = autoValue
         return self.range
 
     def activateMedianFilter(self, activate, skipState=False):
         self.verifyValidState(iec.CommandValidStates.activateMedianFilterValidStates, skipState)
-        self.state.value = iec.ElectrometerStates.CONFIGURINGSTATE
+        self.updateState(iec.ElectrometerStates.CONFIGURINGSTATE)
         self.serialPort.sendMessage(self.commands.activateFilter(self.mode, ec.Filter.MED, activate))
-        self.state.value = iec.ElectrometerStates.NOTREADING
+        self.updateState(iec.ElectrometerStates.NOTREADINGSTATE)
         self.medianFilterActive = activate
         return activate
 
     def activateAverageFilter(self, activate, skipState=False):
         self.verifyValidState(iec.CommandValidStates.activateAverageFilterValidStates, skipState)
-        self.state.value = iec.ElectrometerStates.CONFIGURINGSTATE
+        self.updateState(iec.ElectrometerStates.CONFIGURINGSTATE)
         self.serialPort.sendMessage(self.commands.activateFilter(self.mode, ec.Filter.AVER, activate))
-        self.state.value = iec.ElectrometerStates.NOTREADING
+        self.updateState(iec.ElectrometerStates.NOTREADINGSTATE)
         self.avgFilterActive = activate
         return activate
 

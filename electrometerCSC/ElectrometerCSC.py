@@ -130,6 +130,10 @@ class ElectrometerCsc(base_csc.BaseCsc):
         super().do_standby(id_data)
         self.electrometer.updateState(iec.ElectrometerStates.STANDBYSTATE)
         self.appliedSettingsMatchStart = False #Reset value for the next time a start is generated
+        try: #Try to diconnect but if it doesn't work is not a problem....
+            self.electrometer.disconnect()
+        except:
+            self.log.debug("Warning: Error disconnecting device..."
         self.log.debug("Standby done...")
 
     def do_enable(self, id_data):

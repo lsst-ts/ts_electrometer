@@ -159,12 +159,12 @@ class ElectrometerCommand:
         command = ":SENS:FUNC '"+mode.name+"';"
         return command
 
-    def setRange(self, auto, range, mode):
+    def setRange(self, auto, rangeValue, mode):
         if(auto):
             command = ":SENS:"+mode.name+":RANG:AUTO 1;"
         else:
             command = ":SENS:"+mode.name+":RANG:AUTO 0;"
-        command += "\n:SENS:"+mode.name+":RANG "+str(range)+";"
+            command += "\n:SENS:"+mode.name+":RANG "+str(rangeValue)+";"
         return command
 
     def enableSync(self, enable):
