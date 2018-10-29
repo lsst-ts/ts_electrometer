@@ -58,6 +58,12 @@ class ElectrometerCommand:
         command += "\n:INIT;"
         return command
 
+    #Read value a store them into the buffer until the buffer is full
+    def nextRead(self):
+        command = ":TRAC:FEED:CONT NEXT;"
+        command += "\n:INIT;"
+        return command
+
     #Clear device buffer
     def clearBuffer(self):
         command = ":TRAC:CLE;"
@@ -72,6 +78,7 @@ class ElectrometerCommand:
     def getLastError(self):
         command = ":SYST:ERR?;"
         return command
+
 
     #Format the reads to include values from input
     def formatTrac(self, channel, timestamp, temperature):
@@ -138,6 +145,10 @@ class ElectrometerCommand:
 
     def setBufferSize(self, bufferSize=50000):
         command = ":TRACE:CLEAR;\n:TRAC:POINTS "+str(bufferSize)+";\n:TRIG:COUNT "+str(bufferSize)+";"
+        return command
+
+    def initBuffer(self):
+        command = ":INIT;"
         return command
 
     def integrationTime(self, mode, time=0.001):
