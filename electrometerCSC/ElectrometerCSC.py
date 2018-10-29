@@ -23,6 +23,7 @@ import asyncio
 import warnings
 import logging
 from electrometerController.ElectrometerControllerSimulator import ElectrometerSimulator
+from electrometerController.ElectrometerController import ElectrometerController
 import electrometerController.IElectrometerController as iec
 import electrometerController.ElectrometerCommands as ecomm
 from pythonFileReader.ConfigurationFileReaderYaml import FileReaderYaml
@@ -61,6 +62,7 @@ class ElectrometerCsc(base_csc.BaseCsc):
         #Pre-SAL setup
         self.fitsDirectory = str(self.mainConfiguration.readValue('filePath'))
         self.salId = self.mainConfiguration.readValue('salId')
+        self.simulated = self.mainConfiguration.readValue('simulated')
 
         if initial_state not in base_csc.State:
             raise ValueError(f"intial_state={initial_state} is not a salobj.State enum")
@@ -93,10 +95,14 @@ class ElectrometerCsc(base_csc.BaseCsc):
         self.evt_settingVersions_data = self.evt_settingVersions.DataType()
 
         #Electrometer declarations
-        self.electrometer = ElectrometerSimulator()
+        if(self.simulated == 1):
+            self.electrometer = ElectrometerSimulator()
+        else:
+            self.electrometer = ElectrometerController()
         self.appliedSettingsMatchStart = False
         self.detailed_state = iec.ElectrometerStates.OFFLINESTATE
         self.stop_triggered = False
+        self.lastScanTime = 0
 
         #Loop initialization
         asyncio.ensure_future(self.init_stateLoop())
@@ -137,11 +143,13 @@ class ElectrometerCsc(base_csc.BaseCsc):
         self.log.debug("exitControl done...")
 
     async def do_startScanDt(self, id_data):
-        values, times = await self.electrometer.readDuringTime(id_data.data.scanDuration)
-        self.publishLFO_and_createFitsFile(values, times)
+
+        values, times, temps, units = await self.electrometer.readDuringTime(id_data.data.scanDuration)
+        self.publishLFO_and_createFitsFile(values, times, self.lastScanTime)
         self.log.debug("Start scan DT done...")
 
     async def do_startScan(self, id_data):
+        self.lastScanTime = self.getCurrentTime()
         self.electrometer.readManual()
         self.log.debug("startScan done...")
 
@@ -176,8 +184,11 @@ class ElectrometerCsc(base_csc.BaseCsc):
         self.log.debug("setRange done...")
 
     async def do_stopScan(self, id_data):
+        print(1)
         values, times = await self.electrometer.stopReading()
-        self.publishLFO_and_createFitsFile(values, times)
+        print(2)
+        self.publishLFO_and_createFitsFile(values, times, self.lastScanTime)
+        print(3)
         self.log.debug("stopScan done...")
 
     async def init_stateLoop(self): 
@@ -190,7 +201,7 @@ class ElectrometerCsc(base_csc.BaseCsc):
     #Loop to publish electrometer intensity values
         while True:
             if(self.electrometer.getState() == iec.ElectrometerStates.MANUALREADINGSTATE or self.electrometer.getState() == iec.ElectrometerStates.DURATIONREADINGSTATE):
-                value, unit = self.electrometer.getValue()
+                value, temperature, unit = self.electrometer.getValue()
                 self.publish_intensity(value, unit)
             await asyncio.sleep(self.telemetryLoop)
 
@@ -280,13 +291,23 @@ class ElectrometerCsc(base_csc.BaseCsc):
     def getCurrentTime(self):
         return self.salinfo.manager.getCurrentTime()
 
-    def publishLFO_and_createFitsFile(self, values, times):
+    def publishLFO_and_createFitsFile(self, values, times, readStartTime):
         dataArray = nparray([times, values])
         name = str(self.salId)+"-"+str(self.getCurrentTime())
         fitsFile = PythonFits(self.fitsDirectory, name, separator='/')
         fitsFile.addData(dataArray)
-        fitsFile.addHeader("Column1", "Time", "Time in seconds")
-        fitsFile.addHeader("Column2", "Intensity", "")
+        fitsFile.addHeader("CLMN1", "Time", "Time in seconds")
+        fitsFile.addHeader("CLMN2", "Intensity", "")
+        fitsFile.addHeader("HWINFO", self.electrometer.getHardwareInfo(), "")
+
+        errorListCode, errorListName = self.electrometer.getErrorList()
+        fitsFile.addHeader("DERROR", ','.join(map(str, errorListCode)), "Device error list") #To be implemented
+
+        fitsFile.addHeader("ITIME", readStartTime, "Start time")
+        fitsFile.addHeader("ITEMP", self.electrometer.getLastScanValues()[0][0], "Initial temperature")
+        fitsFile.addHeader("ETEMP", self.electrometer.getLastScanValues()[1][0], "End temperature")
+        fitsFile.addHeader("IUNIT", self.electrometer.getLastScanValues()[0][1], "Mode read")
+
         fitsFile.saveToFile()
         fitsFile.closeFile()
         host = socket.gethostbyname(socket.gethostname())

@@ -3,7 +3,6 @@ from electrometerController.ElectrometerCommands import UnitMode, AverFilterType
 from random import randint
 from asyncio import sleep
 import time
-from pythonFileReader.ConfigurationFileReaderYaml import FileReaderYaml
 
 class ElectrometerSimulator(iec.IElectrometerController):
 
@@ -21,6 +20,7 @@ class ElectrometerSimulator(iec.IElectrometerController):
         self.readFreq = 0.1
         self.stopReadingValue = False
         self.configurationDelay = 0.1
+        self.startAndEndScanValues = [[0,0], [0,0]] #[temperature, unit]
 
     def connect(self):
         self.connected = True
@@ -36,6 +36,9 @@ class ElectrometerSimulator(iec.IElectrometerController):
     def configureCommunicator(self, visaResource,baudRate,parity,dataBits,stopBits,flowControl,termChar):
         self.connect()
         return
+
+    def getHardwareInfo(self):
+        return "Simulation"
 
     def initialize(self, mode, range, integrationTime, medianFilterActive, avgFilterMode, avgFilterActive):
         self.mode = mode
@@ -74,13 +77,18 @@ class ElectrometerSimulator(iec.IElectrometerController):
     def readManual(self):
         self.verifyValidState(iec.CommandValidStates.readManualValidStates)
         self.stopReadingValue = False
+        self.updateLastAndEndValue(iec.InitialEndValue.INITIAL)
         self.state = iec.ElectrometerStates.MANUALREADINGSTATE
-        return 
+
+    def updateLastAndEndValue(self, InitialEncIdex : iec.InitialEndValue):
+        value, temperature, unit = self.getValue()
+        self.startAndEndScanValues[InitialEncIdex.value] = [temperature, unit]
 
     async def stopReading(self):
         self.verifyValidState(iec.CommandValidStates.stopReadingValidStates)
         print("Command stopReading executed...")
         self.stopReadingValue = True
+        self.updateLastAndEndValue(iec.InitialEndValue.END)
         values, times = await self.readBuffer()
         return values, times
 
@@ -92,12 +100,14 @@ class ElectrometerSimulator(iec.IElectrometerController):
     async def readDuringTime(self, readTime):
         self.verifyValidState(iec.CommandValidStates.readDuringTimeValidStates)
         self.state = iec.ElectrometerStates.DURATIONREADINGSTATE
+        self.updateLastAndEndValue(iec.InitialEndValue.INITIAL)
         start = time.time()
         values = []
         dt = 0
         while (dt < readTime):
             await sleep(self.readFreq)
             dt = time.time() - start
+        self.updateLastAndEndValue(iec.InitialEndValue.END)
         values, times = await self.readBuffer()
         print("Command readDuringTime executed...")
         self.state = iec.ElectrometerStates.NOTREADINGSTATE
@@ -123,7 +133,8 @@ class ElectrometerSimulator(iec.IElectrometerController):
     def getValue(self):
         self.lastValue = randint(1, 100)*self.range/1000.0
         unit = "A" if self.mode == UnitMode.CURR else "C"
-        return self.lastValue, unit
+        temperature = 20.0+ randint(0,100)/100.0
+        return self.lastValue, temperature, unit
 
     def getIntegrationTime(self):
         return self.integrationTime
@@ -138,7 +149,7 @@ class ElectrometerSimulator(iec.IElectrometerController):
         return self.integrationTime
 
     def getErrorList(self):
-        return [0]
+        return [0], ["Reading available"]
 
     def setMode(self, mode, skipState=False):
         self.verifyValidState(iec.CommandValidStates.setModeValidStates, skipState)
@@ -203,6 +214,9 @@ class ElectrometerSimulator(iec.IElectrometerController):
         print("Command restartBuffer executed...")
         return 
 
+    def getLastScanValues(self):
+        #Returns values stored at the beggining of the manual and time scan
+        return self.startAndEndScanValues
 
 if __name__ == "__main__":
     print("Test")

@@ -124,6 +124,14 @@ class IElectrometerController(ABC):
     def restartBuffer(self):
         pass
 
+    @abstractmethod
+    def getHardwareInfo(self):
+        pass
+
+    @abstractmethod
+    def getLastScanValues(self):
+        pass
+
     def verifyValidState(self, validStates, skipVerification=False):
         if(skipVerification):   return
         if(self.getState() not in validStates): raise ValueError(f"enable not allowed in {self.getState().name} state")
@@ -144,6 +152,10 @@ class ElectrometerErrors(Enum):
     NOERROR = 1
     ERROR = -1
     REJECTED = -2
+
+class InitialEndValue(Enum):
+    INITIAL = 0
+    END = 1
 
 class CommandValidStates():
     activateFilterValidStates = [ElectrometerStates.NOTREADINGSTATE]

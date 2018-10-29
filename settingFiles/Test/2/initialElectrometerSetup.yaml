@@ -1,6 +1,6 @@
 mode : 1
 range : 0.2
-integrationTime : 0.2
+integrationTime : 0.001
 medianFilterActive : 1
 filterActive : 1
 avgFilterActive : 1

@@ -1,7 +1,7 @@
-import ElectrometerCommands as ec
+import electrometerController.ElectrometerCommands as ec
 from pythonCommunicator.SerialCommunicator import SerialCommunicator
 from pythonFileReader.ConfigurationFileReaderYaml import FileReaderYaml
-import IElectrometerController as iec
+import electrometerController.IElectrometerController as iec
 from datetime import datetime
 from asyncio import sleep
 
@@ -11,7 +11,7 @@ class ElectrometerController(iec.IElectrometerController):
 
         self.mode = ec.UnitMode.CURR
         self.range = 0.1
-        self.integrationTime = 0.01
+        self.integrationTime = 0.001
         self.state = iec.ElectrometerStates.STANDBYSTATE
         self.medianFilterActive = False
         self.avgFilterMode = ec.AverFilterType.NONE
@@ -26,7 +26,7 @@ class ElectrometerController(iec.IElectrometerController):
         #self.SerialConfiguration.loadFile("serialConfiguration")
         self.state = iec.ElectrometerStates.STANDBYSTATE
         self.lastValue = 0
-        self.stopReading = False
+        self.stopReadingValue = False
 
     def configureCommunicator(self):
         baudrate = self.SerialConfiguration.readValue('baudrate')
@@ -73,7 +73,7 @@ class ElectrometerController(iec.IElectrometerController):
         return iec.ElectrometerErrors.NOERROR
 
     def stopReading(self):
-        self.stopReading = True
+        self.stopReadingValue = True
 
     def performZeroCorrection(self):
         if (self.state.value != iec.ElectrometerStates.NOTREADING): return iec.ElectrometerErrors.REJECTED
@@ -101,7 +101,7 @@ class ElectrometerController(iec.IElectrometerController):
 
     def readDuringTime(self, time):
         if (self.state != iec.ElectrometerStates.NOTREADING): return iec.ElectrometerErrors.REJECTED, []
-        self.state != iec.ElectrometerStates.DURATIONREADINGSTATE
+        self.state = iec.ElectrometerStates.DURATIONREADINGSTATE
         start = datetime.now()
         dt = 0
         values = []
@@ -112,11 +112,11 @@ class ElectrometerController(iec.IElectrometerController):
             response = self.serialPort.getMessage()
             intensity, temperature, unit = self.parseGetValues(response)
             self.lastValue = intensity
-            if(self.stopReading):
+            if(self.stopReadingValue):
                 break
             dt = datetime.now() - start
 
-        self.stopReading = False
+        self.stopReadingValue = False
         self.state = iec.ElectrometerStates.NOTREADING
         return iec.ElectrometerErrors.NOERROR, values
 
@@ -139,11 +139,11 @@ class ElectrometerController(iec.IElectrometerController):
             response = self.serialPort.getMessage()
             intensity, temperature, unit = self.parseGetValues(response)
             self.lastValue = intensity
-            if(self.stopReading):
+            if(self.stopReadingValue):
                 break
             dt = datetime.now() - start
 
-        self.stopReading = False
+        self.stopReadingValue = False
         self.state = iec.ElectrometerStates.NOTREADING
         return iec.ElectrometerErrors.NOERROR, values
 
@@ -160,11 +160,11 @@ class ElectrometerController(iec.IElectrometerController):
             response = self.serialPort.getMessage()
             intensity, temperature, unit = self.parseGetValues(response)
             self.lastValue = intensity
-            if(self.stopReading):
+            if(self.stopReadingValue):
                 break
             dt = datetime.now() - start
 
-        self.stopReading = False
+        self.stopReadingValue = False
         self.state = iec.ElectrometerStates.NOTREADING
         return iec.ElectrometerErrors.NOERROR, values
 
