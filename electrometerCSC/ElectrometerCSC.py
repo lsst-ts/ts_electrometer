@@ -15,7 +15,6 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-#
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
@@ -353,18 +352,21 @@ class ElectrometerCsc(base_csc.BaseCsc):
         self.evt_settingsAppliedReadSets_data.mode = mode
         self.evt_settingsAppliedReadSets.put(self.evt_settingsAppliedReadSets_data)
 
-    def publish_settingsAppliedSerConf(self,visaResource,baudRate,parity,dataBits,stopBits,flowControl,termChar):
+    def publish_settingsAppliedSerConf(self,visaResource,baudRate,parity,dataBits,stopBits, timeout,termChar,xonxoff, dsrdtr, bytesToRead):
         self.evt_settingsAppliedSerConf_data.visaResource = visaResource
         self.evt_settingsAppliedSerConf_data.baudRate = baudRate
         self.evt_settingsAppliedSerConf_data.parity = parity
         self.evt_settingsAppliedSerConf_data.dataBits = dataBits
         self.evt_settingsAppliedSerConf_data.stopBits = stopBits
-        self.evt_settingsAppliedSerConf_data.flowControl = flowControl
+        self.evt_settingsAppliedSerConf_data.xonxoff = xonxoff
+        self.evt_settingsAppliedSerConf_data.dsrdtr = dsrdtr
+        self.evt_settingsAppliedSerConf_data.timeout = timeout
         self.evt_settingsAppliedSerConf_data.termChar = termChar
+        self.evt_settingsAppliedSerConf_data.bytesToRead = bytesToRead
         self.evt_settingsAppliedSerConf.put(self.evt_settingsAppliedSerConf_data)
 
-    def publish_settingVersions(self, recommendedSettingVersion):
-        self.evt_settingVersions_data.recommendedSettingVersion = recommendedSettingVersion
+    def publish_settingVersions(self, recommendedSettingsVersion):
+        self.evt_settingVersions_data.recommendedSettingsVersion = recommendedSettingsVersion
         self.evt_settingVersions.put(self.evt_settingVersions_data)
 
     def apply_serialConfigurationSettings(self):
@@ -378,18 +380,10 @@ class ElectrometerCsc(base_csc.BaseCsc):
         timeout = self.localConfiguration.readValue('timeout')
         xonxoff = self.localConfiguration.readValue('xonxoff')
         dsrdtr = self.localConfiguration.readValue('dsrdtr')
-        if(xonxoff == 0 and dsrdtr == 0):
-            flowControl = 1
-        elif(xonxoff == 1 and dsrdtr == 0):
-            flowControl = 2
-        elif(xonxoff == 0 and dsrdtr == 1):
-            flowControl = 3
-        else:
-            flowControl = 4
         termChar = self.localConfiguration.readValue('termChar')
 
-        self.electrometer.configureCommunicator(visaResource=port, baudRate=baudrate, parity=parity, dataBits=byteToRead, stopBits=stopBits, xonxoff=xonxoff, dsrdtr=dsrdtr, timeout=2, termChar=termChar)
-        self.publish_settingsAppliedSerConf(port,baudrate,1,dataBits,stopBits,flowControl,0) #Fix parity and termChar
+        self.electrometer.configureCommunicator(port=port, baudrate=baudrate, parity=parity, byteToRead=byteToRead, stopbits=stopBits, bytesize=dataBits,xonxoff=xonxoff, dsrdtr=dsrdtr, timeout=timeout, termChar=termChar)
+        self.publish_settingsAppliedSerConf(visaResource=port,baudRate=baudrate,parity=parity,dataBits=dataBits,stopBits=stopBits, timeout=timeout,termChar=termChar,xonxoff=xonxoff, dsrdtr=dsrdtr, bytesToRead=byteToRead)
 
     def apply_initialSetupSettings(self):
         self.localConfiguration.loadFile("initialElectrometerSetup")

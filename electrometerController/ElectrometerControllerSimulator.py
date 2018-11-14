@@ -50,6 +50,8 @@ class ElectrometerSimulator(iec.IElectrometerController):
         self.state = iec.ElectrometerStates.READINGBUFFERSTATE
         values = []
         times = []
+        temperatures = []
+        units = []
         initialTime = time.time()
         iterations = 1000
         for i in range(iterations):
@@ -57,11 +59,13 @@ class ElectrometerSimulator(iec.IElectrometerController):
             values.append(self.lastValue)
             dt = time.time() - initialTime
             times.append(dt)
+            temperatures.append(22)
+            units.append('C')
             await sleep(self.integrationTime)
         self.state = iec.ElectrometerStates.NOTREADINGSTATE
         self.stopReadingValue = False
         print("Command readBuffer executed...")
-        return values, times
+        return values, times, temperatures, units
 
     def readManual(self):
         self.verifyValidState(iec.CommandValidStates.readManualValidStates)
@@ -78,7 +82,7 @@ class ElectrometerSimulator(iec.IElectrometerController):
         print("Command stopReading executed...")
         self.stopReadingValue = True
         self.updateLastAndEndValue(iec.InitialEndValue.END)
-        values, times = await self.readBuffer()
+        values, times, temperatures, units = await self.readBuffer()
         return values, times
 
 
@@ -101,10 +105,10 @@ class ElectrometerSimulator(iec.IElectrometerController):
             await sleep(self.readFreq)
             dt = time.time() - start
         self.updateLastAndEndValue(iec.InitialEndValue.END)
-        values, times = await self.readBuffer()
+        values, times, temperatures, units = await self.readBuffer()
         print("Command readDuringTime executed...")
         self.state = iec.ElectrometerStates.NOTREADINGSTATE
-        return values, times
+        return values, times, temperatures, units
 
     def updateState(self, newState):
         self.state = newState
