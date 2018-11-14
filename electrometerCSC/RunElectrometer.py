@@ -1,6 +1,6 @@
 from electrometerCSC.ElectrometerCSC import ElectrometerCsc
 import asyncio
-import salobj.python.salobj as salobj
+import salobj.python.lsst.ts.salobj as salobj
 
 csc = ElectrometerCsc(1, salobj.State.STANDBY)
 

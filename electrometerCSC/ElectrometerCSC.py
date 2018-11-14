@@ -35,7 +35,7 @@ try:
     import SALPY_Electrometer
 except ImportError:
     warnings.warn("Could not import SALPY_Electrometer; ElectrometerCSC will not work")
-from salobj.python.salobj import base_csc
+from salobj.python.lsst.ts.salobj import base_csc
 
 VERSION = 1.0
 
@@ -108,6 +108,11 @@ class ElectrometerCsc(base_csc.BaseCsc):
         asyncio.ensure_future(self.init_stateLoop())
         asyncio.ensure_future(self.init_intensityLoop())
 
+        #salobj configuration to run the same command mult
+        self.cmd_startScanDt.allow_multiple_commands = True
+        self.cmd_startScan.allow_multiple_commands = True
+        self.cmd_stopScan.allow_multiple_commands = True
+
     def do_start(self, id_data):
         self.localConfiguration.setSettingsFromLabel(id_data.data.settingsToApply, self.mainConfiguration)
         self.publish_settingVersions(self.mainConfiguration.getRecommendedSettings())
@@ -133,7 +138,7 @@ class ElectrometerCsc(base_csc.BaseCsc):
         try: #Try to diconnect but if it doesn't work is not a problem....
             self.electrometer.disconnect()
         except:
-            self.log.debug("Warning: Error disconnecting device..."
+            self.log.debug("Warning: Error disconnecting device...")
         self.log.debug("Standby done...")
 
     def do_enable(self, id_data):

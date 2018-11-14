@@ -6,7 +6,7 @@
 	url = https://github.com/lsst-ts/pythonFileReader.git
 [submodule "salobj"]
 	path = salobj
-	url = https://github.com/lsst-ts/salobj.git
+	url = https://github.com/lsst-ts/ts_salobj.git
 [submodule "pythonFitsfile"]
 	path = pythonFitsfile
 	url = https://github.com/lsst-ts/pythonFitsfile.git
