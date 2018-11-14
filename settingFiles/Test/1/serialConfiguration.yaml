@@ -1,6 +1,6 @@
 port: "/dev/ttyACM1"
 baudrate: 57600
-parity: "N"
+parity: 0
 stopBits: 1
 byteSize: 7
 byteToRead: 1
