@@ -9,5 +9,5 @@ aliases:
         settingSet: "Test"
         settingVersion: 2
 salId: 1
-filePath: "/home/andres/electrometer/electrometerFitsFiles"
-simulated: 1
+filePath: "/home/saluser/ts_electrometer2/electrometerFitsFiles"
+simulated: 0

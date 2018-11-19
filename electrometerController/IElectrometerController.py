@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from enum import Enum
-
+from inspect import currentframe
 
 class IElectrometerController(ABC):
 
@@ -117,7 +117,7 @@ class IElectrometerController(ABC):
 
     def verifyValidState(self, validStates, skipVerification=False):
         if(skipVerification):   return
-        if(self.getState() not in validStates): raise ValueError(f"enable not allowed in {self.getState().name} state")
+        if(self.getState() not in validStates): raise ValueError(f"{currentframe().f_code.co_name} not allowed in {self.getState().name} state")
 
 class ElectrometerStates(Enum):
     DISABLEDSTATE = 1

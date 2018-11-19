@@ -29,6 +29,7 @@ from pythonFileReader.ConfigurationFileReaderYaml import FileReaderYaml
 from numpy import array as nparray
 import socket
 from pythonFitsfile.PythonFits import PythonFits
+import serial
 
 try:
     import SALPY_Electrometer
@@ -115,9 +116,13 @@ class ElectrometerCsc(base_csc.BaseCsc):
     def do_start(self, id_data):
         self.localConfiguration.setSettingsFromLabel(id_data.data.settingsToApply, self.mainConfiguration)
         self.publish_settingVersions(self.mainConfiguration.getRecommendedSettings())
+
         self.apply_serialConfigurationSettings()
+
         self.apply_initialSetupSettings()
+
         self.publish_appliedSettingsMatchStart(True)
+
         self.electrometer.updateState(iec.ElectrometerStates.DISABLEDSTATE)
         super().do_start(id_data)
         self.log.debug("Start done...")
@@ -142,6 +147,7 @@ class ElectrometerCsc(base_csc.BaseCsc):
 
     def do_enable(self, id_data):
         super().do_enable(id_data)
+        print("Trying enable")
         self.electrometer.updateState(iec.ElectrometerStates.NOTREADINGSTATE)
         self.log.debug("Enable done...")
 
@@ -192,11 +198,8 @@ class ElectrometerCsc(base_csc.BaseCsc):
         self.log.debug("setRange done...")
 
     async def do_stopScan(self, id_data):
-        print(1)
         values, times = await self.electrometer.stopReading()
-        print(2)
         self.publishLFO_and_createFitsFile(values, times, self.lastScanTime)
-        print(3)
         self.log.debug("stopScan done...")
 
     async def init_stateLoop(self): 
@@ -208,9 +211,12 @@ class ElectrometerCsc(base_csc.BaseCsc):
     async def init_intensityLoop(self):
     #Loop to publish electrometer intensity values
         while True:
-            if(self.electrometer.getState() == iec.ElectrometerStates.MANUALREADINGSTATE or self.electrometer.getState() == iec.ElectrometerStates.DURATIONREADINGSTATE):
-                value, temperature, unit = self.electrometer.getValue()
-                self.publish_intensity(value, unit)
+            try:
+                if(self.electrometer.getState() == iec.ElectrometerStates.MANUALREADINGSTATE or self.electrometer.getState() == iec.ElectrometerStates.DURATIONREADINGSTATE):
+                    value, temperature, temperature, unit = self.electrometer.getValue()
+                    self.publish_intensity(value, unit)
+            except ValueError as e:
+                print("Error intensity loop:"+e)
             await asyncio.sleep(self.telemetryLoop)
 
     def publish_appliedSettingsMatchStart(self, value):
@@ -244,7 +250,7 @@ class ElectrometerCsc(base_csc.BaseCsc):
         elif(mode == ecomm.UnitMode.CHAR):
             modeToPublish = SALPY_Electrometer.Electrometer_shared_UnitToRead_Charge
         else:
-            raise ValueError(f"Unit not implemented")
+            raise ValueError(f"Unit {mode} not implemented")
         return modeToPublish
 
     def SalModeToDeviceMode(self, mode):
@@ -255,7 +261,7 @@ class ElectrometerCsc(base_csc.BaseCsc):
         elif(mode == SALPY_Electrometer.Electrometer_shared_UnitToRead_Charge):
             deviceMode = ecomm.UnitMode.CHAR
         else:
-            raise ValueError(f"Unit not implemented")
+            raise ValueError(f"Unit {mode} not implemented")
         return deviceMode
 
     def publish_integrationTime(self, integrationTime):
@@ -381,8 +387,21 @@ class ElectrometerCsc(base_csc.BaseCsc):
         xonxoff = self.localConfiguration.readValue('xonxoff')
         dsrdtr = self.localConfiguration.readValue('dsrdtr')
         termChar = self.localConfiguration.readValue('termChar')
+        termCharVal = '\n' if termChar == "endl" else '\r'
 
-        self.electrometer.configureCommunicator(port=port, baudrate=baudrate, parity=parity, byteToRead=byteToRead, stopbits=stopBits, bytesize=dataBits,xonxoff=xonxoff, dsrdtr=dsrdtr, timeout=timeout, termChar=termChar)
+        if(parity==0):
+                parityVal = serial.PARITY_NONE
+        elif(parity==1):
+                parityVal = serial.PARITY_EVEN
+        elif(parity==2):
+                parityVal = serial.PARITY_ODD
+        elif(parity==3):
+                parityVal = serial.PARITY_MARK
+        else:
+                parityVal = serial.PARITY_SPACE
+
+        self.electrometer.configureCommunicator(port=port, baudrate=baudrate, parity=parityVal, byteToRead=byteToRead, stopbits=stopBits, bytesize=dataBits,xonxoff=xonxoff, dsrdtr=dsrdtr, timeout=timeout, termChar=termCharVal)
+
         self.publish_settingsAppliedSerConf(visaResource=port,baudRate=baudrate,parity=parity,dataBits=dataBits,stopBits=stopBits, timeout=timeout,termChar=termChar,xonxoff=xonxoff, dsrdtr=dsrdtr, bytesToRead=byteToRead)
 
     def apply_initialSetupSettings(self):
@@ -398,18 +417,24 @@ class ElectrometerCsc(base_csc.BaseCsc):
         avgFilterActiveIsActive = (avgFilterActive==1)
         medianFilterActiveIsActive = (medianFilterActive==1)
 
-        self.electrometer.activateFilter(filterActiveIsActive, True)
-        self.electrometer.activateAverageFilter(avgFilterActiveIsActive, True)
-        self.electrometer.activateMedianFilter(medianFilterActiveIsActive, True)
-        self.electrometer.setRange(range_v, True)
-        self.electrometer.setMode(self.SalModeToDeviceMode(mode), True)
-        self.electrometer.setIntegrationTime(integrationTime, True)
+        self.electrometer.setMode(self.SalModeToDeviceMode(mode), skipState=True)
+        asyncio.sleep(0)
+        self.electrometer.activateFilter(filterActiveIsActive, skipState=True)
+        asyncio.sleep(0)
+        self.electrometer.setRange(range_v, skipState=True)
+        asyncio.sleep(0)
+        self.electrometer.setIntegrationTime(integrationTime, skipState=True)
+        asyncio.sleep(0)
 
         self.publish_digitalFilterChange(self.electrometer.getAverageFilterStatus(),
                                          self.electrometer.getFilterStatus(), self.electrometer.getMedianFilterStatus())
+        asyncio.sleep(0)
         self.publish_measureType(self.electrometer.getMode())
+        asyncio.sleep(0)
         self.publish_measureRange(self.electrometer.getRange())
+        asyncio.sleep(0)
         self.publish_integrationTime(self.electrometer.getIntegrationTime())
+        asyncio.sleep(0)
 
         self.publish_settingsAppliedReadSets(filterActiveIsActive,avgFilterActiveIsActive,range_v,integrationTime,medianFilterActiveIsActive,mode)
 

@@ -1,5 +1,5 @@
 mode : 1
-range : 0.01
+range : -0.01
 integrationTime : 0.001
 medianFilterActive : 0
 filterActive : 1

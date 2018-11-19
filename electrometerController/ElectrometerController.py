@@ -4,8 +4,6 @@ from pythonFileReader.ConfigurationFileReaderYaml import FileReaderYaml
 import electrometerController.IElectrometerController as iec
 from time import time
 from asyncio import sleep
-import asyncio #Test only, remove later....
-import time as timetSleep #Test only, remove later....
 import re
 
 class ElectrometerController(iec.IElectrometerController):
@@ -43,6 +41,7 @@ class ElectrometerController(iec.IElectrometerController):
 
     def configureCommunicator(self, port, baudrate, parity, stopbits, bytesize, byteToRead=1024, dsrdtr=False, xonxoff=False, timeout=2, termChar="\n"):
         self.serialPort = SerialCommunicator(port=port, baudrate=baudrate, parity=parity, stopbits=stopbits, bytesize=bytesize, byteToRead=byteToRead, dsrdtr=dsrdtr, xonxoff=xonxoff, timeout=timeout, termChar=termChar)
+        self.connect()
 
     def getHardwareInfo(self):
         self.serialPort.sendMessage(self.commands.getHardwareInfo())
@@ -67,10 +66,14 @@ class ElectrometerController(iec.IElectrometerController):
         dt = 0
         response = ""
         self.serialPort.sendMessage(self.commands.stopReadingBuffer())
+
         self.serialPort.sendMessage(self.commands.readBuffer())
-        while(dt < 600): #Can't stay reading for longer thatn 10 minutes....
+        while(dt < 600): #Can't stay reading for longer than 10 minutes....
             await sleep(self.readFreq)
-            temporaryResponse = self.serialPort.getMessage()
+            try:
+                temporaryResponse = self.serialPort.getMessage()
+            except:
+                break #If empty message due to no end char in the message, break loop
             response += temporaryResponse
             dt = time() - start
             if(temporaryResponse.endswith(self.serialPort.termChar) or temporaryResponse == "" ): #Check if termination character is present
@@ -112,12 +115,12 @@ class ElectrometerController(iec.IElectrometerController):
         values = []
         self.restartBuffer()
         while(dt < timeValue):
-            sleep(self.readFreq)
+            await sleep(self.readFreq)
             dt = time() - start
         self.stopStoringToBuffer()
         values, times, temperatures, units = await self.readBuffer()
         self.updateState(iec.ElectrometerStates.NOTREADINGSTATE)
-        return values, times
+        return values, times, temperatures, units
 
     def updateState(self, newState):
         self.state = newState
@@ -134,8 +137,10 @@ class ElectrometerController(iec.IElectrometerController):
             mode = ec.UnitMode.CURR
         elif(str(modeStr).__contains__("CHAR")):
             mode = ec.UnitMode.CHAR
-        else:
+        elif(str(modeStr).__contains__("RES")):
             mode = ec.UnitMode.RES
+        else:
+            raise ValueError(f"Response \"{modeStr}\" not valid...")
         self.mode = mode
         return mode
 
@@ -211,8 +216,8 @@ class ElectrometerController(iec.IElectrometerController):
 
     def activateFilter(self, activate, skipState=False):
         self.verifyValidState(iec.CommandValidStates.activateFilterValidStates, skipState)
-        self.activateMedianFilter(activate)
-        self.activateAverageFilter(activate)
+        self.activateMedianFilter(activate, skipState)
+        self.activateAverageFilter(activate, skipState)
         self.filterActive = activate
         return activate
 
