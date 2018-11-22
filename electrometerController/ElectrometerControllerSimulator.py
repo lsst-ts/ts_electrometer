@@ -127,7 +127,7 @@ class ElectrometerSimulator(iec.IElectrometerController):
         self.lastValue = randint(1, 100)*self.range/1000.0
         unit = "A" if self.mode == UnitMode.CURR else "C"
         temperature = 20.0+ randint(0,100)/100.0
-        return self.lastValue, temperature, unit
+        return self.lastValue, 0, temperature, unit
 
     def getIntegrationTime(self):
         return self.integrationTime

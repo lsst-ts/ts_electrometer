@@ -1,1 +1,4 @@
 pyserial == 3.4
+pyside2 == 5.11.2
+pyqtgraph == 0.10
+numpy == 1.13.3
