@@ -1,13 +1,13 @@
 
-from PySide2.QtWidgets import (QWidget, QHBoxLayout, QStackedLayout, QListWidget)
+from pyqtgraph.Qt import QtGui
 
-class ApplicationPaginationWidget(QWidget):
+class ApplicationPaginationWidget(QtGui.QWidget):
     def __init__(self, Electrometer):
-        QWidget.__init__(self)
+        QtGui.QWidget.__init__(self)
         self.Electrometer = Electrometer
-        self.mainLayout = QHBoxLayout()
-        self.pageLayout = QStackedLayout()
-        self.list = QListWidget()
+        self.mainLayout = QtGui.QHBoxLayout()
+        self.pageLayout = QtGui.QStackedLayout()
+        self.list = QtGui.QListWidget()
         self.list.itemSelectionChanged.connect(self.changePage)
         self.mainLayout.addWidget(self.list)
         self.mainLayout.addLayout(self.pageLayout)

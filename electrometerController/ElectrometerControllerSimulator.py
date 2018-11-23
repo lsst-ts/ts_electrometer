@@ -74,7 +74,7 @@ class ElectrometerSimulator(iec.IElectrometerController):
         self.state = iec.ElectrometerStates.MANUALREADINGSTATE
 
     def updateLastAndEndValue(self, InitialEncIdex : iec.InitialEndValue):
-        value, temperature, unit = self.getValue()
+        value, time, temperature, unit = self.getValue()
         self.startAndEndScanValues[InitialEncIdex.value] = [temperature, unit]
 
     async def stopReading(self):

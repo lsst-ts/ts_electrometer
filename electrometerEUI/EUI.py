@@ -13,28 +13,30 @@ from ApplicationPaginationWidget import ApplicationPaginationWidget
 from OverviewPageWidget import OverviewPageWidget
 
 from ElectrometerControlsWidget import ElectrometerControlsWidget
+from ElectrometerPlot import ElectrometerPlotWidget
 
-from PySide2.QtCore import QTimer
-from PySide2.QtWidgets import (QApplication, QVBoxLayout, QDialog, QHBoxLayout)
+from pyqtgraph.Qt import QtGui
+from PyQt5.QtCore import QTimer, QDateTime
 
-class EUI(QDialog):
+class EUI(QtGui.QDialog):
     def __init__(self, Electrometer, parent=None):
         super(EUI, self).__init__(parent)
         self.Electrometer = Electrometer
-        self.layout = QVBoxLayout()
-        self.topLayerLayout = QHBoxLayout()
+        self.layout = QtGui.QVBoxLayout()
+        self.topLayerLayout = QtGui.QHBoxLayout()
         self.applicationControl = ApplicationControlWidget(Electrometer)
         self.topLayerLayout.addWidget(self.applicationControl)
         self.applicationStatus = ApplicationStatusWidget(Electrometer)
         self.topLayerLayout.addWidget(self.applicationStatus)
-        self.middleLayerLayout = QHBoxLayout()
+        self.middleLayerLayout = QtGui.QHBoxLayout()
         self.applicationPagination = ApplicationPaginationWidget(Electrometer)
 
         self.applicationPagination.addPage("Overview", OverviewPageWidget(Electrometer))
         self.applicationPagination.addPage("Controls", ElectrometerControlsWidget(Electrometer))
+        self.applicationPagination.addPage("Plot", ElectrometerPlotWidget(Electrometer))
 
         self.middleLayerLayout.addWidget(self.applicationPagination)
-        self.bottomLayerLayout = QHBoxLayout()
+        self.bottomLayerLayout = QtGui.QHBoxLayout()
         self.layout.addLayout(self.topLayerLayout)
         self.layout.addLayout(self.middleLayerLayout)
         self.layout.addLayout(self.bottomLayerLayout)
@@ -42,7 +44,7 @@ class EUI(QDialog):
 
 if __name__ == '__main__':
     # Create the Qt Application
-    app = QApplication(sys.argv)
+    app = QtGui.QApplication(sys.argv)
     # Create EUI
     Electrometer = ElectrometerRemote()
     eui = EUI(Electrometer)

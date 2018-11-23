@@ -39,7 +39,7 @@ def setBoolLabelOpenClosed(label, value):
     setBoolLabel(label, "OPEN", "CLOSED", value)
 
 def appendAndResizeCurveData(data, newData, limit):
-    data = np.insert(data, 0, newData)
+    data = np.append(data, newData)
     if len(data) > limit:
         data = np.delete(data, np.arange(limit, len(data)))
     return data

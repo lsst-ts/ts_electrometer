@@ -1,20 +1,20 @@
 
 import QTHelpers
-from PySide2.QtWidgets import (QWidget, QLabel, QVBoxLayout, QGridLayout)
+from pyqtgraph.Qt import QtGui
 
-class OverviewPageWidget(QWidget):
+class OverviewPageWidget(QtGui.QWidget):
     def __init__(self, Electrometer):
-        QWidget.__init__(self)
+        QtGui.QWidget.__init__(self)
         self.Electrometer = Electrometer
-        self.layout = QVBoxLayout()
-        self.dataLayout = QGridLayout()
+        self.layout = QtGui.QVBoxLayout()
+        self.dataLayout = QtGui.QGridLayout()
         self.layout.addLayout(self.dataLayout)
         self.setLayout(self.layout)
         
         row = 0
         col = 0
-        self.summaryStateLabel = QLabel("UNKNOWN")
-        self.dataLayout.addWidget(QLabel("Summary State"), row, col)
+        self.summaryStateLabel = QtGui.QLabel("UNKNOWN")
+        self.dataLayout.addWidget(QtGui.QLabel("Summary State"), row, col)
         self.dataLayout.addWidget(self.summaryStateLabel, row, col + 1)
 
         self.Electrometer.subscribeEvent_summaryState(self.processEventSummaryState)

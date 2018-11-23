@@ -1,57 +1,56 @@
 
 import QTHelpers
 from ElectrometerEnumerations import UnitToRead
-from PySide2.QtWidgets import (QWidget, QLabel, QVBoxLayout, QGridLayout, QPushButton, QLineEdit)
-from PySide2.QtGui import QIntValidator, QDoubleValidator
+from pyqtgraph.Qt import QtGui
 
-class ElectrometerControlsWidget(QWidget):
+class ElectrometerControlsWidget(QtGui.QWidget):
     def __init__(self, Electrometer):
-        QWidget.__init__(self)
+        QtGui.QWidget.__init__(self)
         self.Electrometer = Electrometer
-        self.layout = QGridLayout()
-        self.controlsLayout = QGridLayout()
-        self.dataLayout = QGridLayout()
+        self.layout = QtGui.QGridLayout()
+        self.controlsLayout = QtGui.QGridLayout()
+        self.dataLayout = QtGui.QGridLayout()
 
         self.layout.addLayout(self.controlsLayout, 0, 0)
         self.layout.addLayout(self.dataLayout, 1, 0)
 
         #Controls
-        self.manualScan = QPushButton("ManualScan")
+        self.manualScan = QtGui.QPushButton("ManualScan")
         QTHelpers.updateSizePolicy(self.manualScan)
         self.manualScan.clicked.connect(self.issueCommandManualScan)
 
-        self.timeScan = QPushButton("TimeScan")
+        self.timeScan = QtGui.QPushButton("TimeScan")
         QTHelpers.updateSizePolicy(self.timeScan)
         self.timeScan.clicked.connect(self.issueCommandTimeScan)
 
-        self.setDigitalFilter = QPushButton("SetDigitalFilter")
+        self.setDigitalFilter = QtGui.QPushButton("SetDigitalFilter")
         QTHelpers.updateSizePolicy(self.setDigitalFilter)
         self.setDigitalFilter.clicked.connect(self.issueCommandSetDigitalFilter)
 
-        self.setIntegrationTime = QPushButton("SetIntegrationTime")
+        self.setIntegrationTime = QtGui.QPushButton("SetIntegrationTime")
         QTHelpers.updateSizePolicy(self.setIntegrationTime)
         self.setIntegrationTime.clicked.connect(self.issueCommandSetIntegrationTime)
 
-        self.setMeasureType = QPushButton("SetMeasureType")
+        self.setMeasureType = QtGui.QPushButton("SetMeasureType")
         QTHelpers.updateSizePolicy(self.setMeasureType)
         self.setMeasureType.clicked.connect(self.issueCommandSetMeasureType)
 
-        self.setMasureRange = QPushButton("SetMeasureRange")
+        self.setMasureRange = QtGui.QPushButton("SetMeasureRange")
         QTHelpers.updateSizePolicy(self.setMasureRange)
         self.setMasureRange.clicked.connect(self.issueCommandSetMasureRange)
 
-        self.performZeroCalibration = QPushButton("PerformZeroCalibration")
+        self.performZeroCalibration = QtGui.QPushButton("PerformZeroCalibration")
         QTHelpers.updateSizePolicy(self.performZeroCalibration)
         self.performZeroCalibration.clicked.connect(self.issueCommandPerformZeroCalibration)
 
-        self.stopScan = QPushButton("StopScan")
+        self.stopScan = QtGui.QPushButton("StopScan")
         QTHelpers.updateSizePolicy(self.stopScan)
         self.stopScan.clicked.connect(self.issueCommandStopScan)
 
 
         row = 0
         col = 0
-        self.label = QLabel("Electrometer Controls")
+        self.label = QtGui.QLabel("Electrometer Controls")
         self.controlsLayout.addWidget(self.label)
         self.controlsLayout.addWidget(self.manualScan, row, col)
         self.controlsLayout.addWidget(self.timeScan, row+1, col)
@@ -62,24 +61,24 @@ class ElectrometerControlsWidget(QWidget):
         self.controlsLayout.addWidget(self.performZeroCalibration, row+6, col)
         self.controlsLayout.addWidget(self.stopScan, row+7, col)
 
-        self.digitalFilterInput = QLineEdit()
-        self.digitalFilterInput.setValidator(QIntValidator(0, 1))
+        self.digitalFilterInput = QtGui.QLineEdit()
+        self.digitalFilterInput.setValidator(QtGui.QIntValidator(0, 1))
         self.digitalFilterInput.setText("1")
 
-        self.scanTimeInput = QLineEdit()
-        self.scanTimeInput.setValidator(QDoubleValidator(0, 60, 3))
+        self.scanTimeInput = QtGui.QLineEdit()
+        self.scanTimeInput.setValidator(QtGui.QDoubleValidator(0, 60, 3))
         self.scanTimeInput.setText("5")
 
-        self.integrationTimeInput = QLineEdit()
-        self.integrationTimeInput.setValidator(QDoubleValidator(0, 100, 3))
+        self.integrationTimeInput = QtGui.QLineEdit()
+        self.integrationTimeInput.setValidator(QtGui.QDoubleValidator(0, 100, 3))
         self.integrationTimeInput.setText("0")
 
-        self.measureTypeInput = QLineEdit()
-        self.measureTypeInput.setValidator(QIntValidator(1, 2))
+        self.measureTypeInput = QtGui.QLineEdit()
+        self.measureTypeInput.setValidator(QtGui.QIntValidator(1, 2))
         self.measureTypeInput.setText("1")
 
-        self.mesureRangeInput = QLineEdit()
-        self.mesureRangeInput.setValidator(QDoubleValidator(-100, 100, 3))
+        self.mesureRangeInput = QtGui.QLineEdit()
+        self.mesureRangeInput.setValidator(QtGui.QDoubleValidator(-100, 100, 3))
         self.mesureRangeInput.setText("0")
         
         col+=1
@@ -93,17 +92,17 @@ class ElectrometerControlsWidget(QWidget):
         col = 0
 
         #Data
-        self.digitalFilterLabel = QLabel("UNKNOWN")
-        self.integrationTimeLabel = QLabel("UNKNOWN")
-        self.intensityLabel = QLabel("UNKNOWN")
-        self.measureRangeLabel = QLabel("UNKNOWN")
-        self.measureTypeLabel = QLabel("UNKNOWN")
+        self.digitalFilterLabel = QtGui.QLabel("UNKNOWN")
+        self.integrationTimeLabel = QtGui.QLabel("UNKNOWN")
+        self.intensityLabel = QtGui.QLabel("UNKNOWN")
+        self.measureRangeLabel = QtGui.QLabel("UNKNOWN")
+        self.measureTypeLabel = QtGui.QLabel("UNKNOWN")
         
-        self.dataLayout.addWidget(QLabel("Digital Filter"), row, col + 0)
-        self.dataLayout.addWidget(QLabel("Integration Time"), row, col + 1)
-        self.dataLayout.addWidget(QLabel("Intensity"), row, col + 2)
-        self.dataLayout.addWidget(QLabel("Range"), row, col + 3)
-        self.dataLayout.addWidget(QLabel("Measuring Mode"), row, col + 4)
+        self.dataLayout.addWidget(QtGui.QLabel("Digital Filter"), row, col + 0)
+        self.dataLayout.addWidget(QtGui.QLabel("Integration Time"), row, col + 1)
+        self.dataLayout.addWidget(QtGui.QLabel("Intensity"), row, col + 2)
+        self.dataLayout.addWidget(QtGui.QLabel("Range"), row, col + 3)
+        self.dataLayout.addWidget(QtGui.QLabel("Measuring Mode"), row, col + 4)
         row += 1
         
         self.dataLayout.addWidget(self.digitalFilterLabel, row, col + 0)

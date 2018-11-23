@@ -1,27 +1,28 @@
 
 import QTHelpers
 from SALPY_Electrometer import *
-from PySide2.QtWidgets import (QWidget, QLabel, QPushButton, QVBoxLayout)
+from pyqtgraph.Qt import QtGui
+
 import ElectrometerEnumerations 
 
-class ApplicationControlWidget(QWidget):
+class ApplicationControlWidget(QtGui.QWidget):
     def __init__(self, Electrometer):
-        QWidget.__init__(self)
+        QtGui.QWidget.__init__(self)
         self.Electrometer = Electrometer
-        self.label = QLabel("Application Control")
-        self.button1 = QPushButton("Button1")
+        self.label = QtGui.QLabel("Application Control")
+        self.button1 = QtGui.QPushButton("Button1")
         QTHelpers.updateSizePolicy(self.button1)
         self.button1.clicked.connect(QTHelpers.doNothing)
-        self.button2 = QPushButton("Button2")
+        self.button2 = QtGui.QPushButton("Button2")
         QTHelpers.updateSizePolicy(self.button2)
         self.button2.clicked.connect(QTHelpers.doNothing)
-        self.button3 = QPushButton("Button3")
+        self.button3 = QtGui.QPushButton("Button3")
         QTHelpers.updateSizePolicy(self.button3)
         self.button3.clicked.connect(QTHelpers.doNothing)
-        self.button4 = QPushButton("Button4")
+        self.button4 = QtGui.QPushButton("Button4")
         QTHelpers.updateSizePolicy(self.button4)
         self.button4.clicked.connect(QTHelpers.doNothing)
-        self.layout = QVBoxLayout()
+        self.layout = QtGui.QVBoxLayout()
         self.layout.addWidget(self.label)
         self.layout.addWidget(self.button1)
         self.layout.addWidget(self.button2)
