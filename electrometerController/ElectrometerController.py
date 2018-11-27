@@ -57,7 +57,7 @@ class ElectrometerController(iec.IElectrometerController):
         self.serialPort.sendMessage(self.commands.enableZeroCorrection(True))
         self.serialPort.sendMessage(self.commands.enableZeroCheck(False))
 
-        self.updateState(iec.ElectrometerStates.NOTREADING)
+        self.updateState(iec.ElectrometerStates.NOTREADINGSTATE)
 
     async def readBuffer(self):
         self.verifyValidState(iec.CommandValidStates.readBufferValidStates)

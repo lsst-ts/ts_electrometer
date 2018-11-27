@@ -157,12 +157,13 @@ class ElectrometerCsc(base_csc.BaseCsc):
         self.log.debug("exitControl done...")
 
     async def do_startScanDt(self, id_data):
-
+        self.electrometer.performZeroCorrection()
         values, times, temps, units = await self.electrometer.readDuringTime(id_data.data.scanDuration)
         self.publishLFO_and_createFitsFile(values, times, self.lastScanTime)
         self.log.debug("Start scan DT done...")
 
     async def do_startScan(self, id_data):
+        self.electrometer.performZeroCorrection()
         self.lastScanTime = self.getCurrentTime()
         self.electrometer.readManual()
         self.log.debug("startScan done...")
