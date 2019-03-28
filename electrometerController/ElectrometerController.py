@@ -78,7 +78,6 @@ class ElectrometerController(iec.IElectrometerController):
             dt = time() - start
             if(temporaryResponse.endswith(self.serialPort.termChar) or temporaryResponse == "" ): #Check if termination character is present
                 break
-
         values, times, temperatures, units = self.parseGetValuesBuffer(response)
         self.updateState(iec.ElectrometerStates.NOTREADINGSTATE)
         return values, times, temperatures, units
@@ -110,10 +109,10 @@ class ElectrometerController(iec.IElectrometerController):
     async def readDuringTime(self, timeValue):
         self.verifyValidState(iec.CommandValidStates.readDuringTimeValidStates)
         self.updateState(iec.ElectrometerStates.DURATIONREADINGSTATE)
-        start = time()
         dt = 0
         values = []
         self.restartBuffer()
+        start = time()
         while(dt < timeValue):
             await sleep(self.readFreq)
             dt = time() - start
@@ -243,9 +242,9 @@ class ElectrometerController(iec.IElectrometerController):
 
     def restartBuffer(self):
         self.serialPort.sendMessage(self.commands.clearBuffer())
-        self.serialPort.sendMessage(self.commands.formatTrac(channel=True, timestamp=True, temperature=False))
+        self.serialPort.sendMessage(self.commands.formatTrac(channel=False, timestamp=True, temperature=False))
         self.serialPort.sendMessage(self.commands.setBufferSize(50000))
-
+        self.disableAll()
         self.serialPort.sendMessage(self.commands.selectDeviceTimer(0.001))
         self.serialPort.sendMessage(self.commands.nextRead())
 
@@ -290,8 +289,20 @@ class ElectrometerController(iec.IElectrometerController):
     def reset(self):
         print(self.getHardwareInfo())
 
+    def resetDevice(self):
+        self.serialPort.sendMessage(self.commands.resetDevice())
+
     def getBufferQuantity(self):
         self.serialPort.sendMessage(self.commands.getBufferQuantity())
         return int(self.serialPort.getMessage())
 
+    def enableTemperatureSensor(self, enable):
+        self.serialPort.sendMessage(self.commands.enableTemperatureReading(enable))
 
+    def disableAll(self):
+        self.serialPort.sendMessage(self.commands.enableDisplay(False))
+        self.serialPort.sendMessage(self.commands.enableSync(False))
+        #self.serialPort.sendMessage(":SYST:ZCOR OFF;")
+        self.serialPort.sendMessage(":TRIG:DEL 0.0;")
+        #self.serialPort.sendMessage(":CALC:STAT OFF;")
+        #self.serialPort.sendMessage(":SYSTEM:LSYN:STAT OFF;")

@@ -18,6 +18,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import os
 import asyncio
 import warnings
 import logging
@@ -55,12 +56,15 @@ class ElectrometerCsc(base_csc.BaseCsc):
     def __init__(self, index, initial_state=base_csc.State.STANDBY):
 
         #Configuration initialization
-        self.localConfiguration = FileReaderYaml("../settingFiles", "Test", 1)
+        self.localConfiguration = FileReaderYaml("../settingFiles", "Test", index)
         self.mainConfiguration = FileReaderYaml("../settingFiles", "", "")
         self.mainConfiguration.loadFile("mainSetup")
 
         #Pre-SAL setup
-        self.fitsDirectory = str(self.mainConfiguration.readValue('filePath'))
+        self.fitsDirectory = os.path.join(str(self.mainConfiguration.readValue('filePath')),f"{index}")
+        if not os.path.exists(self.fitsDirectory):
+            os.makedirs(self.fitsDirectory)
+
         self.salId = self.mainConfiguration.readValue('salId')
         self.simulated = self.mainConfiguration.readValue('simulated')
 
@@ -112,6 +116,9 @@ class ElectrometerCsc(base_csc.BaseCsc):
         self.cmd_startScanDt.allow_multiple_commands = True
         self.cmd_startScan.allow_multiple_commands = True
         self.cmd_stopScan.allow_multiple_commands = True
+
+    def do_setLogLevel(self):
+        pass
 
     def do_start(self, id_data):
         self.localConfiguration.setSettingsFromLabel(id_data.data.settingsToApply, self.mainConfiguration)
@@ -418,6 +425,8 @@ class ElectrometerCsc(base_csc.BaseCsc):
         avgFilterActiveIsActive = (avgFilterActive==1)
         medianFilterActiveIsActive = (medianFilterActive==1)
 
+        self.electrometer.resetDevice()
+        asyncio.sleep(0)
         self.electrometer.setMode(self.SalModeToDeviceMode(mode), skipState=True)
         asyncio.sleep(0)
         self.electrometer.activateFilter(filterActiveIsActive, skipState=True)
@@ -425,6 +434,10 @@ class ElectrometerCsc(base_csc.BaseCsc):
         self.electrometer.setRange(range_v, skipState=True)
         asyncio.sleep(0)
         self.electrometer.setIntegrationTime(integrationTime, skipState=True)
+        asyncio.sleep(0)
+        self.electrometer.enableTemperatureSensor(enable=False)
+        asyncio.sleep(0)
+        self.electrometer.disableAll()
         asyncio.sleep(0)
 
         self.publish_digitalFilterChange(self.electrometer.getAverageFilterStatus(),

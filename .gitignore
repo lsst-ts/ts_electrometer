@@ -3,4 +3,4 @@
 ./.idea*
 *ospl*
 *__pycache__*
-
+*.fits

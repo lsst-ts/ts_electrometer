@@ -140,7 +140,7 @@ class ElectrometerCommand:
         return command
 
     def selectDeviceTimer(self, timer=0.001):
-        command = "TRIG:SOUR TIM;\nTRIG:TIM "+'{0:.3f}'.format(timer)+";"
+        command = ":TRIG:SOUR TIM;\n:TRIG:TIM "+'{0:.3f}'.format(timer)+";"
         return command
 
     def setBufferSize(self, bufferSize=50000):
@@ -195,6 +195,18 @@ class ElectrometerCommand:
         command = ":SENS:"+mode.name+":APER?;"
         return command
 
+    def enableDisplay(self, enable):
+        command = ":DISP:ENAB ON;" if enable else ":DISP:ENAB OFF;"
+        return command
+
+    def enableSync(self, enable):
+        command = ":SYSTEM:LSYNC:STAT ON;" if enable else ":SYSTEM:LSYNC:STAT OFF;"
+        return command
+
+    def setTimerTest(self):
+        command = ":SENSE:CURR:NPLC 0.01;"
+        return command
+
 class UnitMode(Enum):
     CURR = 1
     CHAR = 2
@@ -237,5 +249,5 @@ class TestDevice:
         print(self.messageToSend+message)
         return message
 
-test = ElectrometerCommand()
-test.activateFilter(mode=UnitMode.CURR, filterType=Filter.AVER, active=True)
+#test = ElectrometerCommand()
+#test.activateFilter(mode=UnitMode.CURR, filterType=Filter.AVER, active=True)
