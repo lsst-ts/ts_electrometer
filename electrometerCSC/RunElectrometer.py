@@ -3,9 +3,10 @@ import salobj.python.lsst.ts.salobj as salobj
 import SALPY_Electrometer
 import argparse
 
+
 def create_parser():
-    parser=argparse.ArgumentParser()
-    parser.add_argument("index",default=1,type=int)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("index", default=1, type=int)
     return parser
 
 if __name__ == "__main__":

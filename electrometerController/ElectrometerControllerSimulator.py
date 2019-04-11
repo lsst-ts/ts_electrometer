@@ -44,6 +44,18 @@ class ElectrometerSimulator(iec.IElectrometerController):
         print("Command performZeroCorrection executed...")
         return
 
+    def reset(self):
+        print("Simulation")
+
+    def resetDevice(self):
+        pass
+
+    def enableTemperatureSensor(self, enable):
+        pass
+
+    def disableAll(self):
+        pass
+
     async def readBuffer(self):
         self.verifyValidState(iec.CommandValidStates.readBufferValidStates)
         self.stopReadingValue = False

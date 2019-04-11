@@ -6,6 +6,7 @@ from time import time
 from asyncio import sleep
 import re
 
+
 class ElectrometerController(iec.IElectrometerController):
 
     def __init__(self):
@@ -21,7 +22,7 @@ class ElectrometerController(iec.IElectrometerController):
         self.readFreq = 0.01
         self.stopReadingValue = False
         self.configurationDelay = 0.1
-        self.startAndEndScanValues = [[0,0], [0,0]] #[temperature, unit]
+        self.startAndEndScanValues = [[0, 0], [0, 0]]  # [temperature, unit]
         self.autoRange = False
 
         self.commands = ec.ElectrometerCommand()
@@ -68,12 +69,12 @@ class ElectrometerController(iec.IElectrometerController):
         self.serialPort.sendMessage(self.commands.stopReadingBuffer())
 
         self.serialPort.sendMessage(self.commands.readBuffer())
-        while(dt < 600): #Can't stay reading for longer than 10 minutes....
+        while(dt < 600):  # Can't stay reading for longer than 10 minutes....
             await sleep(self.readFreq)
             try:
                 temporaryResponse = self.serialPort.getMessage()
             except:
-                break #If empty message due to no end char in the message, break loop
+                break  # If empty message due to no end char in the message, break loop
             response += temporaryResponse
             dt = time() - start
             if(temporaryResponse.endswith(self.serialPort.termChar) or temporaryResponse == "" ): #Check if termination character is present
@@ -169,10 +170,10 @@ class ElectrometerController(iec.IElectrometerController):
 
     def getErrorList(self):
         errorCodes, errorMessages = [], []
-        for i in range(100): #Maximum of 100 errors
+        for i in range(100):  # Maximum of 100 errors
             self.serialPort.sendMessage(self.commands.getLastError())
             reponse = self.serialPort.getMessage()
-            if(len(reponse)==0 or reponse.__contains__("No Error")): #break if there are no more errors in the queue (empty response)
+            if(len(reponse) == 0 or reponse.__contains__("No Error")):  # break if there are no more errors in the queue (empty response)
                 break
             errors = self.parseErrorString(reponse)
             errorCodes.append(errors[0])
@@ -189,7 +190,7 @@ class ElectrometerController(iec.IElectrometerController):
 
     def setRange(self, rangeValue, skipState=False):
         self.verifyValidState(iec.CommandValidStates.setRangeValidStates, skipState)
-        autoValue = True if rangeValue<0 else False
+        autoValue = True if rangeValue < 0 else False
         self.updateState(iec.ElectrometerStates.CONFIGURINGSTATE)
         self.serialPort.sendMessage(self.commands.setRange(autoValue, rangeValue, self.mode))
         self.updateState(iec.ElectrometerStates.NOTREADINGSTATE)
@@ -249,7 +250,7 @@ class ElectrometerController(iec.IElectrometerController):
         self.serialPort.sendMessage(self.commands.nextRead())
 
     def getLastScanValues(self):
-        #Returns values stored at the beggining of the manual and time scan
+        # Returns values stored at the beggining of the manual and time scan
         return self.startAndEndScanValues
 
     def parseErrorString(self, errorMessage):
@@ -277,8 +278,8 @@ class ElectrometerController(iec.IElectrometerController):
             time.append(unsortedValues[i+1])
             temperature.append(0)
             unit.append(unsortedStrValues[i])
-            i+=3
-            if(i>=len(unsortedValues)-2):
+            i += 3
+            if(i >= len(unsortedValues) - 2):
                 break
 
         return intensity, time, temperature, unit
@@ -302,7 +303,7 @@ class ElectrometerController(iec.IElectrometerController):
     def disableAll(self):
         self.serialPort.sendMessage(self.commands.enableDisplay(False))
         self.serialPort.sendMessage(self.commands.enableSync(False))
-        #self.serialPort.sendMessage(":SYST:ZCOR OFF;")
+        # self.serialPort.sendMessage(":SYST:ZCOR OFF;")
         self.serialPort.sendMessage(":TRIG:DEL 0.0;")
-        #self.serialPort.sendMessage(":CALC:STAT OFF;")
-        #self.serialPort.sendMessage(":SYSTEM:LSYN:STAT OFF;")
+        # self.serialPort.sendMessage(":CALC:STAT OFF;")
+        # self.serialPort.sendMessage(":SYSTEM:LSYN:STAT OFF;")

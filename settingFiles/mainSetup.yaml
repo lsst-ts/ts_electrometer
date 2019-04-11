@@ -11,3 +11,5 @@ aliases:
 salId: 1
 filePath: "/home/saluser/ts_electrometer2/electrometerFitsFiles"
 simulated: 0
+httpHost: "10.0.100.133"
+port: 8000

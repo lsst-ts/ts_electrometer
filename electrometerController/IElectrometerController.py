@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from inspect import currentframe
 
+
 class IElectrometerController(ABC):
 
     def __init__(self):
@@ -119,6 +120,7 @@ class IElectrometerController(ABC):
         if(skipVerification):   return
         if(self.getState() not in validStates): raise ValueError(f"{currentframe().f_code.co_name} not allowed in {self.getState().name} state")
 
+
 class ElectrometerStates(Enum):
     DISABLEDSTATE = 1
     ENABLEDSTATE = 2
@@ -131,14 +133,17 @@ class ElectrometerStates(Enum):
     NOTREADINGSTATE = 9
     READINGBUFFERSTATE = 10
 
+
 class ElectrometerErrors(Enum):
     NOERROR = 1
     ERROR = -1
     REJECTED = -2
 
+
 class InitialEndValue(Enum):
     INITIAL = 0
     END = 1
+
 
 class CommandValidStates():
     activateFilterValidStates = [ElectrometerStates.NOTREADINGSTATE]
