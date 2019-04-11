@@ -128,7 +128,7 @@ class ElectrometerCsc(base_csc.BaseCsc):
 
     def do_setSimulationMode(self):
         pass
-        
+
     def do_start(self, id_data):
         self.localConfiguration.setSettingsFromLabel(
             id_data.data.settingsToApply, self.mainConfiguration)
@@ -351,11 +351,10 @@ class ElectrometerCsc(base_csc.BaseCsc):
 
         fitsFile.saveToFile()
         fitsFile.closeFile()
-        host = socket.gethostbyname(socket.gethostname())
         checksum = fitsFile.getChecksum()
         size = fitsFile.getFileSize()
 
-        url = "http://" + self.mainConfiguration.readValue('httpHost') + ":" + str(self.mainConfiguration.readValue('port')) + "/" + name
+        url = "http://" + self.mainConfiguration.readValue('httpHost') + ":" + str(self.mainConfiguration.readValue('port')) + "/" + name + ".fits"
         generator = "electrometer" + str(self.salId)
         version = float(VERSION)
         checkSum = str(checksum)
