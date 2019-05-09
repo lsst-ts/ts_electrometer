@@ -3,7 +3,7 @@ import QTHelpers
 from SALPY_Electrometer import *
 from pyqtgraph.Qt import QtGui
 
-import ElectrometerEnumerations 
+import lsst.ts.electrometer.electrometerEUI.ElectrometerEnumerations 
 
 class ApplicationControlWidget(QtGui.QWidget):
     def __init__(self, Electrometer):

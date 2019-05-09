@@ -22,22 +22,24 @@ import os
 import asyncio
 import warnings
 import logging
-from electrometerController.ElectrometerControllerSimulator import ElectrometerSimulator
-from electrometerController.ElectrometerController import ElectrometerController
-import electrometerController.IElectrometerController as iec
-import electrometerController.ElectrometerCommands as ecomm
-from pythonFileReader.ConfigurationFileReaderYaml import FileReaderYaml
+import serial
 from numpy import array as nparray
 import socket
-from pythonFitsfile.PythonFits import PythonFits
-import serial
+
+from lsst.ts.electrometer.electrometerController.ElectrometerControllerSimulator import ElectrometerSimulator
+from lsst.ts.electrometer.electrometerController.ElectrometerController import ElectrometerController
+import lsst.ts.electrometer.electrometerController.IElectrometerController as iec
+import lsst.ts.electrometer.electrometerController.ElectrometerCommands as ecomm
+
+from lsst.ts.pythonFileReader.ConfigurationFileReaderYaml import FileReaderYaml
+from lsst.ts.pythonFitsfile.PythonFits import PythonFits
+from lsst.ts.salobj import base_csc
 
 try:
     import SALPY_Electrometer
 except ImportError:
     warnings.warn(
         "Could not import SALPY_Electrometer; ElectrometerCSC will not work")
-from salobj.python.lsst.ts.salobj import base_csc
 
 VERSION = 1.0
 
@@ -55,7 +57,6 @@ class ElectrometerCsc(base_csc.BaseCsc):
         - State.OFFLINE if you want full emulation of a CSC.
 
     """
-
     def __init__(self, index, initial_state=base_csc.State.STANDBY):
 
         # Configuration initialization

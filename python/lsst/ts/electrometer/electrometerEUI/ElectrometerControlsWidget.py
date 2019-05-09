@@ -1,9 +1,12 @@
 
 import QTHelpers
-from ElectrometerEnumerations import UnitToRead
+from lsst.ts.electrometer.electrometerEUI.ElectrometerEnumerations import UnitToRead
 from pyqtgraph.Qt import QtGui
 
+
 class ElectrometerControlsWidget(QtGui.QWidget):
+
+    
     def __init__(self, Electrometer):
         QtGui.QWidget.__init__(self)
         self.Electrometer = Electrometer

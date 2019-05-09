@@ -6,7 +6,7 @@ from pyqtgraph.Qt import QtGui
 
 import numpy as np
 
-import ElectrometerEnumerations 
+import lsst.ts.electrometer.electrometerEUI.ElectrometerEnumerations 
 
 class ElectrometerPlotWidget(QtGui.QWidget):
     def __init__(self, Electrometer):

@@ -4,19 +4,18 @@
 import sys
 import time
 
-from ElectrometerRemote import ElectrometerRemote
-
 from ApplicationControlWidget import ApplicationControlWidget
 from ApplicationStatusWidget import ApplicationStatusWidget
 from ApplicationPaginationWidget import ApplicationPaginationWidget
-
 from OverviewPageWidget import OverviewPageWidget
 
-from ElectrometerControlsWidget import ElectrometerControlsWidget
-from ElectrometerPlot import ElectrometerPlotWidget
+from lsst.ts.electrometer.electrometerEUI.ElectrometerRemote import ElectrometerRemote
+from lsst.ts.electrometer.electrometerEUI.ElectrometerControlsWidget import ElectrometerControlsWidget
+from lsst.ts.electrometer.electrometerEUI.ElectrometerPlot import ElectrometerPlotWidget
 
 from pyqtgraph.Qt import QtGui
 from PyQt5.QtCore import QTimer, QDateTime
+
 
 class EUI(QtGui.QDialog):
     def __init__(self, Electrometer, parent=None):
@@ -41,6 +40,7 @@ class EUI(QtGui.QDialog):
         self.layout.addLayout(self.middleLayerLayout)
         self.layout.addLayout(self.bottomLayerLayout)
         self.setLayout(self.layout)
+
 
 if __name__ == '__main__':
     # Create the Qt Application
