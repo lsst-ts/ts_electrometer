@@ -131,6 +131,9 @@ class ElectrometerCsc(base_csc.BaseCsc):
         pass
 
     def do_start(self, id_data):
+        """Start the electrometer CSC. It changed the CSC to standby and clear the 
+        electrometer controller configuration to start fresh
+        """
         self.localConfiguration.setSettingsFromLabel(
             id_data.data.settingsToApply, self.mainConfiguration)
         self.publish_settingVersions(
@@ -147,14 +150,20 @@ class ElectrometerCsc(base_csc.BaseCsc):
         self.log.debug("Start done...")
 
     def do_enterControl(self, id_data):
+        """Not used
+        """
         pass
 
     def do_disable(self, id_data):
+        """Change state to disabled state
+        """
         super().do_disable(id_data)
         self.electrometer.updateState(iec.ElectrometerStates.DISABLEDSTATE)
         self.log.debug("Disable done...")
 
     def do_standby(self, id_data):
+        """Go to standby and disconnect from the controller. After this no communication is possible.
+        """
         super().do_standby(id_data)
         self.electrometer.updateState(iec.ElectrometerStates.STANDBYSTATE)
         # Reset value for the next time a start is generated
@@ -166,33 +175,63 @@ class ElectrometerCsc(base_csc.BaseCsc):
         self.log.debug("Standby done...")
 
     def do_enable(self, id_data):
+        """Enables the CSC and gives full control
+        """
         super().do_enable(id_data)
         print("Trying enable")
         self.electrometer.updateState(iec.ElectrometerStates.NOTREADINGSTATE)
         self.log.debug("Enable done...")
 
     def do_exitControl(self, id_data):
+        """Power off the CSC
+        """
         super().do_exitControl(id_data)
         self.electrometer.updateState(iec.ElectrometerStates.OFFLINESTATE)
         self.log.debug("exitControl done...")
 
     async def do_startScanDt(self, id_data):
+        """Start storing readings inside the electrometer buffer for a 
+        fixed time, this command will change detailedState from NotReadingState 
+        to SetDurationReadingState and to stop storing data into the buffer and 
+        publish the LFO there are 2 possibilities. Reading during scanDuration
+        time input in the command or sending a stopScan command
+        """
         self.electrometer.performZeroCorrection()
         values, times, temps, units = await self.electrometer.readDuringTime(id_data.data.scanDuration)
         self.publishLFO_and_createFitsFile(values, times, self.lastScanTime)
         self.log.debug("Start scan DT done...")
 
     async def do_startScan(self, id_data):
+        """Start storing readings inside the electrometer buffer, 
+        this command will change detailedState from NotReadingState 
+        to ManualReadingState and continues storing data into the buffer. 
+        The data will be published to the LFO when stopScan command is 
+        received or a timeout occurs (300 seconds)
+        """
         self.electrometer.performZeroCorrection()
         self.lastScanTime = self.getCurrentTime()
         self.electrometer.readManual()
         self.log.debug("startScan done...")
 
     async def do_performZeroCalib(self, id_data):
+        """Performs a zero correction in the device. It's recommended 
+        to perform this zero correction every time the range changes. 
+        The steps taken to perform this comes from the datasheet 
+        6517B-901-01 Rev. B / June 2009 under Zero correct. It is as 
+        following. 1- Enable Zero check, 2- Set unit to read, 3- Set 
+        range to measure 4- Enable Zero Correction 5- Disable Zero 
+        check. For unit and range, it uses the last values selected, 
+        either via command or from the configuration file
+        """
         self.electrometer.performZeroCorrection()
         self.log.debug("performZeroCalib done...")
 
     async def do_setDigitalFilter(self, id_data):
+        """Configure the digital filter inside the Electrometer 
+        controller. Be aware that activating any filters will reduce
+        the number of readings per second the device will be able to 
+        handle
+        """
         self.publish_appliedSettingsMatchStart(False)
         self.electrometer.activateMedianFilter(id_data.data.activateMedFilter)
         self.electrometer.activateAverageFilter(id_data.data.activateAvgFilter)
@@ -202,36 +241,55 @@ class ElectrometerCsc(base_csc.BaseCsc):
         self.log.debug("setDigitalFilter done...")
 
     async def do_setIntegrationTime(self, id_data):
+        """This is the length of time for a given sample from the 
+        electrometer, however, due to the time it takes to read the 
+        buffer and process the data, this is not the rate at which 
+        samples are taken
+        """
         self.publish_appliedSettingsMatchStart(False)
         self.electrometer.setIntegrationTime(id_data.data.intTime)
         self.publish_integrationTime(self.electrometer.getIntegrationTime())
         self.log.debug("setIntegrationTime done...")
 
     async def do_setMode(self, id_data):
+        """Set unit to measure, the possibilities are: Current, 
+        Voltage, Charge or Resistance
+        """
         self.publish_appliedSettingsMatchStart(False)
         self.electrometer.setMode(self.SalModeToDeviceMode(id_data.data.mode))
         self.publish_measureType(self.electrometer.getMode())
         self.log.debug("setMode done...")
 
     async def do_setRange(self, id_data):
+        """Set measurement range, it will use the current
+        unit selected
+        """
         self.publish_appliedSettingsMatchStart(False)
         self.electrometer.setRange(id_data.data.setRange)
         self.publish_measureRange(self.electrometer.getRange())
         self.log.debug("setRange done...")
 
     async def do_stopScan(self, id_data):
+        """Command to stop a current reading process, when it
+        finishes stopping the process it will read the data 
+        from the buffer and will publish the LFO event
+        """
         values, times = await self.electrometer.stopReading()
         self.publishLFO_and_createFitsFile(values, times, self.lastScanTime)
         self.log.debug("stopScan done...")
 
     async def init_stateLoop(self):
-        # Loop to check if something has changed in the device
+        """Initialize the looop to check if the detailedSate has
+        changed in the device
+        """
         while True:
             self.update_deviceState(self.electrometer.getState())
             await asyncio.sleep(self.stateCheckLoopfrequency)
 
     async def init_intensityLoop(self):
-        # Loop to publish electrometer intensity values
+        """Initialize loop to publish electrometer intensity values
+        when in ReadingState
+        """
         while True:
             try:
                 if(self.electrometer.getState() == iec.ElectrometerStates.MANUALREADINGSTATE or self.electrometer.getState() == iec.ElectrometerStates.DURATIONREADINGSTATE):
@@ -242,6 +300,13 @@ class ElectrometerCsc(base_csc.BaseCsc):
             await asyncio.sleep(self.telemetryLoop)
 
     def publish_appliedSettingsMatchStart(self, value):
+        """Publish appliedSettingsMatchStart when 
+        if it has changed. If not, do nothing.
+        Arguments:
+            value {bool} -- True if settings are from configuration files
+                            False if any of the configuration has changed 
+                            via SAL command
+        """
         if(value == self.appliedSettingsMatchStart):
             pass
         else:
@@ -251,24 +316,56 @@ class ElectrometerCsc(base_csc.BaseCsc):
             self.appliedSettingsMatchStart = value
 
     def publish_intensity(self, value, unit):
+        """Publish value measured from the photodione in the unit set from setMode
+
+        Arguments:
+            value {float} -- Measurement from the photodiode
+            unit {long} --  mode currently configured. Current, 
+                            Voltage, Charge or Resistance
+        """
         self.evt_intensity_data.intensity = value
         self.evt_intensity_data.unit = unit
-        # SALPY_Electrometer.SAL_Electrometer().getCurrentTime()
         self.evt_intensity_data.timestamp = self.getCurrentTime()
         self.evt_intensity.put(self.evt_intensity_data)
 
     def publish_measureRange(self, value):
+        """Publish the range currently configured
+        inside the electrometer
+
+        Arguments:
+            value {float} -- -1 for automatic range. Volts range from 0 to 210 Volts,
+                              Current range from 0 to 21e-3 Amps, Resistance from 0 
+                              to 100e18 Ohms, Charge from 0 to +2.1e-6 Coulombs
+        """
         self.evt_measureRange_data = self.evt_measureRange.DataType()
         self.evt_measureRange_data.rangeValue = value
         self.evt_measureRange.put(self.evt_measureRange_data)
 
     def publish_measureType(self, mode):
+        """Publish when the type of measurment has changed
+        
+        Arguments:
+            mode {long} -- mode currently configured. Current, 
+                            Voltage, Charge or Resistance
+        """
         modeToPublish = self.devideModeToSalMode(mode)
         self.evt_measureType_data = self.evt_measureType.DataType()
         self.evt_measureType_data.mode = modeToPublish
         self.evt_measureType.put(self.evt_measureType_data)
 
     def devideModeToSalMode(self, mode):
+        """Convert the internal mode to the SAL enum mode.
+
+        Arguments:
+            mode {UnitMode} -- UnitMode Enumeration for:
+            Current, Voltage, Charge or Resistance
+
+        Raises:
+            ValueError: Raise exception if value doesn't exist
+
+        Returns:
+            [long] -- SAL enum mode
+        """
         if(mode == ecomm.UnitMode.CURR):
             modeToPublish = SALPY_Electrometer.Electrometer_shared_UnitToRead_Current
         elif(mode == ecomm.UnitMode.CHAR):
@@ -278,6 +375,17 @@ class ElectrometerCsc(base_csc.BaseCsc):
         return modeToPublish
 
     def SalModeToDeviceMode(self, mode):
+        """Convert the SAL enumeration mode to the internal UnitMode enum.
+
+        Arguments:
+            mode {UnitToRead} -- SAL UnitToRead Enuneration
+
+        Raises:
+            ValueError:  Raise exception if value doesn't exist
+
+        Returns:
+            [UnitMode] -- UnitMode enumeration
+        """
         deviceMode = ecomm.UnitMode.CURR
 
         if(mode == SALPY_Electrometer.Electrometer_shared_UnitToRead_Current):
@@ -289,11 +397,27 @@ class ElectrometerCsc(base_csc.BaseCsc):
         return deviceMode
 
     def publish_integrationTime(self, integrationTime):
+        """Publish integration time event with value from input
+
+        Arguments:
+            integrationTime {float} -- Integration rate in seconds it should be 
+            between the range (166.67e-6 to 200e-3)
+        """
         self.evt_integrationTime_data = self.evt_integrationTime.DataType()
         self.evt_integrationTime_data.intTime = integrationTime
         self.evt_integrationTime.put(self.evt_integrationTime_data)
 
     def publish_digitalFilterChange(self, activateAvgFilter, activateFilter, activateMedFilter):
+        """Publish digital filter status 
+        
+        Arguments:
+            activateAvgFilter {bool} -- Average digital filter status inside the electrometer, 
+            it uses the Default value inside the device (last 10 readings) to do the average 
+            calculation, true for ON and False for 0
+            activateFilter {bool} -- Digital Filter configuration. If this is 0, none of the filters will operate
+            activateMedFilter {bool} -- The median filter is used to determine the “middle-most” reading from a 
+            group of readings that are arranged according to size. Activate the median filter inside the electrometer, true for ON 1 False for 0
+        """
         self.evt_digitalFilterChange_data = self.evt_digitalFilterChange.DataType()
         self.evt_digitalFilterChange_data.activateAverageFilter = activateAvgFilter
         self.evt_digitalFilterChange_data.activateFilter = activateFilter
@@ -301,6 +425,29 @@ class ElectrometerCsc(base_csc.BaseCsc):
         self.evt_digitalFilterChange.put(self.evt_digitalFilterChange_data)
 
     def update_deviceState(self, newState):
+        """Update the device state, this is the same as the DetailedState
+
+        Arguments:
+            newState {Enum ElectrometerStates} -- Detailed state enumeration
+            DISABLEDSTATE: Same as for SummaryState
+            ENABLEDSTATE: Same as for SummaryState
+            FAULTSTATE: Same as for SummaryState
+            OFFLINESTATE: Same as for SummaryState
+            STANDBYSTATE: Same as for SummaryState
+            MANUALREADINGSTATE: The electromere is currentnly storing data into the buffer
+            and measurements are being published via the "intensity" event. This process
+            will continue until a timeout happends (300seconds) or a stop command is executed
+            DURATIONREADINGSTATE: The electromere is currentnly storing data into the buffer
+            and measurements are being published via the "intensity" event. This process
+            will continue until the time has passed or a stop command is executed
+            CONFIGURINGSTATE: The electrometer goes to this detailedState while it changes any
+            of the internal parameters to prevent conflicts sending multiple commands while
+            the devices is being configured
+            NOTREADINGSTATE: Not reading state and the device is ready to receive any command
+            READINGBUFFERSTATE: The CSC is reading data from the electrometer buffer, this 
+            could take a while and will use the communication protocol. This will prevent 
+            the execution of any command
+        """
         if(newState == self.detailed_state):
             return
         self.detailed_state = self.electrometer.getState()
@@ -327,9 +474,23 @@ class ElectrometerCsc(base_csc.BaseCsc):
         self.evt_detailedState.put(self.evt_detailedState_data)
 
     def getCurrentTime(self):
+        """get current time from salobj
+        
+        Returns:
+            double -- timestamp from salObj
+        """
         return self.salinfo.manager.getCurrentTime()
 
     def publishLFO_and_createFitsFile(self, values, times, readStartTime):
+        """Created the fits file with the info and announce it via largeFileObjectAvailable
+        event
+        
+        Arguments:
+            values {float array} -- Array with the data from the measurements 
+            from the electrometer buffer
+            times {float array} -- time when the measurement was taken
+            readStartTime {float} -- Initial time when the scan command was executed
+        """
         dataArray = nparray([times, values])
         name = str(self.salId) + "-" + str(self.getCurrentTime())
         fitsFile = PythonFits(self.fitsDirectory, name, separator='/')
@@ -367,6 +528,20 @@ class ElectrometerCsc(base_csc.BaseCsc):
             url, generator, version, checkSum, mimeType, byteSize, salId)
 
     def publish_largeFileObjectAvailable(self, url, generator, version, checkSum, mimeType, byteSize, salId):
+        """Publish the largeFileObjectAvailable to announce to the EFD that there is a new file available
+
+        Arguments:
+            url {string} --  Uniform Resource Locator which links to a Large File Object
+                             either for ingest into the EFD Large File Annex, or to announce
+                             the successful copy of same to the EFD Large File Annex.
+                             Protocols are those supported by the cURL library.
+            generator {string} -- Name of the package which generated the file being announced
+            version {float} -- A dotted x.y version number denoting the file format revision
+            checkSum {string} -- Hexadecimal character string holding the checksum of the file
+            mimeType {string} -- Mime Type code for the file
+            byteSize {long} -- Size of file in bytes
+            salId {string} -- A generic identifier field
+        """
         self.evt_largeFileObjectAvailable_data.url = url
         self.evt_largeFileObjectAvailable_data.generator = generator
         self.evt_largeFileObjectAvailable_data.version = version
@@ -379,6 +554,24 @@ class ElectrometerCsc(base_csc.BaseCsc):
             self.evt_largeFileObjectAvailable_data)
 
     def publish_settingsAppliedReadSets(self, filterActive, avgFilterActive, inputRange, integrationTime, medianFilterActive, mode):
+        """Publish settingsAppliedReadSets, this is the inital setup of the 
+        electrometer when starting the CSC
+
+        Arguments:
+            filterActive {bool} -- Digital Filter configuration. If this is OFF, none of the filters will operate
+            avgFilterActive {bool} -- Average digital filter status inside the electrometer, it uses the Default value 
+                                      inside the device (last 10 readings) to do the average calculation, true for ON 
+                                      and False for OFF
+            inputRange {double} -- Ranges use to read values from the photodiode using the current Mode. -1 for automatic
+                                   range. Volts range from 0 to 210V, Current range from 0 to 21e-3Amps, Resistance from 0
+                                   to 100e18, Charge from 0 to +2.1e-6
+            integrationTime {double} -- Integration rate, this will directly affect reading rates but reading
+                                        rates are not going to be the same as reading rates
+            medianFilterActive {bool} -- The median filter is used to determine the “middle-most” reading from a 
+                                         group of readings that are arranged according to size. Activate the 
+                                         median filter inside the electrometer, true for ON and False for OFF
+            mode {long} -- Mode used in the configuration file, 0-Current, 1-Charge, 2-Voltage, 3-Resistance
+        """
         self.evt_settingsAppliedReadSets_data.filterActive = filterActive
         self.evt_settingsAppliedReadSets_data.avgFilterActive = avgFilterActive
         self.evt_settingsAppliedReadSets_data.inputRange = inputRange
@@ -389,6 +582,21 @@ class ElectrometerCsc(base_csc.BaseCsc):
             self.evt_settingsAppliedReadSets_data)
 
     def publish_settingsAppliedSerConf(self, visaResource, baudRate, parity, dataBits, stopBits, timeout, termChar, xonxoff, dsrdtr, bytesToRead):
+        """Publish settingsAppliedSerConf event to announce the 
+        serial configuration event that it is used by the CSC
+        
+        Arguments:
+            visaResource {string} -- Visa resource or port
+            baudRate {long} -- Baud rate as a number. allowed values are: 2400, 4800, 9600, 14400, 19200, 38400, 57600, 115200
+            parity {long} -- Parity checking. PARITY_NONE=0, PARITY_EVEN=1, PARITY_ODD=2, PARITY_MARK=3, PARITY_SPACE=4
+            dataBits {long} -- Number of data bits. Possible values: 5, 6, 7, 8
+            stopBits {long} -- Number of stop bits. Possible values: 1, 2 
+            timeout {float} -- time out in seconds
+            termChar {string} -- termination char, endl for end line
+            xonxoff {bool} -- Software flow control
+            dsrdtr {bool} -- hardware (DSR/DTR) flow control
+            bytesToRead {long} -- The maximum amount of bytes to read
+        """
         self.evt_settingsAppliedSerConf_data.visaResource = visaResource
         self.evt_settingsAppliedSerConf_data.baudRate = baudRate
         self.evt_settingsAppliedSerConf_data.parity = parity
@@ -407,6 +615,9 @@ class ElectrometerCsc(base_csc.BaseCsc):
         self.evt_settingVersions.put(self.evt_settingVersions_data)
 
     def apply_serialConfigurationSettings(self):
+        """Load serial configuration from file. The set of configuration files paths are 
+        obtained from the last settingsApplied attribute in the start command
+        """
         self.localConfiguration.loadFile("serialConfiguration")
         port = self.localConfiguration.readValue('port')
         baudrate = self.localConfiguration.readValue('baudrate')
@@ -438,6 +649,19 @@ class ElectrometerCsc(base_csc.BaseCsc):
                                             stopBits=stopBits, timeout=timeout, termChar=termChar, xonxoff=xonxoff, dsrdtr=dsrdtr, bytesToRead=byteToRead)
 
     def apply_initialSetupSettings(self):
+        """Applies the initial configuration to the electrometer in the following order
+        1.- Reset the device configuration
+        2.- Configure the mode
+        3.- Configure the filter
+        4.- Set the range
+        5.- Set the integration time
+        6.- Disable temperature sensor to increase the number of readings per second
+        7.- Publish filter status
+        8.- Publish mode
+        9.- Publish range
+        10.- Publish integration time
+        11.- Publish settingsApplied
+        """
         self.localConfiguration.loadFile("initialElectrometerSetup")
         mode = self.localConfiguration.readValue('mode')
         range_v = self.localConfiguration.readValue('range')
