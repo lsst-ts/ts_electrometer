@@ -584,7 +584,7 @@ class ElectrometerCsc(base_csc.BaseCsc):
     def publish_settingsAppliedSerConf(self, visaResource, baudRate, parity, dataBits, stopBits, timeout, termChar, xonxoff, dsrdtr, bytesToRead):
         """Publish settingsAppliedSerConf event to announce the 
         serial configuration event that it is used by the CSC
-        
+
         Arguments:
             visaResource {string} -- Visa resource or port
             baudRate {long} -- Baud rate as a number. allowed values are: 2400, 4800, 9600, 14400, 19200, 38400, 57600, 115200
