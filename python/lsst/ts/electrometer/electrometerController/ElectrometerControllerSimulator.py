@@ -1,5 +1,5 @@
-import electrometerController.IElectrometerController as iec
-from electrometerController.ElectrometerCommands import UnitMode, AverFilterType
+import lsst.ts.electrometer.electrometerController.IElectrometerController as iec
+from lsst.ts.electrometer.electrometerController.ElectrometerCommands import UnitMode, AverFilterType
 from random import randint
 from asyncio import sleep
 import time

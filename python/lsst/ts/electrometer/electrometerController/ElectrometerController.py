@@ -1,7 +1,7 @@
-import electrometerController.ElectrometerCommands as ec
-from pythonCommunicator.SerialCommunicator import SerialCommunicator
-from pythonFileReader.ConfigurationFileReaderYaml import FileReaderYaml
-import electrometerController.IElectrometerController as iec
+import lsst.ts.electrometer.electrometerController.ElectrometerCommands as ec
+from lsst.ts.electrometer.pythonCommunicator.SerialCommunicator import SerialCommunicator
+from lsst.ts.electrometer.pythonFileReader.ConfigurationFileReaderYaml import FileReaderYaml
+import lsst.ts.electrometer.electrometerController.IElectrometerController as iec
 from time import time
 from asyncio import sleep
 import re
