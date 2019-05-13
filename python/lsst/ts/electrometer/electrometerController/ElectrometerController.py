@@ -40,8 +40,11 @@ class ElectrometerController(iec.IElectrometerController):
     def isConnected(self):
         return self.serialPort.isConnected()
 
-    def configureCommunicator(self, port, baudrate, parity, stopbits, bytesize, byteToRead=1024, dsrdtr=False, xonxoff=False, timeout=2, termChar="\n"):
-        self.serialPort = SerialCommunicator(port=port, baudrate=baudrate, parity=parity, stopbits=stopbits, bytesize=bytesize, byteToRead=byteToRead, dsrdtr=dsrdtr, xonxoff=xonxoff, timeout=timeout, termChar=termChar)
+    def configureCommunicator(self, port, baudrate, parity, stopbits, bytesize, byteToRead=1024, dsrdtr=False,
+                              xonxoff=False, timeout=2, termChar="\n"):
+        self.serialPort = SerialCommunicator(port=port, baudrate=baudrate, parity=parity, stopbits=stopbits,
+                                             bytesize=bytesize, byteToRead=byteToRead, dsrdtr=dsrdtr,
+                                             xonxoff=xonxoff, timeout=timeout, termChar=termChar)
         self.connect()
 
     def getHardwareInfo(self):
@@ -77,7 +80,8 @@ class ElectrometerController(iec.IElectrometerController):
                 break  # If empty message due to no end char in the message, break loop
             response += temporaryResponse
             dt = time() - start
-            if(temporaryResponse.endswith(self.serialPort.termChar) or temporaryResponse == "" ): #Check if termination character is present
+            if(temporaryResponse.endswith(self.serialPort.termChar) or temporaryResponse == ""):
+                # Check if termination character is present
                 break
         values, times, temperatures, units = self.parseGetValuesBuffer(response)
         self.updateState(iec.ElectrometerStates.NOTREADINGSTATE)
@@ -90,7 +94,7 @@ class ElectrometerController(iec.IElectrometerController):
         self.restartBuffer()
         self.updateLastAndEndValue(iec.InitialEndValue.INITIAL)
 
-    def updateLastAndEndValue(self, InitialEncIdex : iec.InitialEndValue):
+    def updateLastAndEndValue(self, InitialEncIdex: iec.InitialEndValue):
         value, time, temperature, unit = self.getValue()
         self.startAndEndScanValues[InitialEncIdex.value] = [temperature, unit]
 
@@ -173,7 +177,8 @@ class ElectrometerController(iec.IElectrometerController):
         for i in range(100):  # Maximum of 100 errors
             self.serialPort.sendMessage(self.commands.getLastError())
             reponse = self.serialPort.getMessage()
-            if(len(reponse) == 0 or reponse.__contains__("No Error")):  # break if there are no more errors in the queue (empty response)
+            # break if there are no more errors in the queue (empty response)
+            if(len(reponse) == 0 or reponse.__contains__("No Error")):
                 break
             errors = self.parseErrorString(reponse)
             errorCodes.append(errors[0])
@@ -223,7 +228,7 @@ class ElectrometerController(iec.IElectrometerController):
 
     def getAverageFilterStatus(self):
         self.serialPort.sendMessage(self.commands.getFilterStatus(self.mode, ec.Filter.AVER))
-        response = self.serialPort.getMessage() 
+        response = self.serialPort.getMessage()
         self.avgFilterActive = True if response.__contains__('1') else False
         return self.avgFilterActive
 
@@ -243,7 +248,8 @@ class ElectrometerController(iec.IElectrometerController):
 
     def restartBuffer(self):
         self.serialPort.sendMessage(self.commands.clearBuffer())
-        self.serialPort.sendMessage(self.commands.formatTrac(channel=False, timestamp=True, temperature=False))
+        self.serialPort.sendMessage(self.commands.formatTrac(
+            channel=False, timestamp=True, temperature=False))
         self.serialPort.sendMessage(self.commands.setBufferSize(50000))
         self.disableAll()
         self.serialPort.sendMessage(self.commands.selectDeviceTimer(0.001))
@@ -275,7 +281,7 @@ class ElectrometerController(iec.IElectrometerController):
         i = 0
         while i < 50000:
             intensity.append(unsortedValues[i])
-            time.append(unsortedValues[i+1])
+            time.append(unsortedValues[i + 1])
             temperature.append(0)
             unit.append(unsortedStrValues[i])
             i += 3

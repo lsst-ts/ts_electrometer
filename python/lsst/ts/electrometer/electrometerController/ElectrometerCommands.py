@@ -2,7 +2,7 @@ from enum import Enum
 
 
 class ElectrometerCommand:
-    """Class that contains low level commands to control the electrometer via RS-232 
+    """Class that contains low level commands to control the electrometer via RS-232
     """
     def __init__(self):
         self.device = TestDevice()
@@ -240,7 +240,7 @@ class ElectrometerCommand:
         return command
 
     def readBuffer(self):
-        """Command to read the buffer, don't read all in one read. 
+        """Command to read the buffer, don't read all in one read.
         Split in a small ammount of byte (256)
 
         Returns:
@@ -259,7 +259,7 @@ class ElectrometerCommand:
         return command
 
     def selectDeviceTimer(self, timer=0.001):
-        """Update the Internal processing loop of the electrometer, the fastest 
+        """Update the Internal processing loop of the electrometer, the fastest
         the more process the electrometer can handle
 
         Keyword Arguments:
@@ -322,9 +322,9 @@ class ElectrometerCommand:
     def setRange(self, auto, rangeValue, mode):
         """
         Arguments:
-            auto {bool} -- The AUTO-RANGE option is used to configure autorange for the amps function. This option allows
-            you to speed up the autoranging search process by eliminating upper and lower measurement
-            ranges
+            auto {bool} -- The AUTO-RANGE option is used to configure autorange for the amps function.
+            This option allows you to speed up the autoranging search process by eliminating upper
+            and lower measurement ranges
             rangeValue {float} -- This command is used to manually select the measurement range for the
             specified measurement function. The range is selected by specifying the expected
             reading as an absolute value. If auto is ON, this parameter is ommited.
@@ -353,7 +353,7 @@ class ElectrometerCommand:
         return command
 
     def stopReadingBuffer(self):
-        """Stop storing readings in the buffer. If this is not used, 
+        """Stop storing readings in the buffer. If this is not used,
         the electrometer can hang while reading data inside the buffer
 
         Returns:
@@ -363,7 +363,7 @@ class ElectrometerCommand:
         return command
 
     def enableAllInstrumentErrors(self):
-        """Enable instrument errors in the electrometer. 
+        """Enable instrument errors in the electrometer.
 
         Returns:
             string -- string with the low level command command
@@ -372,8 +372,8 @@ class ElectrometerCommand:
         return command
 
     def enableZeroCheck(self, enable):
-        """When zero check is enabled (on), the input amplifier is reconfigured to 
-        shunt the input signal to low 
+        """When zero check is enabled (on), the input amplifier is reconfigured to
+        shunt the input signal to low
 
         Arguments:
             enable {bool} -- Activate zero check
@@ -432,7 +432,7 @@ class ElectrometerCommand:
 
     def enableDisplay(self, enable):
         """Activate or de-activate the display on the electrometer. Using
-        the display use process on the device, that's why it's usually disabled 
+        the display use process on the device, that's why it's usually disabled
 
         Arguments:
             enable {bool} -- Enable or disable the display
@@ -479,6 +479,7 @@ class readingOption(Enum):
 class TestDevice:
     """Class used only for testing communication
     """
+
     def __init__(self):
         self.messageReceived = "getMessage executed..."
         self.messageToSend = "sendMessage executed: "

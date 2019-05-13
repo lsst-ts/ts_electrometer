@@ -4,6 +4,7 @@ from random import randint
 from asyncio import sleep
 import time
 
+
 class ElectrometerSimulator(iec.IElectrometerController):
 
     def __init__(self):
@@ -20,7 +21,7 @@ class ElectrometerSimulator(iec.IElectrometerController):
         self.readFreq = 0.1
         self.stopReadingValue = False
         self.configurationDelay = 0.1
-        self.startAndEndScanValues = [[0,0], [0,0]] #[temperature, unit]
+        self.startAndEndScanValues = [[0, 0], [0, 0]]  # [temperature, unit]
 
     def connect(self):
         self.connected = True
@@ -28,12 +29,13 @@ class ElectrometerSimulator(iec.IElectrometerController):
 
     def disconnect(self):
         self.connected = False
-        return 
+        return
 
     def isConnected(self):
         return self.connected
 
-    def configureCommunicator(self, port, baudrate, parity, stopbits, bytesize, byteToRead=1024, dsrdtr=False, xonxoff=False, timeout=2, termChar="\n"):
+    def configureCommunicator(self, port, baudrate, parity, stopbits, bytesize, byteToRead=1024,
+                              dsrdtr=False, xonxoff=False, timeout=2, termChar="\n"):
         self.connect()
         return
 
@@ -85,7 +87,7 @@ class ElectrometerSimulator(iec.IElectrometerController):
         self.updateLastAndEndValue(iec.InitialEndValue.INITIAL)
         self.state = iec.ElectrometerStates.MANUALREADINGSTATE
 
-    def updateLastAndEndValue(self, InitialEncIdex : iec.InitialEndValue):
+    def updateLastAndEndValue(self, InitialEncIdex: iec.InitialEndValue):
         value, time, temperature, unit = self.getValue()
         self.startAndEndScanValues[InitialEncIdex.value] = [temperature, unit]
 
@@ -97,10 +99,9 @@ class ElectrometerSimulator(iec.IElectrometerController):
         values, times, temperatures, units = await self.readBuffer()
         return values, times
 
-
     def startStoringToBuffer(self):
         print("Command startStoringToBuffer executed...")
-        return 
+        return
 
     def stopStoringToBuffer(self):
         print("Command stopStoringToBuffer executed...")
@@ -136,9 +137,9 @@ class ElectrometerSimulator(iec.IElectrometerController):
         return self.range
 
     def getValue(self):
-        self.lastValue = randint(1, 100)*self.range/1000.0
+        self.lastValue = randint(1, 100) * self.range / 1000.0
         unit = "A" if self.mode == UnitMode.CURR else "C"
-        temperature = 20.0+ randint(0,100)/100.0
+        temperature = 20.0 + randint(0, 100) / 100.0
         return self.lastValue, 0, temperature, unit
 
     def getIntegrationTime(self):
@@ -217,11 +218,12 @@ class ElectrometerSimulator(iec.IElectrometerController):
 
     def restartBuffer(self):
         print("Command restartBuffer executed...")
-        return 
+        return
 
     def getLastScanValues(self):
-        #Returns values stored at the beggining of the manual and time scan
+        # Returns values stored at the beggining of the manual and time scan
         return self.startAndEndScanValues
+
 
 if __name__ == "__main__":
     print("Test")
