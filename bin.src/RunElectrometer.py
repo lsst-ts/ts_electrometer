@@ -3,6 +3,7 @@ import lsst.ts.salobj as salobj
 import SALPY_Electrometer
 import argparse
 
+version=0.10
 
 def create_parser():
     parser = argparse.ArgumentParser()
