@@ -2,7 +2,8 @@ from enum import Enum
 
 
 class ElectrometerCommand:
-
+    """Class that contains low level commands to control the electrometer via RS-232 
+    """
     def __init__(self):
         self.device = TestDevice()
 
@@ -10,12 +11,12 @@ class ElectrometerCommand:
         """Activate/deactivate a type of filter
 
         Arguments:
-            mode {[type]} -- [description]
-            filterType {[type]} -- [description]
-            active {[type]} -- [description]
+            mode {UnitMode enum} -- CURR = 1, CHAR = 2, VOLT = 3, RES = 4
+            filterType {filterType enum} -- MED = 1, AVER = 2
+            active {bool} -- Boolean to activate or de-activate the filter
 
         Returns:
-            [type] -- [description]
+            string -- string with the low level command command
         """
         command = ":SENS:"
         command += mode.name + ":" + filterType.name + ":STAT "
@@ -27,10 +28,10 @@ class ElectrometerCommand:
         """Get the type of average filter the device is using
 
         Arguments:
-            mode {[type]} -- [description]
+            mode {UnitMode enum} -- CURR = 1, CHAR = 2, VOLT = 3, RES = 4
 
         Returns:
-            [type] -- [description]
+            string -- string with the low level command command
         """
         command = ":SENS:"
         command += mode.name
@@ -41,10 +42,10 @@ class ElectrometerCommand:
         """Get the type of median filter the device is using
 
         Arguments:
-            mode {[type]} -- [description]
+            mode {UnitMode enum} -- CURR = 1, CHAR = 2, VOLT = 3, RES = 4
 
         Returns:
-            [type] -- [description]
+            string -- string with the low level command command
         """
         command = ":SENS:"
         command += mode.name
@@ -55,11 +56,11 @@ class ElectrometerCommand:
         """Get filter status
 
         Arguments:
-            mode {[type]} -- [description]
-            filterType {[type]} -- [description]
+            mode {UnitMode enum} -- CURR = 1, CHAR = 2, VOLT = 3, RES = 4
+            filterType {filterType enum} -- MED = 1, AVER = 2
 
         Returns:
-            [type] -- [description]
+            string -- string with the low level command command
         """
         command = ":SENS:"
         command += mode.name + ":"
@@ -71,11 +72,11 @@ class ElectrometerCommand:
         """Set the type of average filter to set
 
         Arguments:
-            mode {[type]} -- [description]
-            averFilterType {[type]} -- [description]
+            mode {UnitMode enum} -- CURR = 1, CHAR = 2, VOLT = 3, RES = 4
+            averFilterType {AverFilterType enum} -- NONE = 1, SCAL = 2, ADV = 3
 
         Returns:
-            [type] -- [description]
+            string -- string with the low level command command
         """
         command = ":SENS:"
         command += mode.name
@@ -87,11 +88,11 @@ class ElectrometerCommand:
         """Set the type of median filter to set
 
         Arguments:
-            mode {[type]} -- [description]
-            active {[type]} -- [description]
+            mode {UnitMode enum} -- CURR = 1, CHAR = 2, VOLT = 3, RES = 4
+            active {bool} -- Boolean to activate or de-activate the filter
 
         Returns:
-            [type] -- [description]
+            string -- string with the low level command command
         """
         command = ":SENS:"
         command += mode.name
@@ -104,7 +105,7 @@ class ElectrometerCommand:
         """Always read value a store them into the buffer
 
         Returns:
-            [type] -- [description]
+            string -- string with the low level command command
         """
         command = ":TRAC:FEED:CONT ALW;"
         command += "\n:INIT;"
@@ -114,7 +115,7 @@ class ElectrometerCommand:
         """Read value a store them into the buffer until the buffer is full
 
         Returns:
-            [type] -- [description]
+            string -- string with the low level command command
         """
         command = ":TRAC:FEED:CONT NEXT;"
         command += "\n:INIT;"
@@ -124,7 +125,7 @@ class ElectrometerCommand:
         """Clear device buffer
 
         Returns:
-            [type] -- [description]
+            string -- string with the low level command command
         """
         command = ":TRAC:CLE;"
         return command
@@ -133,7 +134,7 @@ class ElectrometerCommand:
         """Clear device buffer
 
         Returns:
-            [type] -- [description]
+            string -- string with the low level command command
         """
         command = "^C"
         return command
@@ -142,21 +143,21 @@ class ElectrometerCommand:
         """Get error query
 
         Returns:
-            [type] -- [description]
+            string -- string with the low level command command
         """
         command = ":SYST:ERR?;"
         return command
 
     def formatTrac(self, channel, timestamp, temperature):
-        """Format the reads to include values from input
+        """Format the reads to include or remove values from input
 
         Arguments:
-            channel {[type]} -- [description]
-            timestamp {[type]} -- [description]
-            temperature {[type]} -- [description]
+            channel {bool} -- Boolean to include or exclude the channel from the reading
+            timestamp {bool} -- Boolean to include or exclude the teimestamp from the reading
+            temperature {bool} -- Boolean to include or exclude the tempearture from the reading
 
         Returns:
-            [type] -- [description]
+            string -- string with the low level command command
         """
         isFirst = True
         if(not (timestamp or temperature or channel)):
@@ -183,7 +184,7 @@ class ElectrometerCommand:
         """Get the quantity of values stored in the buffer
 
         Returns:
-            [type] -- [description]
+            string -- string with the low level command command
         """
         command = ":TRAC:POIN:ACT?;"
         return command
@@ -192,19 +193,20 @@ class ElectrometerCommand:
         """Get hardware info
 
         Returns:
-            [type] -- [description]
+            string -- string with the low level command command
         """
         command = "*IDN?"
         return command
 
     def getMeasure(self, readOption):
-        """[summary]
+        """Get measurement from the electrometer
 
         Arguments:
-            readOption {[type]} -- [description]
+            readOption {readingOption enum} -- Type of reading,  LATEST = 1  for last value read, NEWREAD = 2
+            for new reading
 
         Returns:
-            [type] -- [description]
+            string -- string with the low level command command
         """
         if(readOption == readingOption.LATEST):
             command = ":SENS:DATA?;"
@@ -213,15 +215,24 @@ class ElectrometerCommand:
         return command
 
     def getMode(self):
-        """[summary]
+        """Get the mode the Electrometer is using
 
         Returns:
-            [type] -- [description]
+            string -- string with the low level command command
         """
         command = ":SENS:FUNC?;"
         return command
 
     def enableTemperatureReading(self, enable):
+        """Enable temperature readings. Enabling temperature readings will reduce the ammount of readings
+        the electrometer can handle
+
+        Arguments:
+            enable {bool} -- Boolean to activate or de-activate temperature readings
+
+        Returns:
+            string -- string with the low level command command
+        """
         if(enable):
             command = ":SYST:TSC ON;"
         else:
@@ -233,90 +244,94 @@ class ElectrometerCommand:
         Split in a small ammount of byte (256)
 
         Returns:
-            [type] -- [description]
+            string -- string with the low level command command
         """
         command = ":TRAC:DATA?;"
         return command
 
     def resetDevice(self):
-        """[summary]
+        """Clean the elecrometer configuration to factory settings
 
         Returns:
-            [type] -- [description]
+            string -- string with the low level command command
         """
         command = "*RST;\n:TRACE:CLEAR;"
         return command
 
     def selectDeviceTimer(self, timer=0.001):
-        """[summary]
+        """Update the Internal processing loop of the electrometer, the fastest 
+        the more process the electrometer can handle
 
         Keyword Arguments:
-            timer {float} -- [description] (default: {0.001})
+            timer {float} -- Internal processing loop in the electrometer (default: {0.001})
 
         Returns:
-            [type] -- [description]
+            string -- string with the low level command command
         """
         command = ":TRIG:SOUR TIM;\n:TRIG:TIM " + '{0:.3f}'.format(timer) + ";"
         return command
 
     def setBufferSize(self, bufferSize=50000):
-        """[summary]
+        """Set the buffer size of the electrometer. The maximum is 50000 (Also default value)
 
         Keyword Arguments:
-            bufferSize {int} -- [description] (default: {50000})
+            bufferSize {int} -- Maximum number of readings the buffer can store (default: {50000})
 
         Returns:
-            [type] -- [description]
+            string -- string with the low level command command
         """
         command = ":TRACE:CLEAR;\n:TRAC:POINTS " + str(bufferSize) + ";\n:TRIG:COUNT " + str(bufferSize) + ";"
         return command
 
     def initBuffer(self):
-        """[summary]
+        """Initialize the buffer readings recording
 
         Returns:
-            [type] -- [description]
+            string -- string with the low level command command
         """
         command = ":INIT;"
         return command
 
     def integrationTime(self, mode, time=0.001):
-        """[summary]
+        """Update the integration time in the electrometer
 
         Arguments:
-            mode {[type]} -- [description]
+            mode {UnitMode enum} -- CURR = 1, CHAR = 2, VOLT = 3, RES = 4
 
         Keyword Arguments:
-            time {float} -- [description] (default: {0.001})
+            time {float} -- Integration rate in seconds (166.67e-6 to 200e-3) (default: {0.001})
 
         Returns:
-            [type] -- [description]
+            string -- string with the low level command command
         """
         command = ":SENS:" + mode.name + ":APER " + str(time) + ";"
         return command
 
     def setMode(self, mode):
-        """[summary]
+        """Select measurement function: ‘VOLTage[:DC]’, ‘CURRent[:DC]’, ‘RESistance’, ‘CHARge’
 
         Arguments:
-            mode {[type]} -- [description]
+            mode {UnitMode enum} -- CURR = 1, CHAR = 2, VOLT = 3, RES = 4
 
         Returns:
-            [type] -- [description]
+            string -- string with the low level command command
         """
         command = ":SENS:FUNC '" + mode.name + "';"
         return command
 
     def setRange(self, auto, rangeValue, mode):
-        """[summary]
-
+        """
         Arguments:
-            auto {[type]} -- [description]
-            rangeValue {[type]} -- [description]
-            mode {[type]} -- [description]
+            auto {bool} -- The AUTO-RANGE option is used to configure autorange for the amps function. This option allows
+            you to speed up the autoranging search process by eliminating upper and lower measurement
+            ranges
+            rangeValue {float} -- This command is used to manually select the measurement range for the
+            specified measurement function. The range is selected by specifying the expected
+            reading as an absolute value. If auto is ON, this parameter is ommited.
+            mode {UnitMode enum} -- CURR = 1, CHAR = 2, VOLT = 3, RES = 4
 
         Returns:
-            [type] -- [description]
+            string -- string with the low level command command
         """
         if(auto):
             command = ":SENS:" + mode.name + ":RANG:AUTO 1;"
@@ -326,112 +341,113 @@ class ElectrometerCommand:
         return command
 
     def enableSync(self, enable):
-        """[summary]
-
+        """This command is used to enable or disable line synchronization. When enabled,
+        the integration period will not start until the beginning of the next power line cycle
         Arguments:
-            enable {[type]} -- [description]
+            enable {bool} -- Boolean to enable or disable synchronization
 
         Returns:
-            [type] -- [description]
+            string -- string with the low level command command
         """
         command = ":SYSTEM:LSYN:STAT ON;" if enable else ":SYSTEM:LSYN:STAT OFF;"
         return command
 
     def stopReadingBuffer(self):
-        """[summary]
+        """Stop storing readings in the buffer. If this is not used, 
+        the electrometer can hang while reading data inside the buffer
 
         Returns:
-            [type] -- [description]
+            string -- string with the low level command command
         """
         command = ":TRAC:FEED:CONT NEV;"
         return command
 
     def enableAllInstrumentErrors(self):
-        """[summary]
+        """Enable instrument errors in the electrometer. 
 
         Returns:
-            [type] -- [description]
+            string -- string with the low level command command
         """
         command = ":STAT:QUE:ENAB (-440:+958);"
         return command
 
     def enableZeroCheck(self, enable):
-        """[summary]
+        """When zero check is enabled (on), the input amplifier is reconfigured to 
+        shunt the input signal to low 
 
         Arguments:
-            enable {[type]} -- [description]
+            enable {bool} -- Activate zero check
 
         Returns:
-            [type] -- [description]
+            string -- string with the low level command command
         """
         command = ":SYST:ZCH ON;" if enable else ":SYST:ZCH OFF;"
         return command
 
     def enableZeroCorrection(self, enable):
-        """[summary]
+        """The Z-CHK and REL keys work together to cancel (zero correct) any internal offsets that might
+        upset accuracy for volts and amps measurements.
+        Perform the following steps to zero correct the volts or amps function:
+        1. Select the V or I function.
+        2. Press Z-CHK to enable Zero Check.
+        3. Select the range that will be used for the measurement.
+        4. Press REL to zero correct the instrument (REL indicator will be lit and “Zcor” displayed).
+        Note that for the volts function, the “Zcor” message will not be displayed if guard was
+        already enabled (“Grd” displayed).
+        5. Press Z-CHK to disable zero check.
+        6. Readings can now be taken in the normal manner.
 
         Arguments:
-            enable {[type]} -- [description]
+            enable {bool} -- Enable or disable zero correction in the electrometer
 
         Returns:
-            [type] -- [description]
+            string -- string with the low level command command
         """
         command = ":SYST:ZCOR ON;" if enable else ":SYST:ZCOR OFF;"
         return command
 
     def getRange(self, mode):
-        """[summary]
+        """Get current range currently configured for a specific mdoe
 
         Arguments:
-            mode {[type]} -- [description]
+            mode {UnitMode enum} -- CURR = 1, CHAR = 2, VOLT = 3, RES = 4
 
         Returns:
-            [type] -- [description]
+            string -- string with the low level command command
         """
         command = ":SENS:" + mode.name + ":RANG?;"
         return command
 
     def getIntegrationTime(self, mode):
-        """[summary]
+        """Get integration time currently configured for a specific mdoe
 
         Arguments:
-            mode {[type]} -- [description]
+            mode {UnitMode enum} -- CURR = 1, CHAR = 2, VOLT = 3, RES = 4
 
         Returns:
-            [type] -- [description]
+            string -- string with the low level command command
         """
         command = ":SENS:" + mode.name + ":APER?;"
         return command
 
     def enableDisplay(self, enable):
-        """[summary]
+        """Activate or de-activate the display on the electrometer. Using
+        the display use process on the device, that's why it's usually disabled 
 
         Arguments:
-            enable {[type]} -- [description]
+            enable {bool} -- Enable or disable the display
 
         Returns:
-            [type] -- [description]
+            string -- string with the low level command command
         """
         command = ":DISP:ENAB ON;" if enable else ":DISP:ENAB OFF;"
         return command
 
-    def enableSync(self, enable):
-        """[summary]
-
-        Arguments:
-            enable {[type]} -- [description]
+    def setTimer(self):
+        """Set the timer in the electrometer to 0.01
 
         Returns:
-            [type] -- [description]
-        """
-        command = ":SYSTEM:LSYNC:STAT ON;" if enable else ":SYSTEM:LSYNC:STAT OFF;"
-        return command
-
-    def setTimerTest(self):
-        """[summary]
-
-        Returns:
-            [type] -- [description]
+            string -- string with the low level command command
         """
         command = ":SENSE:CURR:NPLC 0.01;"
         return command
@@ -461,6 +477,8 @@ class readingOption(Enum):
 
 
 class TestDevice:
+    """Class used only for testing communication
+    """
     def __init__(self):
         self.messageReceived = "getMessage executed..."
         self.messageToSend = "sendMessage executed: "
