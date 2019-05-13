@@ -1,0 +1,10 @@
+port: "/dev/electrometer"
+baudrate: 57600
+parity: 0
+stopBits: 1
+byteSize: 8
+byteToRead: 1024
+timeout: 1
+xonxoff: 0
+dsrdtr: 0
+termChar: "endl" #endl for end line
