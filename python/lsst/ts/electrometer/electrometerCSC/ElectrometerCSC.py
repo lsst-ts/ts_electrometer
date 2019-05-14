@@ -61,7 +61,7 @@ class ElectrometerCsc(base_csc.BaseCsc):
 
         # Configuration initialization
         self.localConfiguration = FileReaderYaml(
-            "../settingFiles", "Test", index)
+            "./settingFiles", "Test", index)
         self.mainConfiguration = FileReaderYaml("./settingFiles", "", "")
         self.mainConfiguration.loadFile("mainSetup")
 
