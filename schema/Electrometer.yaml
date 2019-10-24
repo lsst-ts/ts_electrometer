@@ -31,22 +31,16 @@ properties:
     default: 0.001
   median_filter_active:
     description: Is the the median filter active?
-    type: range
-    minimum: 0
-    maximum: 1
-    default: 0
+    type: boolean
+    default: false
   filter_active:
     description: Is the filter active?
-    type: range
-    minimum: 0
-    maximum: 1
-    default: 1
+    type: boolean
+    default: true
   avg_filter_active:
     description: Is the avg filter active?
-    type: range
-    minimum: 0
-    maximum: 1
-    default: 0
+    type: boolean
+    default: false
   address:
     description: the location of the USB mount for the the electrometer
     type: string
