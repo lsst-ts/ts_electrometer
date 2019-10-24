@@ -7,12 +7,12 @@ properties:
   fits_files_path:
     description: The path of where the copied fits file are located.
     type: string
-    default: "/home/saluser/ts_electrometer2/electrometerFitsFiles"
+    default: "~/electrometerFitsFiles"
   ip_address:
     description: The ip address of the file transfer server
     type: string
     format: ipv4
-    default: "10.0.100.133"
+    default: "0.0.0.0"
   port:
     description: The port of the file transfer server
     type: integer
@@ -30,7 +30,7 @@ properties:
     type: number
     default: 0.001
   median_filter_active:
-    description: Is the the median filter active?
+    description: Is the median filter active?
     type: boolean
     default: false
   filter_active:

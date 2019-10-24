@@ -1,25 +1,7 @@
 from lsst.ts import salobj
-import enum
+from lsst.ts.idl.enums import Electrometer
 import pathlib
 from . import model
-
-
-class DetailedState(enum.IntEnum):
-    DISABLEDSTATE = 1
-    ENABLEDSTATE = 2
-    FAULTSTATE = 3
-    OFFLINESTATE = 4
-    STANDBYSTATE = 5
-    NOTREADINGSTATE = 6
-    CONFIGURINGSTATE = 7
-    MANUALREADINGSTATE = 8
-    READINGBUFFERSTATE = 9
-    SETDURATIONREADINGSTATE = 10
-
-
-class Units(enum.IntEnum):
-    current = 1
-    charge = 2
 
 
 class ElectrometerCsc(salobj.ConfigurableCsc):
@@ -32,7 +14,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         self.model = model.ElectrometerModel()
 
     def assert_substate(self, substates, action):
-        if self.detailed_state not in [DetailedState(substate) for substate in substates]:
+        if self.detailed_state not in [Electrometer.DetailedState(substate) for substate in substates]:
             raise salobj.ExpectedError(f"{action} not allowed in {self.detailed_state!r}")
 
     @property
@@ -41,7 +23,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
 
     @detailed_state.setter
     def detailed_state(self, new_state):
-        self._detailed_state = DetailedState(new_state)
+        self._detailed_state = Electrometer.DetailedState(new_state)
         self.report_detailed_state()
 
     def report_detailed_state(self):
@@ -52,68 +34,72 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
 
     async def end_enable(self, id_data):
         self.model.connect()
-        self.detailed_state = DetailedState.NOTREADINGSTATE
+        self.detailed_state = Electrometer.DetailedState.NOTREADINGSTATE
 
     async def do_performZeroCalib(self, id_data):
         self.assert_enabled("performZeroCalib")
-        self.assert_substate(substates=[DetailedState.NOTREADINGSTATE], action="performZeroCalib")
-        self.detailed_state = DetailedState.CONFIGURINGSTATE
+        self.assert_substate(substates=[Electrometer.DetailedState.NOTREADINGSTATE],
+                             action="performZeroCalib")
+        self.detailed_state = Electrometer.DetailedState.CONFIGURINGSTATE
         self.model.perform_zero_calib()
-        self.detailed_state = DetailedState.NOTREADINGSTATE
+        self.detailed_state = Electrometer.DetailedState.NOTREADINGSTATE
 
     async def do_setDigitalFilter(self, id_data):
         self.assert_enabled("setDigitalFilter")
-        self.assert_substate(substates=[DetailedState.NOTREADINGSTATE], action="setDigitalFilter")
-        self.detailed_state = DetailedState.CONFIGURINGSTATE
+        self.assert_substate(substates=[Electrometer.DetailedState.NOTREADINGSTATE],
+                             action="setDigitalFilter")
+        self.detailed_state = Electrometer.DetailedState.CONFIGURINGSTATE
         self.model.set_digital_filter(activate_filter=id_data.activate_filter,
                                       activate_avg_filter=id_data.activate_avg_filter,
                                       activate_med_filter=id_data.activate_med_filter)
-        self.detailed_state = DetailedState.NOTREADINGSTATE
+        self.detailed_state = Electrometer.DetailedState.NOTREADINGSTATE
 
     async def do_setIntegrationTime(self, id_data):
         self.assert_enabled("setIntegrationTime")
-        self.assert_substate(substates=[DetailedState.NOTREADINGSTATE], action="setIntegrationTime")
-        self.detailed_state = DetailedState.CONFIGURINGSTATE
+        self.assert_substate(substates=[Electrometer.DetailedState.NOTREADINGSTATE],
+                             action="setIntegrationTime")
+        self.detailed_state = Electrometer.DetailedState.CONFIGURINGSTATE
         self.model.set_integration_time(int_time=id_data.int_time)
-        self.detailed_state = DetailedState.NOTREADINGSTATE
+        self.detailed_state = Electrometer.DetailedState.NOTREADINGSTATE
 
     async def do_setMode(self, id_data):
         self.assert_enabled("setMode")
-        self.assert_substate(substates=[DetailedState.NOTREADINGSTATE], action="setMode")
-        self.detailed_state = DetailedState.CONFIGURINGSTATE
+        self.assert_substate(substates=[Electrometer.DetailedState.NOTREADINGSTATE], action="setMode")
+        self.detailed_state = Electrometer.DetailedState.CONFIGURINGSTATE
         self.model.set_mode(mode=id_data.mode)
-        self.detailed_state = DetailedState.NOTREADINGSTATE
+        self.detailed_state = Electrometer.DetailedState.NOTREADINGSTATE
 
     async def do_setRange(self, id_data):
         self.assert_enabled("setRange")
-        self.assert_substate(substates=[DetailedState.NOTREADINGSTATE], action="setRange")
-        self.detailed_state = DetailedState.CONFIGURINGSTATE
+        self.assert_substate(substates=[Electrometer.DetailedState.NOTREADINGSTATE], action="setRange")
+        self.detailed_state = Electrometer.DetailedState.CONFIGURINGSTATE
         self.model.set_range(set_range=id_data.set_range)
-        self.detailed_state = DetailedState.NOTREADINGSTATE
+        self.detailed_state = Electrometer.DetailedState.NOTREADINGSTATE
 
     async def do_startScan(self, id_data):
         self.assert_enabled("startScan")
-        self.assert_substate(substates=[DetailedState.NOTREADINGSTATE], action="startScan")
+        self.assert_substate(substates=[Electrometer.DetailedState.NOTREADINGSTATE], action="startScan")
         self.model.start_scan()
-        self.detailed_state = DetailedState.MANUALREADINGSTATE
+        self.detailed_state = Electrometer.DetailedState.MANUALREADINGSTATE
 
     async def do_startScanDt(self, id_data):
         self.assert_enabled("startScanDt")
-        self.assert_substate(substates=[DetailedState.NOTREADINGSTATE], action="startScanDt")
-        self.detailed_state = DetailedState.SETDURATIONREADINGSTATE
+        self.assert_substate(substates=[Electrometer.DetailedState.NOTREADINGSTATE], action="startScanDt")
+        self.detailed_state = Electrometer.DetailedState.SETDURATIONREADINGSTATE
         self.model.start_scan_dt(scan_duration=id_data.scan_duration)
-        self.detailed_state = DetailedState.READINGBUFFERSTATE
+        self.detailed_state = Electrometer.DetailedState.READINGBUFFERSTATE
         self.model.read_buffer()
-        self.detailed_state = DetailedState.NOTREADINGSTATE
+        self.detailed_state = Electrometer.DetailedState.NOTREADINGSTATE
 
     async def do_stopScan(self, id_data):
         self.assert_enabled("stopScan")
-        self.assert_substate(substates=[DetailedState.MANUALREADINGSTATE,
-                                        DetailedState.SETDURATIONREADINGSTATE], action="stopScan")
-        self.detailed_state = DetailedState.READINGBUFFERSTATE
+        self.assert_substate(substates=[Electrometer.DetailedState.MANUALREADINGSTATE,
+                                        Electrometer.DetailedState.SETDURATIONREADINGSTATE],
+                             action="stopScan")
+        self.detailed_state = Electrometer.DetailedState.READINGBUFFERSTATE
         self.model.read_buffer()
-        self.detailed_state = DetailedState.NOTREADINGSTATE
+        self.detailed_state = Electrometer.DetailedState.NOTREADINGSTATE
 
     @staticmethod
     def get_config_pkg():
-        return "ts_config_electrometer"
+        return "ts_config_ocs"
