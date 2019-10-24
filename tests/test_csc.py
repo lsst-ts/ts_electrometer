@@ -26,7 +26,7 @@ class Harness:
         salobj.test_utils.set_random_lsst_dds_domain()
         self.csc = electrometer.csc.ElectrometerCsc(
             index=index, config_dir=config_dir, initial_simulation_mode=initial_simulation_mode)
-        self.remote = salobj.Remote(self.csc.domain, "Environment", index)
+        self.remote = salobj.Remote(self.csc.domain, "Electrometer", index)
 
     async def __aenter__(self):
         await self.csc.start_task
@@ -36,7 +36,7 @@ class Harness:
     async def __aexit__(self, *args):
         await self.csc.close()
 
-    
+
 class TestElectrometerCSC(unittest.TestCase):
 
     def test_standard_state_transitions(self):
@@ -45,13 +45,14 @@ class TestElectrometerCSC(unittest.TestCase):
             index = next(index_gen)
             self.assertGreater(index, 0)
 
-            async with Harness(index, None, 1) as harness:
+            async with Harness(index, None, 0) as harness:
                 current_state = await harness.remote.evt_summaryState.next(flush=False, timeout=BASE_TIMEOUT)
 
                 self.assertEqual(harness.csc.summary_state, salobj.State.STANDBY)
                 self.assertEqual(current_state.summaryState, salobj.State.STANDBY)
 
-                setting_versions = await harness.remote.evt_settingsVersions.next(flush=False, timeout=BASE_TIMEOUT)
+                setting_versions = await harness.remote.evt_settingVersions.next(flush=False,
+                                                                                 timeout=BASE_TIMEOUT)
 
                 self.assertIsNotNone(setting_versions)
 

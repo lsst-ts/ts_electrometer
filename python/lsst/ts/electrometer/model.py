@@ -37,3 +37,6 @@ class ElectrometerModel:
 
     def implement_simulation_mode(self, simulation_mode):
         pass
+
+    def read_buffer(self):
+        pass
