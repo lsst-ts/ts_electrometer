@@ -1,8 +1,7 @@
-from lsst.ts.electrometer.electrometerCSC.ElectrometerCSC import ElectrometerCsc
-import lsst.ts.salobj as salobj
-import SALPY_Electrometer
-import argparse
+import asyncio
+from lsst.ts.electrometer.csc import ElectrometerCsc
 
-version=0.10
 
-ElectrometerCsc.main(index=True)
+version = 0.10
+
+asyncio.run(ElectrometerCsc.main(index=True))
