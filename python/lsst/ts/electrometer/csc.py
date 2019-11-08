@@ -30,11 +30,17 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         self.evt_detailedState.set_put(detailedState=self.detailed_state)
 
     async def configure(self, config):
-        pass
+        self.model.configure(config)
+
+    async def implement_simulation_mode(self, mode):
+        self.model.implement_simulation_mode(simulation_mode=mode)
 
     async def end_enable(self, id_data):
         self.model.connect()
         self.detailed_state = Electrometer.DetailedState.NOTREADINGSTATE
+
+    async def begin_disable(self, id_data):
+        self.model.disconnect()
 
     async def do_performZeroCalib(self, id_data):
         self.assert_enabled("performZeroCalib")
@@ -77,9 +83,10 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         self.detailed_state = Electrometer.DetailedState.NOTREADINGSTATE
 
     async def do_startScan(self, id_data):
+        print("csc start scan")
         self.assert_enabled("startScan")
         self.assert_substate(substates=[Electrometer.DetailedState.NOTREADINGSTATE], action="startScan")
-        self.model.start_scan()
+        await self.model.start_scan()
         self.detailed_state = Electrometer.DetailedState.MANUALREADINGSTATE
 
     async def do_startScanDt(self, id_data):
