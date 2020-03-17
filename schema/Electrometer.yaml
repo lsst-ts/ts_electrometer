@@ -8,12 +8,12 @@ properties:
     description: The path of where the copied fits file are located.
     type: string
     default: "~/electrometerFitsFiles"
-  ip_address:
+  server_address:
     description: The ip address of the file transfer server
     type: string
     format: ipv4
     default: "0.0.0.0"
-  port:
+  server_port:
     description: The port of the file transfer server
     type: integer
     default: 8000
@@ -28,7 +28,7 @@ properties:
   integration_time:
     description: The time that the electrometer opens per scan.
     type: number
-    default: 0.001
+    default: 0.01
   median_filter_active:
     description: Is the median filter active?
     type: boolean
@@ -41,7 +41,7 @@ properties:
     description: Is the avg filter active?
     type: boolean
     default: false
-  address:
+  serial_port:
     description: the location of the USB mount for the the electrometer
     type: string
     default: "/dev/electrometer"
@@ -68,7 +68,7 @@ properties:
   timeout:
     description: The timeout of the serial connection.
     type: integer
-    default: 1
+    default: 2
   xonxoff:
     description: The xonxoff of the serial connection.
     type: integer

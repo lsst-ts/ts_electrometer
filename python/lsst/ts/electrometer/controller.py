@@ -1,13 +1,18 @@
-import enum
-import queue
-import collections
 import asyncio
-import time
-import pathlib
+import collections
 import datetime
+import enum
+import pathlib
+import queue
+import time
+import re
+from types import SimpleNamespace
 
-import astropy.io.fits
+import astropy.io.fits as fits
 import numpy as np
+import serial
+
+from .commands import ElectrometerCommand
 
 
 class UnitMode(enum.IntEnum):
@@ -35,7 +40,8 @@ class readingOption(enum.IntEnum):
 
 class ElectrometerController:
     def __init__(self):
-        self.commands = None
+        self.commander = serial.Serial()
+        self.commands = ElectrometerCommand()
         self.mode = None
         self.range = None
         self.integration_time = 0.01
@@ -45,158 +51,159 @@ class ElectrometerController:
         self.connected = False
         self.last_value = 0
         self.read_freq = 0.01
-        self.stop_reading_value = False
         self.configuration_delay = 0.1
-        self.start_and_end_scan_values = [[0, 0], [0, 0]]
         self.auto_range = False
-
-
-class ElectrometerSimulator:
-    def __init__(self):
-        self.mode = UnitMode.CURR
-        self.range = 0.1
-        self.integration_time = 0.01
-        self.median_filter_active = False
-        self.filter_active = False
-        self.avg_filter_active = False
-        self.buffer = queue.Queue(maxsize=50000)
-        self.error_codes = queue.Queue(maxsize=100)
-        self.connected = False
-        self.last_value = 0
-        self.read_freq = 0.01
-        self.stop_reading_value = False
-        self.configuration_delay = 0.1
-        self.start_and_end_scan_values = [[0, 0], [0, 0]]
-        self.auto_range = False
-        self.fits_file_directory = None
-        self.value = collections.namedtuple('Value', ['intensity', 'time', 'temperature', 'unit'])
-
-    @property
-    def mode(self):
-        return self._mode
-
-    @mode.setter
-    def mode(self, new_mode):
-        self._mode = UnitMode(new_mode)
-
-    @property
-    def range(self):
-        return self._range
-
-    @range.setter
-    def range(self, new_range):
-        if new_range < 0:
-            self.auto_range = True
-        else:
-            self.auto_range = False
-        self._range = new_range
-
-    @property
-    def integration_time(self):
-        return self._integration_time
-
-    @integration_time.setter
-    def integration_time(self, new_integration_time):
-        self._integration_time = new_integration_time
-
-    @property
-    def median_filter_active(self):
-        return self._median_filter_active
-
-    @median_filter_active.setter
-    def median_filter_active(self, activate_filter):
-        self._median_filter_active = bool(activate_filter)
-
-    @property
-    def filter_active(self):
-        return self._filter_active
-
-    @filter_active.setter
-    def filter_active(self, activate_filter):
-        self._filter_active = bool(activate_filter)
-
-    @property
-    def avg_filter_active(self):
-        return self._avg_filter_active
-
-    @avg_filter_active.setter
-    def avg_filter_active(self, activate_filter):
-        self._avg_filter_active = bool(activate_filter)
+        self.manual_start_time = None
+        self.manual_end_time = None
 
     def configure(self, config):
-        self.mode = config.mode
+        self.mode = UnitMode(config.mode)
         self.range = config.range
         self.integration_time = config.integration_time
         self.median_filter_active = config.median_filter_active
         self.filter_active = config.filter_active
         self.avg_filter_active = config.avg_filter_active
-        self.fits_file_directory = pathlib.Path(config.fits_files_path)
-        self.fits_file_directory = self.fits_file_directory.expanduser()
-        self.fits_file_directory.mkdir(parents=True, exist_ok=True)
+        self.auto_range = True if self.range <= 0 else False
+        self.commander.port = config.serial_port
+        self.commander.baudrate = config.baudrate
+        self.commander.timeout = config.timeout
 
-    def perform_zero_calib(self):
-        pass
-
-    def set_digital_filter(self, activate_filter, activate_avg_filter, activate_median_filter):
-        self.filter_active = bool(activate_filter)
-        self.avg_filter_active = bool(activate_avg_filter)
-        self.median_filter_active = bool(activate_median_filter)
-
-    def set_integration_time(self, integration_time):
-        self.integration_time = integration_time
-
-    def set_mode(self, mode):
-        self.mode = UnitMode(mode)
-
-    def set_range(self, set_range):
-        self.range = set_range
-
-    async def start_scan(self):
-        while not self.stop_reading_value:
-            self.buffer.put(self.value(intensity=0, time=0, temperature=0, unit=self.mode.name))
-            print(f"{self.buffer}")
-            await asyncio.sleep(self.integration_time)
-
-    async def start_scan_dt(self, scan_duration):
-        start = time.time()
-        dt = 0
-        while not self.stop_reading_value or dt < scan_duration:
-            dt = time.time() - start
-            self.buffer.put(self.value(intensity=0, time=0, temperature=0, unit=self.mode.name))
-            await asyncio.sleep(self.integration_time)
-
-    def stop_scan(self):
-        self.stop_reading_value = True
+    def develop_configure(self):
+        config = SimpleNamespace()
+        config.mode = 1
+        config.range = -0.01
+        config.integration_time = 0.01
+        config.median_filter_active = False
+        config.filter_active = True
+        config.avg_filter_active = False
+        config.serial_port = "/dev/electrometer"
+        config.baudrate = 57600
+        config.timeout = 3.3
+        return config
 
     def connect(self):
-        # no need to do anything besides set flag
+        self.commander.open()
         self.connected = True
+        # self.commander.write(self.commands.enable_display(False).encode())
+        self.set_mode(self.mode)
+        self.set_range(self.range)
+        self.set_digital_filter(self.filter_active, self.avg_filter_active, self.median_filter_active)
 
     def disconnect(self):
-        # simulator doesn't actually do any port adjustment
+        # self.commander.write(self.commands.enable_display(True).encode())
+        self.commander.close()
         self.connected = False
 
-    def read_buffer(self):
-        # call create_fits_file since that's what should happen when we read
-        # the buffer
-        self.create_fits_file()
+    def perform_zero_calibration(self):
+        self.commander.write(f"{self.commands.perform_zero_calibration(self.mode, self.auto_range, self.range)}\r".encode())
 
-    def create_fits_file(self):
-        # make ingrediants for fits file using PrimaryHDU
-        # get info stored in buffer, use join to prevent race condition
-        # make two lists with time and intensity
-        # create array of two columns and set data to that value
-        # use writeto helper function to create fits file
-        times = []
-        intensities = []
-        filename = f"electrometer_{datetime.datetime.now(datetime.timezone.utc).timestamp()}.fits"
-        hdu = astropy.io.fits.PrimaryHDU()
-        hdu.header['CLMN1'] = ("Time", "Time in Seconds")
-        hdu.header['CLMN2'] = ("Intensity", "")
-        while self.buffer.join():
-            scan = self.buffer.get()
-            times.append(scan.time)
-            intensities.append(scan.intensity)
-        hdu.data = np.array([times, intensities])
-        fits_file_path = pathlib.Path(f'{self.fits_file_directory}/{filename}')
-        hdu.writeto(fits_file_path)
+    def set_digital_filter(self, activate_filter, activate_avg_filter, activate_med_filter):
+        filter = activate_filter
+        if activate_avg_filter is True and activate_filter is False:
+            filter = False
+        if activate_avg_filter is False and activate_filter is True:
+            filter = False
+        self.commander.write(f"{self.commands.activate_filter(self.mode, Filter(2), filter)}\r".encode())
+        filter = activate_filter
+        if activate_med_filter is True and activate_filter is False:
+            filter = False
+        if activate_med_filter is False and activate_filter is True:
+            filter = False
+        self.commander.write(f"{self.commands.activate_filter(self.mode, Filter(1), filter)}\r".encode())
+        self.check_error()
+
+    def set_integration_time(self, int_time):
+        self.commander.write(f"{self.commands.integration_time(mode=self.mode, time=int_time)}\r".encode())
+        self.check_error()
+
+    def set_mode(self, mode):
+        self.commander.write(f"{self.commands.set_mode(mode=mode)}\r".encode())
+        self.check_error()
+
+    def set_range(self, set_range):
+        self.commander.write(f"{self.commands.set_range(auto=self.auto_range, range_value=set_range, mode=self.mode)}\r".encode())
+        self.check_error()
+
+    def start_scan(self):
+        self.commander.write(f"{self.commands.clear_buffer()}\r".encode())
+        self.commander.write(f"{self.commands.format_trac()}\r".encode())
+        self.commander.write(f"{self.commands.set_buffer_size(50000)}\r".encode())
+        self.commander.write(f"{self.commands.select_device_timer()}\r".encode())
+        self.commander.write(f"{self.commands.next_read()}\r".encode())
+        self.manual_start_time = time.time()
+
+    def start_scan_dt(self, scan_duration):
+        self.commander.write(f"{self.commands.prepare_device_scan()}\r".encode())
+        self.manual_start_time = time.time()
+        dt = 0
+        # FIXME blocking and needs to be non-blocking
+        while dt < scan_duration:
+            time.sleep(self.integration_time)
+            dt = time.time() - self.manual_start_time
+
+    def stop_scan(self):
+        self.manual_end_time = time.time()
+        self.commander.write(f"{self.commands.stop_storing_buffer()}\r".encode())
+        self.commander.write(f"{self.commands.read_buffer()}\r".encode())
+        res = self.commander.read_until(b"\n")
+        intensity, times, temperature, unit = self.parse_buffer(res.decode())
+        self.write_fits_file(intensity, times, temperature, unit)
+
+    def write_fits_file(self, intensity, times, temperature, unit):
+        data = np.array([times, intensity])
+        hdu = fits.PrimaryHDU(data)
+        hdr = hdu.header
+        hdr['CLMN1'] = ("Time", "Time in seconds")
+        hdr['CLMN2'] = ("Intensity")
+        hdu.writeto(f'/home/saluser/{self.manual_start_time}_{self.manual_end_time}.fits')
+
+    def parse_buffer(self, response):
+        regex_numbers = "[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?"
+        regex_strings = "(?!E+)[a-zA-Z]+"
+        intensity, time, temperature, unit = [], [], [], []
+        unsorted_values = list(map(float, re.findall(regex_numbers, response)))
+        unsorted_str_values = re.findall(regex_strings, response)
+        i = 0
+        while i < 50000:
+            intensity.append(unsorted_values[i])
+            time.append(unsorted_values[i + 1])
+            temperature.append(0)
+            unit.append(unsorted_str_values[i])
+            i += 3
+            if(i >= len(unsorted_values) - 2):
+                break
+
+        return intensity, time, temperature, unit
+
+    def check_error(self):
+        self.commander.write(f"{self.commands.get_last_error()}\r".encode())
+        res = self.commander.read_until(b"\n")
+        self.error_code, self.message = res.decode().strip().split(",")
+
+    def get_mode(self):
+        self.commander.write(f"{self.commands.get_mode()}\r".encode())
+        res = self.commander.read_until(b"\n")
+        mode, unit = res.decode().strip().split(":")
+        mode = mode.replace('"', '')
+        self.mode = UnitMode(UnitMode[mode].value)
+
+    def get_avg_filter_status(self):
+        self.commander.write(f"{self.commands.get_filter_status(self.mode, 2)}\r".encode())
+        res = self.commander.read_until(b"\n")
+        self.avg_filter_active = bool(res.decode().strip())
+
+    def get_med_filter_status(self):
+        self.commander.write(f"{self.commands.get_filter_status(self.mode, 1)}\r".encode())
+        res = self.commander.read_until(b"\n")
+        self.median_filter_active = bool(res.decode().strip())
+
+    def get_range(self):
+        self.commander.write(f"{self.commands.get_range(self.mode)}\r".encode())
+        res = self.commander.read_until(b"\n")
+        self.range = float(res.decode().strip())
+
+    def get_integration_time(self):
+        self.commander.write(f"{self.commands.get_integration_time(self.mode)}\r".encode())
+        res = self.commander.read_until(b"\n")
+        self.integration_time = float(res.decode().strip())
+
