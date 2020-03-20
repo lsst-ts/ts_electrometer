@@ -1,144 +1,189 @@
-from enum import Enum
+from .enums import UnitMode, Filter, AverFilterType, readingOption
 
 
 class ElectrometerCommand:
-    """Class that contains low level commands to control the electrometer via RS-232
+    """Class that contains commands to control the electrometer via RS-232.
     """
     def __init__(self):
-        self.device = TestDevice()
+        pass
 
     def activate_filter(self, mode, filter_type, active):
-        """Activate/deactivate a type of filter
+        """Return activate filter command.
 
-        Arguments:
-            mode {UnitMode enum} -- CURR = 1, CHAR = 2, VOLT = 3, RES = 4
-            filterType {filterType enum} -- MED = 1, AVER = 2
-            active {bool} -- Boolean to activate or de-activate the filter
+        Parameters
+        ----------
+        mode : enums.UnitMode
+            The unit of the filter to activate.
+        filter_type : enums.Filter
+            The filter type to activate
+        active : int
+            Whether to activate or not.
 
-        Returns:
-            string -- string with the low level command command
+        Returns
+        -------
+        command : str
+            The generated command string.
         """
         command = f":sens:{UnitMode(mode).name}:{Filter(filter_type).name}:stat {int(active)};"
         return command
 
     def get_avg_filter_status(self, mode):
-        """Get the type of average filter the device is using
+        """Return average filter status.
 
-        Arguments:
-            mode {UnitMode enum} -- CURR = 1, CHAR = 2, VOLT = 3, RES = 4
+        Parameters
+        ----------
+        mode : enums.UnitMode
+            The unit of the filter to check.
 
-        Returns:
-            string -- string with the low level command command
+        Returns
+        -------
+        command : str
+            The generated command string.
         """
         command = f":sens:{UnitMode(mode).name}:aver:type?;"
         return command
 
     def get_med_filter_status(self, mode):
-        """Get the type of median filter the device is using
+        """Return median filter status.
 
-        Arguments:
-            mode {UnitMode enum} -- CURR = 1, CHAR = 2, VOLT = 3, RES = 4
+        Parameters
+        ----------
+        mode : enums.UnitMode
+            The unit of the filter to check.
 
-        Returns:
-            string -- string with the low level command command
+        Returns
+        -------
+        command : str
+            The generated command string.
         """
         command = f":sens:{UnitMode(mode).name}:med:stat?;"
         return command
 
     def get_filter_status(self, mode, filter_type):
-        """Get filter status
+        """Return filter status.
 
-        Arguments:
-            mode {UnitMode enum} -- CURR = 1, CHAR = 2, VOLT = 3, RES = 4
-            filterType {filterType enum} -- MED = 1, AVER = 2
+        Parameters
+        ----------
+        mode : enums.UnitMode
+            The unit of the filter to check
+        filter_type : enums.Filter
+            The type of the filter to check.
 
-        Returns:
-            string -- string with the low level command command
+        Returns
+        -------
+        command : str
+            The generated command string.
         """
         command = f":sens:{UnitMode(mode).name}:{Filter(filter_type).name}:stat?"
         return command
 
     def set_avg_filter_status(self, mode, aver_filter_type):
-        """Set the type of average filter to set
+        """Return set average filter status.
 
-        Arguments:
-            mode {UnitMode enum} -- CURR = 1, CHAR = 2, VOLT = 3, RES = 4
-            averFilterType {AverFilterType enum} -- NONE = 1, SCAL = 2, ADV = 3
+        Parameters
+        ----------
+        mode : enums.UnitMode
+            The unit of the filter to set.
+        aver_filter_type : enums.AverFilterType
+            The type of the average filter to set.
 
-        Returns:
-            string -- string with the low level command command
+        Returns
+        -------
+        command : str
+            The generated command string.
         """
         command = f":sens:{UnitMode(mode).name}:aver:type {AverFilterType(aver_filter_type).name};"
         return command
 
     def set_med_filter_status(self, mode, active):
-        """Set the type of median filter to set
+        """Return set median filter status
 
-        Arguments:
-            mode {UnitMode enum} -- CURR = 1, CHAR = 2, VOLT = 3, RES = 4
-            active {bool} -- Boolean to activate or de-activate the filter
+        Parameters
+        ----------
+        mode : enums.UnitMode
+            The unit of the filter to set.
+        active : int
+            Whether to activate.
 
-        Returns:
-            string -- string with the low level command command
+        Returns
+        -------
+        command : str
+            The generated command string.
         """
         command = f":sens:{UnitMode(mode).name}:med:stat {int(active)};"
         return command
 
     def always_read(self):
-        """Always read value and store them into the buffer
+        """Return always read buffer.
 
-        Returns:
-            string -- string with the low level command command
+        Returns
+        -------
+        commmand : str
+            The generated command string.
         """
         command = f":trac:feed:cont alw;{self.init_buffer()}"
         return command
 
     def next_read(self):
-        """Read value and store them into the buffer until the buffer is full
+        """Return next read buffer.
 
-        Returns:
-            string -- string with the low level command command
+        Returns
+        -------
+        command : str
+            The generated command string.
         """
         command = f":trac:feed:cont next;{self.init_buffer()}"
         return command
 
     def clear_buffer(self):
-        """Clear device buffer
+        """Return clear buffer.
 
-        Returns:
-            string -- string with the low level command command
+        Returns
+        -------
+        command : str
+            The generated command string.
         """
         command = ":trac:cle;"
         return command
 
     def clear_device(self):
-        """Clear device buffer
+        """Return clear device.
 
-        Returns:
-            string -- string with the low level command command
+        Returns
+        -------
+        command : str
+            The generated command string.
         """
         command = "^C"
         return command
 
     def get_last_error(self):
-        """Get error query
+        """Return get last error.
 
-        Returns:
-            string -- string with the low level command command
+        Returns
+        -------
+        command : str
+            The generated command string.
         """
         command = ":syst:err?;"
         return command
 
     def format_trac(self, channel=False, timestamp=True, temperature=False):
-        """Format the reads to include or remove values from input
+        """Return format data stored to the buffer.
 
-        Arguments:
-            channel {bool} -- Boolean to include or exclude the channel from the reading
-            timestamp {bool} -- Boolean to include or exclude the timestamp from the reading
-            temperature {bool} -- Boolean to include or exclude the temperature from the reading
+        Parameters
+        ----------
+        channel : bool
+            Whether to store channel data.
+        timestamp : bool
+            Whether to store timestamp data.
+        temperature : bool
+            Whether to store temperature data.
 
-        Returns:
-            string -- string with the low level command command
+        Returns
+        -------
+        command : str
+            The generated command string.
         """
         isFirst = True
         if(not (timestamp or temperature or channel)):
@@ -162,57 +207,69 @@ class ElectrometerCommand:
         return command
 
     def get_buffer_quantity(self):
-        """Get the quantity of values stored in the buffer
+        """Return get buffer quantity.
 
-        Returns:
-            string -- string with the low level command command
+        Returns
+        -------
+        command : str
+            The generated command string.
         """
         command = ":trac:poin:act?;"
         return command
 
     def get_hardware_info(self):
-        """Get hardware info
+        """Return get hardware info.
 
-        Returns:
-            string -- string with the low level command command
+        Returns
+        -------
+        command : str
+            The generated command string.
         """
         command = "*idn?"
         return command
 
     def get_measure(self, read_option):
-        """Get measurement from the electrometer
+        """Return get measure.
 
-        Arguments:
-            readOption {readingOption enum} -- Type of reading,  LATEST = 1  for last value read, NEWREAD = 2
-            for new reading
+        Parameters
+        ----------
+        read_option : enums.readingOption
+            The reading option.
 
-        Returns:
-            string -- string with the low level command command
+        Returns
+        -------
+        command : str
+            The generated command string.
         """
-        if (ReadingOption(read_option) == ReadingOption.LATEST):
+        if (readingOption(read_option) == readingOption.LATEST):
             command = ":sens:data?;"
         else:
             command = ":sens:data:fres?;"
         return command
 
     def get_mode(self):
-        """Get the mode the Electrometer is using
+        """Return get mode.
 
-        Returns:
-            string -- string with the low level command command
+        Returns
+        -------
+        command : str
+            The generated command string.
         """
         command = ":sens:func?;"
         return command
 
     def enable_temperature_reading(self, enable):
-        """Enable temperature readings. Enabling temperature readings will reduce the ammount of readings
-        the electrometer can handle
+        """Return enable temperature reading.
 
-        Arguments:
-            enable {bool} -- Boolean to activate or de-activate temperature readings
+        Parameters
+        ----------
+        enable : bool
+            Whether to enable temperature reading.
 
-        Returns:
-            string -- string with the low level command command
+        Returns
+        -------
+        command : str
+            The generated command string.
         """
         if(enable):
             command = ":syst:tsc ON;"
@@ -221,98 +278,118 @@ class ElectrometerCommand:
         return command
 
     def read_buffer(self):
-        """Command to read the buffer, don't read all in one read.
-        Split in a small ammount of byte (256)
+        """Return read buffer.
 
-        Returns:
-            string -- string with the low level command command
+        Returns
+        -------
+        command : str
+            The generated command string.
         """
         command = ":trac:data?;"
         return command
 
     def reset_device(self):
-        """Clean the elecrometer configuration to factory settings
+        """Return reset device.
 
-        Returns:
-            string -- string with the low level command command
+        Returns
+        -------
+        command : str
+            The generated command string.
         """
         command = f"*RST; {self.clear_buffer()}"
         return command
 
     def select_device_timer(self, timer=0.001):
-        """Update the Internal processing loop of the electrometer, the fastest
-        the more process the electrometer can handle
+        """Return select device timer.
 
-        Keyword Arguments:
-            timer {float} -- Internal processing loop in the electrometer (default: {0.001})
+        Parameters
+        ----------
+        timer : float
+            The internal device loop timer. Values below 0.001 can cause
+            instablity.
 
-        Returns:
-            string -- string with the low level command command
+        Returns
+        -------
+        command : str
+            The generated command string.
         """
         command = f":trig:sour tim;\n:trig:tim {timer:.3f};"
         return command
 
     def set_buffer_size(self, buffer_size=50000):
-        """Set the buffer size of the electrometer. The maximum is 50000 (Also default value)
+        """Return set buffer size.
 
-        Keyword Arguments:
-            bufferSize {int} -- Maximum number of readings the buffer can store (default: {50000})
-
-        Returns:
-            string -- string with the low level command command
+        Parameters
+        ----------
+        buffer_size: int
+            The number of values to store in the buffer.
+            Maximum is 50000.
         """
         command = f"{self.clear_buffer()}:trac:points {str(buffer_size)};:trig:count {str(buffer_size)};"
         return command
 
     def init_buffer(self):
-        """Initialize the buffer readings recording
+        """Return start storing readings into the buffer.
 
-        Returns:
-            string -- string with the low level command command
+        Returns
+        -------
+        command : str
+            The generated command string.
         """
         command = ":init;"
         return command
 
     def integration_time(self, mode, time=0.001):
-        """Update the integration time in the electrometer
+        """Return integration time.
 
-        Arguments:
-            mode {UnitMode enum} -- CURR = 1, CHAR = 2, VOLT = 3, RES = 4
+        Parameters
+        ----------
+        mode : enums.UnitMode
+            The unit of the aperature to set.
+        time : float
+            The integration time of the aperture.
 
-        Keyword Arguments:
-            time {float} -- Integration rate in seconds (166.67e-6 to 200e-3) (default: {0.001})
-
-        Returns:
-            string -- string with the low level command command
+        Returns
+        -------
+        command : str
+            The generated command string.
         """
         command = f":sens:{UnitMode(mode).name}:aper {str(time)};"
         return command
 
     def set_mode(self, mode):
-        """Select measurement function: ‘VOLTage[:DC]’, ‘CURRent[:DC]’, ‘RESistance’, ‘CHARge’
+        """Return set mode.
 
-        Arguments:
-            mode {UnitMode enum} -- CURR = 1, CHAR = 2, VOLT = 3, RES = 4
+        Parameters
+        ----------
+        mode : enums.UnitMode
+            The unit to switch to.
 
-        Returns:
-            string -- string with the low level command command
+        Returns
+        -------
+        command : str
+            The generated command string.
         """
         command = f":sens:func '{UnitMode(mode).name}';"
         return command
 
     def set_range(self, auto, range_value, mode):
-        """
-        Arguments:
-            auto {bool} -- The AUTO-RANGE option is used to configure autorange for the amps function.
-            This option allows you to speed up the autoranging search process by eliminating upper
-            and lower measurement ranges
-            rangeValue {float} -- This command is used to manually select the measurement range for the
-            specified measurement function. The range is selected by specifying the expected
-            reading as an absolute value. If auto is ON, this parameter is ommited.
-            mode {UnitMode enum} -- CURR = 1, CHAR = 2, VOLT = 3, RES = 4
+        """Return set range.
 
-        Returns:
-            string -- string with the low level command command
+        Parameters
+        ----------
+        auto : bool
+            Whether auto range is activated.
+        range_value : float
+            The range to set.
+            Not used if auto is true.
+        mode : enums.UnitMode
+            The unit of the range to set.
+
+        Returns
+        -------
+        command : str
+            The generated command string.
         """
         if(auto):
             command = ":sens:" + UnitMode(mode).name + ":rang:auto 1;"
@@ -322,175 +399,178 @@ class ElectrometerCommand:
         return command
 
     def enable_sync(self, enable):
-        """This command is used to enable or disable line synchronization. When enabled,
-        the integration period will not start until the beginning of the next power line cycle
-        Arguments:
-            enable {bool} -- Boolean to enable or disable synchronization
+        """Return enable sync.
 
-        Returns:
-            string -- string with the low level command command
+        Parameters
+        ----------
+        enable : bool
+            Whether to enable sync.
+
+        Returns
+        -------
+        command : str
+            The generated command string.
         """
         command = ":syst:lsyn:stat ON;" if enable else ":syst:lsyn:stat OFF;"
         return command
 
     def stop_storing_buffer(self):
-        """Stop storing readings in the buffer. If this is not used,
-        the electrometer can hang while reading data inside the buffer
+        """Return stop storing buffer.
 
-        Returns:
-            string -- string with the low level command command
+        Returns
+        -------
+        command : str
+            The generated command string.
         """
         command = ":trac:feed:cont NEV;"
         return command
 
     def enable_all_instrument_errors(self):
-        """Enable instrument errors in the electrometer.
+        """Return enable all instrument errors.
 
-        Returns:
-            string -- string with the low level command command
+        Returns
+        -------
+        command : str
+            The generated command string.
         """
         command = ":stat:que:enab (-440:+958);"
         return command
 
     def enable_zero_check(self, enable):
-        """When zero check is enabled (on), the input amplifier is reconfigured to
-        shunt the input signal to low
+        """Return enable zero check.
 
-        Arguments:
-            enable {bool} -- Activate zero check
+        Parameters
+        ----------
+        enable : bool
+            Whether to enable zero check.
 
-        Returns:
-            string -- string with the low level command command
+        Returns
+        -------
+        command : str
+            The generated command string.
         """
         command = ":syst:zch ON;" if enable else ":syst:zch OFF;"
         return command
 
     def enable_zero_correction(self, enable):
-        """The Z-CHK and REL keys work together to cancel (zero correct) any internal offsets that might
-        upset accuracy for volts and amps measurements.
-        Perform the following steps to zero correct the volts or amps function:
-        1. Select the V or I function.
-        2. Press Z-CHK to enable Zero Check.
-        3. Select the range that will be used for the measurement.
-        4. Press REL to zero correct the instrument (REL indicator will be lit and “Zcor” displayed).
-        Note that for the volts function, the “Zcor” message will not be displayed if guard was
-        already enabled (“Grd” displayed).
-        5. Press Z-CHK to disable zero check.
-        6. Readings can now be taken in the normal manner.
+        """Return enable zero correction.
 
-        Arguments:
-            enable {bool} -- Enable or disable zero correction in the electrometer
+        Parameters
+        ----------
+        enable : bool
+            Whether to enable zero correction.
 
-        Returns:
-            string -- string with the low level command command
+        Returns
+        -------
+        command : str
+            The generated command string.
         """
         command = ":syst:zcor ON;" if enable else ":syst:zcor OFF;"
         return command
 
     def get_range(self, mode):
-        """Get current range currently configured for a specific mdoe
+        """Return get range command string.
 
-        Arguments:
-            mode {UnitMode enum} -- CURR = 1, CHAR = 2, VOLT = 3, RES = 4
+        Parameters
+        ----------
+        mode : enums.UnitMode
+            The unit of the range to check.
 
-        Returns:
-            string -- string with the low level command command
+        Returns
+        -------
+        command : str
+            The generated command string.
         """
         command = ":sens:" + UnitMode(mode).name + ":rang?;"
         return command
 
     def get_integration_time(self, mode):
-        """Get integration time currently configured for a specific mdoe
+        """Return get integration time command string.
 
-        Arguments:
-            mode {UnitMode enum} -- CURR = 1, CHAR = 2, VOLT = 3, RES = 4
+        Parameters
+        ----------
+        mode : enums.UnitMode
+            The unit of the integration time to check.
 
-        Returns:
-            string -- string with the low level command command
+        Returns
+        -------
+        command : str
+            The generated command string.
         """
         command = ":sens:" + UnitMode(mode).name + ":aper?;"
         return command
 
     def enable_display(self, enable):
-        """Activate or de-activate the display on the electrometer. Using
-        the display use process on the device, that's why it's usually disabled
+        """Return enable display command string.
 
-        Arguments:
-            enable {bool} -- Enable or disable the display
+        Parameters
+        ----------
+        enable : bool
+            Whether to enable the display.
 
-        Returns:
-            string -- string with the low level command command
+        Returns
+        -------
+        command : str
+            The generated command string.
         """
         command = ":disp:enab ON;" if enable is True else ":disp:enab OFF;"
         return command
 
     def set_timer(self):
-        """Set the timer in the electrometer to 0.01
+        """Return set time command string.
 
-        Returns:
-            string -- string with the low level command command
+        Returns
+        -------
+        command : str
+            The generated command string.
         """
         command = ":sens:curr:nplc 0.01;"
         return command
 
     def prepare_buffer(self):
-        command = f"{self.clear_buffer()} {self.format_trac(False, True, False)} {self.set_buffer_size(50000)}"
+        """Return combo of commands for prepare buffer command.
+
+        Returns
+        -------
+        command : str
+            The generated command string.
+        """
+        command = (f"{self.clear_buffer()} "
+                   f" {self.format_trac(channel=False, timestamp=True, temperature=False)} "
+                   f"{self.set_buffer_size(50000)}")
         return command
 
     def perform_zero_calibration(self, mode, auto, range_value):
-        command = f"{self.enable_zero_check(True)} {self.set_mode(mode)} {self.set_range(auto=auto, range_value=range_value, mode=mode)} {self.enable_zero_correction(enable=True)} {self.enable_zero_check(False)}"
+        """Return combo of commands for perform zero calibration command.
+
+        Parameters
+        ----------
+        mode : enums.UnitMode
+            The unit of the device
+        auto : bool
+            Whether auto range is activated.
+        range_value : float
+            The range of the values.
+
+        Returns
+        -------
+        command : str
+            The generated command string
+        """
+        command = (f"{self.enable_zero_check(True)} "
+                   f"{self.set_mode(mode)} "
+                   f" {self.set_range(auto=auto, range_value=range_value, mode=mode)} "
+                   f" {self.enable_zero_correction(enable=True)} "
+                   f"{self.enable_zero_check(False)}")
         return command
 
     def disable_all(self):
+        """Return combo of commands for disable all command.
+
+        Returns
+        -------
+        command : str
+            The generated command string.
+        """
         command = f"{self.enable_sync(False)} :trig:del 0.0;"
         return command
-
-
-class UnitMode(Enum):
-    CURR = 1
-    CHAR = 2
-    VOLT = 3
-    RES = 4
-
-
-class Filter(Enum):
-    MED = 1
-    AVER = 2
-
-
-class AverFilterType(Enum):
-    NONE = 1
-    SCAL = 2
-    ADV = 3
-
-
-class ReadingOption(Enum):
-    LATEST = 1  # Last value read
-    NEWREAD = 2  # New reading
-
-
-class TestDevice:
-    """Class used only for testing communication
-    """
-
-    def __init__(self):
-        self.messageReceived = "getMessage executed..."
-        self.messageToSend = "sendMessage executed: "
-        self.connected = False
-
-    def connect(self):
-        self.connected = True
-
-    def disconnect(self):
-        self.connected = False
-
-    def isConnected(self):
-        return self.connected
-
-    def getMessage(self):
-        print(self.messageReceived)
-        return self.messageReceived
-
-    def sendMessage(self, message):
-        print(self.messageToSend + message)
-        return message

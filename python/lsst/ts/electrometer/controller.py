@@ -1,9 +1,4 @@
 import asyncio
-import collections
-import datetime
-import enum
-import pathlib
-import queue
 import time
 import re
 from types import SimpleNamespace
@@ -13,32 +8,48 @@ import numpy as np
 import serial
 
 from .commands import ElectrometerCommand
-
-
-class UnitMode(enum.IntEnum):
-    CURR = 1
-    CHAR = 2
-    VOLT = 3
-    RES = 4
-
-
-class Filter(enum.IntEnum):
-    MED = 1
-    AVER = 2
-
-
-class AverFilterType(enum.IntEnum):
-    NONE = 1
-    SCAL = 2
-    ADV = 3
-
-
-class readingOption(enum.IntEnum):
-    LATEST = 1
-    NEWREAD = 2
+from .enums import UnitMode, Filter
 
 
 class ElectrometerController:
+    """Class that provides high level control for electrometer.
+
+    Attributes
+    ----------
+    commander : serial.Serial
+        The serial interface for writing and reading from the device.
+    commands : ElectrometerCommand
+        The interface for providing formatted commands for the commander.
+    mode : UnitMode
+        The mode/unit of the electrometer.
+    range : float
+        The range of intensities that the electrometer can read.
+    integration_time : float
+        The amount of time the electrometer reads per scan.
+    median_filter_active : bool
+        Whether the median filter is active.
+    filter_active : bool
+        Whether any filter is active.
+    avg_filter_active : bool
+        Whether the average filter is active.
+    connected : bool
+        Whether the port is open.
+    last_value : int
+        The last value of the electrometer intensity read.
+    read_freq : float
+        The frequency that readings are gotten from the device buffer.
+    configuration_delay : float
+        The delay to allow the electrometer to configure.
+    auto_range : bool
+        Whether automatic range is active.
+    manual_start_time : int
+        The start time of a scan.
+    manual_end_time : int
+        The end time of a scan.
+    serial_lock : asyncio.Lock
+        The lock for protecting the synchronous serial communication.
+
+    """
     def __init__(self):
         self.commander = serial.Serial()
         self.commands = ElectrometerCommand()
@@ -55,8 +66,16 @@ class ElectrometerController:
         self.auto_range = False
         self.manual_start_time = None
         self.manual_end_time = None
+        self.serial_lock = asyncio.Lock()
 
     def configure(self, config):
+        """Configure the controller.
+
+        Parameters
+        ----------
+        config : types.Namespace
+            The parsed yaml as a dict-like object.
+        """
         self.mode = UnitMode(config.mode)
         self.range = config.range
         self.integration_time = config.integration_time
@@ -68,7 +87,11 @@ class ElectrometerController:
         self.commander.baudrate = config.baudrate
         self.commander.timeout = config.timeout
 
-    def develop_configure(self):
+    def generate_development_configure(self):
+        """Generate a development config object.
+
+        Used for development purposes to develop/test controller code.
+        """
         config = SimpleNamespace()
         config.mode = 1
         config.range = -0.01
@@ -81,75 +104,163 @@ class ElectrometerController:
         config.timeout = 3.3
         return config
 
-    def connect(self):
+    async def write(self, msg):
+        """Write to the device.
+
+        Encodes the message and adds the manadatory carriage return.
+        Uses a lock to protect writing operation.
+
+        Parameters
+        ----------
+        msg : str
+            The command to the device.
+        """
+        async with self.serial_lock:
+            await self.commander.write(msg.encode() + b"\r")
+
+    async def read(self):
+        """Read from the device.
+
+        Decodes and strips the message.
+        Uses a lock to protect reading operation.
+
+        Returns
+        -------
+        reply : str
+            The decoded and stripped message.
+        """
+        async with self.serial_lock:
+            reply = await self.commander.read_until(b"\n")
+        reply.decode()
+        reply.strip()
+        return reply
+
+    async def connect(self):
+        """Open connection to the electrometer."""
         self.commander.open()
         self.connected = True
         # self.commander.write(self.commands.enable_display(False).encode())
-        self.set_mode(self.mode)
-        self.set_range(self.range)
-        self.set_digital_filter(self.filter_active, self.avg_filter_active, self.median_filter_active)
+        await self.set_mode(self.mode)
+        await self.set_range(self.range)
+        await self.set_digital_filter(self.filter_active, self.avg_filter_active, self.median_filter_active)
 
     def disconnect(self):
+        """Close connection to the electrometer."""
         # self.commander.write(self.commands.enable_display(True).encode())
         self.commander.close()
         self.connected = False
 
-    def perform_zero_calibration(self):
-        self.commander.write(f"{self.commands.perform_zero_calibration(self.mode, self.auto_range, self.range)}\r".encode())
+    async def perform_zero_calibration(self):
+        """Perform zero calibration."""
+        await self.write(f"{self.commands.perform_zero_calibration(self.mode, self.auto_range, self.range)}")
 
-    def set_digital_filter(self, activate_filter, activate_avg_filter, activate_med_filter):
+    async def set_digital_filter(self, activate_filter, activate_avg_filter, activate_med_filter):
+        """Set the digital filter(s).
+
+        Parameters
+        ----------
+        activate_filter: bool
+            Whether any filter should be activated.
+        activate_avg_filter : bool
+            Whether the average filter should be activated.
+        activate_med_filter : bool
+            Whether the median filter should be activated.
+        """
         filter = activate_filter
         if activate_avg_filter is True and activate_filter is False:
             filter = False
         if activate_avg_filter is False and activate_filter is True:
             filter = False
-        self.commander.write(f"{self.commands.activate_filter(self.mode, Filter(2), filter)}\r".encode())
+        await self.write(f"{self.commands.activate_filter(self.mode, Filter(2), filter)}")
         filter = activate_filter
         if activate_med_filter is True and activate_filter is False:
             filter = False
         if activate_med_filter is False and activate_filter is True:
             filter = False
-        self.commander.write(f"{self.commands.activate_filter(self.mode, Filter(1), filter)}\r".encode())
-        self.check_error()
+        await self.write(f"{self.commands.activate_filter(self.mode, Filter(1), filter)}")
+        await self.check_error()
 
-    def set_integration_time(self, int_time):
-        self.commander.write(f"{self.commands.integration_time(mode=self.mode, time=int_time)}\r".encode())
-        self.check_error()
+    async def set_integration_time(self, int_time):
+        """Set the integration time.
 
-    def set_mode(self, mode):
-        self.commander.write(f"{self.commands.set_mode(mode=mode)}\r".encode())
-        self.check_error()
+        Parameters
+        ----------
+        int_time : float
+            The integration time.
+        """
+        await self.write(f"{self.commands.integration_time(mode=self.mode, time=int_time)}")
+        await self.check_error()
 
-    def set_range(self, set_range):
-        self.commander.write(f"{self.commands.set_range(auto=self.auto_range, range_value=set_range, mode=self.mode)}\r".encode())
-        self.check_error()
+    async def set_mode(self, mode):
+        """Set the mode/unit.
 
-    def start_scan(self):
-        self.commander.write(f"{self.commands.clear_buffer()}\r".encode())
-        self.commander.write(f"{self.commands.format_trac()}\r".encode())
-        self.commander.write(f"{self.commands.set_buffer_size(50000)}\r".encode())
-        self.commander.write(f"{self.commands.select_device_timer()}\r".encode())
-        self.commander.write(f"{self.commands.next_read()}\r".encode())
+        Parameters
+        ----------
+        mode : int
+            The mode of the electrometer.
+        """
+        await self.write(f"{self.commands.set_mode(mode=mode)}")
+        await self.check_error()
+
+    async def set_range(self, set_range):
+        """Set the range.
+
+        Parameters
+        ----------
+        set_range : float
+            The new range value.
+        """
+        await self.write(self.commands.set_range(auto=self.auto_range, range_value=set_range, mode=self.mode))
+        await self.check_error()
+
+    async def start_scan(self):
+        """Start storing values to the buffer."""
+        await self.write(f"{self.commands.clear_buffer()}")
+        await self.write(f"{self.commands.format_trac()}")
+        await self.write(f"{self.commands.set_buffer_size(50000)}")
+        await self.write(f"{self.commands.select_device_timer()}")
+        await self.write(f"{self.commands.next_read()}")
         self.manual_start_time = time.time()
 
-    def start_scan_dt(self, scan_duration):
-        self.commander.write(f"{self.commands.prepare_device_scan()}\r".encode())
+    async def start_scan_dt(self, scan_duration):
+        """Start storing values to the buffer for a set duration.
+
+        Parameters
+        ----------
+        scan_duration : float
+            The amount of time to store values for.
+        """
+        await self.write(f"{self.commands.prepare_device_scan()}")
         self.manual_start_time = time.time()
         dt = 0
         # FIXME blocking and needs to be non-blocking
         while dt < scan_duration:
-            time.sleep(self.integration_time)
-            dt = time.time() - self.manual_start_time
+            await asyncio.sleep(self.integration_time)
+            dt = time.monotonic() - self.manual_start_time
 
-    def stop_scan(self):
+    async def stop_scan(self):
+        """Stop storing values to the buffer."""
         self.manual_end_time = time.time()
-        self.commander.write(f"{self.commands.stop_storing_buffer()}\r".encode())
-        self.commander.write(f"{self.commands.read_buffer()}\r".encode())
-        res = self.commander.read_until(b"\n")
-        intensity, times, temperature, unit = self.parse_buffer(res.decode())
+        await self.write(f"{self.commands.stop_storing_buffer()}")
+        await self.write(f"{self.commands.read_buffer()}")
+        res = self.read()
+        intensity, times, temperature, unit = self.parse_buffer(res)
         self.write_fits_file(intensity, times, temperature, unit)
 
     def write_fits_file(self, intensity, times, temperature, unit):
+        """Write fits file given values from buffer.
+
+        Parameters
+        ----------
+        intensity : list
+            The intensity values
+        times : list
+            The time of the intensity value
+        temperature : list
+            The temperature of the intensity value
+        unit : list
+            The unit of the intensity value.
+        """
         data = np.array([times, intensity])
         hdu = fits.PrimaryHDU(data)
         hdr = hdu.header
@@ -158,7 +269,25 @@ class ElectrometerController:
         hdu.writeto(f'/home/saluser/{self.manual_start_time}_{self.manual_end_time}.fits')
 
     def parse_buffer(self, response):
-        regex_numbers = "[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?"
+        """Parse the buffer values.
+
+        Parameters
+        ----------
+        response : str
+            The response from the read buffer command.
+
+        Returns
+        -------
+        intensity : list
+            The intensity values
+        time : list
+            The time values
+        temperature : list
+            The temperature values.
+        unit : list
+            The unit values.
+        """
+        regex_numbers = r"[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?"
         regex_strings = "(?!E+)[a-zA-Z]+"
         intensity, time, temperature, unit = [], [], [], []
         unsorted_values = list(map(float, re.findall(regex_numbers, response)))
@@ -175,35 +304,40 @@ class ElectrometerController:
 
         return intensity, time, temperature, unit
 
-    def check_error(self):
-        self.commander.write(f"{self.commands.get_last_error()}\r".encode())
-        res = self.commander.read_until(b"\n")
-        self.error_code, self.message = res.decode().strip().split(",")
+    async def check_error(self):
+        """Check the error."""
+        await self.write(f"{self.commands.get_last_error()}")
+        res = await self.read()
+        self.error_code, self.message = res.split(",")
 
-    def get_mode(self):
-        self.commander.write(f"{self.commands.get_mode()}\r".encode())
-        res = self.commander.read_until(b"\n")
-        mode, unit = res.decode().strip().split(":")
+    async def get_mode(self):
+        """Get the mode/unit."""
+        await self.write(f"{self.commands.get_mode()}")
+        res = await self.read()
+        mode, unit = res.split(":")
         mode = mode.replace('"', '')
         self.mode = UnitMode(UnitMode[mode].value)
 
-    def get_avg_filter_status(self):
-        self.commander.write(f"{self.commands.get_filter_status(self.mode, 2)}\r".encode())
-        res = self.commander.read_until(b"\n")
-        self.avg_filter_active = bool(res.decode().strip())
+    async def get_avg_filter_status(self):
+        """Get the average filter status."""
+        await self.write(f"{self.commands.get_filter_status(self.mode, 2)}")
+        res = await self.read()
+        self.avg_filter_active = bool(res)
 
-    def get_med_filter_status(self):
-        self.commander.write(f"{self.commands.get_filter_status(self.mode, 1)}\r".encode())
-        res = self.commander.read_until(b"\n")
-        self.median_filter_active = bool(res.decode().strip())
+    async def get_med_filter_status(self):
+        """Get the median filter status."""
+        await self.write(f"{self.commands.get_filter_status(self.mode, 1)}")
+        res = await self.read()
+        self.median_filter_active = bool(res)
 
-    def get_range(self):
-        self.commander.write(f"{self.commands.get_range(self.mode)}\r".encode())
-        res = self.commander.read_until(b"\n")
-        self.range = float(res.decode().strip())
+    async def get_range(self):
+        """Get the range value."""
+        await self.write(f"{self.commands.get_range(self.mode)}")
+        res = await self.read()
+        self.range = float(res)
 
-    def get_integration_time(self):
-        self.commander.write(f"{self.commands.get_integration_time(self.mode)}\r".encode())
-        res = self.commander.read_until(b"\n")
-        self.integration_time = float(res.decode().strip())
-
+    async def get_integration_time(self):
+        """Get the integration time value."""
+        await self.write(f"{self.commands.get_integration_time(self.mode)}")
+        res = await self.commander.read()
+        self.integration_time = float(res)
