@@ -13,7 +13,7 @@ class ElectrometerSimulator:
         self.log = logging.Logger(__name__)
         self.buffer = queue.Queue(maxsize=50000)
         self.command_calls = {"*IDN?": self.get_identification}
-        self.commands = [
+        self.commands_regexes = [
             re.compile(r"^(?P<cmd>\*IDN\?)$")
         ]
 
@@ -21,10 +21,9 @@ class ElectrometerSimulator:
         while True:
             self.log.debug("reading message")
             rec = self.serial.read_until(b"\r")
-            self.log.debug(f"{rec}")
             decoded_rec = rec.decode().strip()
             self.log.debug(f"{decoded_rec}")
-            for command in self.commands:
+            for command in self.commands_regexes:
                 self.log.debug(f"{command}")
                 matched_command = command.match(decoded_rec)
                 self.log.debug(f"{matched_command}")
@@ -49,6 +48,7 @@ class ElectrometerSimulator:
         return "KEITHLEY INSRUMENTS INC.,MODEL 6517B,4096271,A13/700X\n"
 
 
+# TODO Make main a classmethod and call it in a script.
 def main():
     ch = logging.StreamHandler()
     ch.setLevel(logging.DEBUG)

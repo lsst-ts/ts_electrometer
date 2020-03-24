@@ -7,7 +7,7 @@ import astropy.io.fits as fits
 import numpy as np
 import serial
 
-from .commands import ElectrometerCommand
+from .commands import ElectrometerCommandFactory
 from .enums import UnitMode, Filter
 
 
@@ -52,7 +52,7 @@ class ElectrometerController:
     """
     def __init__(self):
         self.commander = serial.Serial()
-        self.commands = ElectrometerCommand()
+        self.commands = ElectrometerCommandFactory()
         self.mode = None
         self.range = None
         self.integration_time = 0.01
@@ -104,36 +104,27 @@ class ElectrometerController:
         config.timeout = 3.3
         return config
 
-    async def write(self, msg):
-        """Write to the device.
-
-        Encodes the message and adds the manadatory carriage return.
-        Uses a lock to protect writing operation.
+    async def send_command(self, command, has_reply=False):
+        """Send a command to the device and return a reply if it has one.
 
         Parameters
         ----------
-        msg : str
-            The command to the device.
-        """
-        async with self.serial_lock:
-            await self.commander.write(msg.encode() + b"\r")
-
-    async def read(self):
-        """Read from the device.
-
-        Decodes and strips the message.
-        Uses a lock to protect reading operation.
+        command : str
+            The message to be sent.
+        has_reply : bool
+            Whether the message has a reply.
 
         Returns
         -------
-        reply : str
-            The decoded and stripped message.
+        reply : str or None
+            If has_reply is True then returns string reply.
+            If false, then returns None.
         """
         async with self.serial_lock:
+            await self.commander.write(command.encode() + b"\r")
+        if has_reply:
             reply = await self.commander.read_until(b"\n")
-        reply.decode()
-        reply.strip()
-        return reply
+            return reply.decode().strip()
 
     async def connect(self):
         """Open connection to the electrometer."""
@@ -152,7 +143,8 @@ class ElectrometerController:
 
     async def perform_zero_calibration(self):
         """Perform zero calibration."""
-        await self.write(f"{self.commands.perform_zero_calibration(self.mode, self.auto_range, self.range)}")
+        await self.send_command(
+            f"{self.commands.perform_zero_calibration(self.mode,self.auto_range,self.range)}")
 
     async def set_digital_filter(self, activate_filter, activate_avg_filter, activate_med_filter):
         """Set the digital filter(s).
@@ -177,7 +169,7 @@ class ElectrometerController:
             filter = False
         if activate_med_filter is False and activate_filter is True:
             filter = False
-        await self.write(f"{self.commands.activate_filter(self.mode, Filter(1), filter)}")
+        await self.send_command(f"{self.commands.activate_filter(self.mode, Filter(1), filter)}")
         await self.check_error()
 
     async def set_integration_time(self, int_time):
@@ -188,7 +180,7 @@ class ElectrometerController:
         int_time : float
             The integration time.
         """
-        await self.write(f"{self.commands.integration_time(mode=self.mode, time=int_time)}")
+        await self.send_command(f"{self.commands.integration_time(mode=self.mode, time=int_time)}")
         await self.check_error()
 
     async def set_mode(self, mode):
@@ -199,7 +191,7 @@ class ElectrometerController:
         mode : int
             The mode of the electrometer.
         """
-        await self.write(f"{self.commands.set_mode(mode=mode)}")
+        await self.send_command(f"{self.commands.set_mode(mode=mode)}")
         await self.check_error()
 
     async def set_range(self, set_range):
@@ -210,16 +202,18 @@ class ElectrometerController:
         set_range : float
             The new range value.
         """
-        await self.write(self.commands.set_range(auto=self.auto_range, range_value=set_range, mode=self.mode))
+        await self.send_command(self.commands.set_range(auto=self.auto_range,
+                                                        range_value=set_range,
+                                                        mode=self.mode))
         await self.check_error()
 
     async def start_scan(self):
         """Start storing values to the buffer."""
-        await self.write(f"{self.commands.clear_buffer()}")
-        await self.write(f"{self.commands.format_trac()}")
-        await self.write(f"{self.commands.set_buffer_size(50000)}")
-        await self.write(f"{self.commands.select_device_timer()}")
-        await self.write(f"{self.commands.next_read()}")
+        await self.send_command(f"{self.commands.clear_buffer()}")
+        await self.send_command(f"{self.commands.format_trac()}")
+        await self.send_command(f"{self.commands.set_buffer_size(50000)}")
+        await self.send_command(f"{self.commands.select_device_timer()}")
+        await self.send_command(f"{self.commands.next_read()}")
         self.manual_start_time = time.time()
 
     async def start_scan_dt(self, scan_duration):
@@ -241,9 +235,8 @@ class ElectrometerController:
     async def stop_scan(self):
         """Stop storing values to the buffer."""
         self.manual_end_time = time.time()
-        await self.write(f"{self.commands.stop_storing_buffer()}")
-        await self.write(f"{self.commands.read_buffer()}")
-        res = self.read()
+        await self.send_command(f"{self.commands.stop_storing_buffer()}")
+        res = await self.send_command(f"{self.commands.read_buffer()}")
         intensity, times, temperature, unit = self.parse_buffer(res)
         self.write_fits_file(intensity, times, temperature, unit)
 
@@ -306,38 +299,32 @@ class ElectrometerController:
 
     async def check_error(self):
         """Check the error."""
-        await self.write(f"{self.commands.get_last_error()}")
-        res = await self.read()
+        res = await self.send_command(f"{self.commands.get_last_error()}", has_reply=True)
         self.error_code, self.message = res.split(",")
 
     async def get_mode(self):
         """Get the mode/unit."""
-        await self.write(f"{self.commands.get_mode()}")
-        res = await self.read()
+        res = await self.send_command(f"{self.commands.get_mode()}", has_reply=True)
         mode, unit = res.split(":")
         mode = mode.replace('"', '')
         self.mode = UnitMode(UnitMode[mode].value)
 
     async def get_avg_filter_status(self):
         """Get the average filter status."""
-        await self.write(f"{self.commands.get_filter_status(self.mode, 2)}")
-        res = await self.read()
+        res = await self.send_command(f"{self.commands.get_filter_status(self.mode, 2)}", has_reply=True)
         self.avg_filter_active = bool(res)
 
     async def get_med_filter_status(self):
         """Get the median filter status."""
-        await self.write(f"{self.commands.get_filter_status(self.mode, 1)}")
-        res = await self.read()
+        res = await self.send_command(f"{self.commands.get_filter_status(self.mode, 1)}", has_reply=True)
         self.median_filter_active = bool(res)
 
     async def get_range(self):
         """Get the range value."""
-        await self.write(f"{self.commands.get_range(self.mode)}")
-        res = await self.read()
+        res = await self.send_command(f"{self.commands.get_range(self.mode)}", has_reply=True)
         self.range = float(res)
 
     async def get_integration_time(self):
         """Get the integration time value."""
-        await self.write(f"{self.commands.get_integration_time(self.mode)}")
-        res = await self.commander.read()
+        res = await self.send_command(f"{self.commands.get_integration_time(self.mode)}", has_reply=True)
         self.integration_time = float(res)

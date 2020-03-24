@@ -1,8 +1,8 @@
 from .enums import UnitMode, Filter, AverFilterType, readingOption
 
 
-class ElectrometerCommand:
-    """Class that contains commands to control the electrometer via RS-232.
+class ElectrometerCommandFactory:
+    """Class that formats commands to control the electrometer via RS-232.
     """
     def __init__(self):
         pass
