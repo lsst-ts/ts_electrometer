@@ -1,10 +1,8 @@
-import queue
 from . import controller
 
 
 class ElectrometerModel:
     def __init__(self):
-        self.buffer = queue.Queue(maxsize=50000)
         self.controller = None
 
     def configure(self, config):
@@ -28,7 +26,6 @@ class ElectrometerModel:
         self.controller.range = set_range
 
     async def start_scan(self):
-        print("model start scan")
         await self.controller.start_scan()
 
     def start_scan_dt(self, scan_duration):
