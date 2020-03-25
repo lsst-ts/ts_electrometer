@@ -19,6 +19,6 @@ class AverFilterType(enum.IntEnum):
     ADV = 3
 
 
-class readingOption(enum.IntEnum):
+class ReadingOption(enum.IntEnum):
     LATEST = 1
     NEWREAD = 2

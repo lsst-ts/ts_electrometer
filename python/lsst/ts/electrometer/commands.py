@@ -1,4 +1,4 @@
-from .enums import UnitMode, Filter, AverFilterType, readingOption
+from .enums import UnitMode, Filter, AverFilterType, ReadingOption
 
 
 class ElectrometerCommandFactory:
@@ -74,7 +74,7 @@ class ElectrometerCommandFactory:
         command : str
             The generated command string.
         """
-        command = f":sens:{UnitMode(mode).name}:{Filter(filter_type).name}:stat?"
+        command = f":sens:{UnitMode(mode).name}:{Filter(filter_type).name}:stat?;"
         return command
 
     def set_avg_filter_status(self, mode, aver_filter_type):
@@ -233,7 +233,7 @@ class ElectrometerCommandFactory:
 
         Parameters
         ----------
-        read_option : enums.readingOption
+        read_option : enums.ReadingOption
             The reading option.
 
         Returns
@@ -241,7 +241,7 @@ class ElectrometerCommandFactory:
         command : str
             The generated command string.
         """
-        if (readingOption(read_option) == readingOption.LATEST):
+        if (ReadingOption(read_option) == ReadingOption.LATEST):
             command = ":sens:data?;"
         else:
             command = ":sens:data:fres?;"

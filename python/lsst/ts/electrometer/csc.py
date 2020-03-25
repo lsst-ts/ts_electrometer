@@ -93,7 +93,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         """
         self.controller.configure(config)
 
-    def handle_summary_state(self):
+    async def handle_summary_state(self):
         if self.enabled_or_disabled:
             if not self.connected:
                 await self.connect()
