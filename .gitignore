@@ -132,3 +132,7 @@ dmypy.json
 
 # vscode
 .vscode/*
+
+.tests
+.sconsign.dblite
+version.py
