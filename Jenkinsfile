@@ -11,7 +11,7 @@ pipeline {
 
     environment {
         XML_REPORT="jenkinsReport/report.xml"
-        MODULE_NAME="lsst.ts.ATHexapod"
+        MODULE_NAME="lsst.ts.electrometer"
     }
 
     stages {
