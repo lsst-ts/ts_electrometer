@@ -21,7 +21,7 @@ pipeline {
                     sh """
                         source /home/saluser/.setup.sh
                         pip install pyserial
-                        make_idl_files Electrometer
+                        make_idl_files.py Electrometer
                     """
                 }
             }
