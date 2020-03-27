@@ -1,6 +1,6 @@
 import unittest
 
-from lsst.ts.electrometer.commands import ElectrometerCommandFactory
+from lsst.ts.electrometer.commands_factory import ElectrometerCommandFactory
 
 
 class TestElectrometerCommandFactory(unittest.TestCase):

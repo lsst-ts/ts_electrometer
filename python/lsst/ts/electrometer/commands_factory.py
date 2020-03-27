@@ -1,4 +1,4 @@
-from .enums import UnitMode, Filter, AverFilterType, ReadingOption
+from . import enums
 
 
 class ElectrometerCommandFactory:
@@ -24,7 +24,7 @@ class ElectrometerCommandFactory:
         command : str
             The generated command string.
         """
-        command = f":sens:{UnitMode(mode).name}:{Filter(filter_type).name}:stat {int(active)};"
+        command = f":sens:{enums.UnitMode(mode).name}:{enums.Filter(filter_type).name}:stat {int(active)};"
         return command
 
     def get_avg_filter_status(self, mode):
@@ -40,7 +40,7 @@ class ElectrometerCommandFactory:
         command : str
             The generated command string.
         """
-        command = f":sens:{UnitMode(mode).name}:aver:type?;"
+        command = f":sens:{enums.UnitMode(mode).name}:aver:type?;"
         return command
 
     def get_med_filter_status(self, mode):
@@ -56,7 +56,7 @@ class ElectrometerCommandFactory:
         command : str
             The generated command string.
         """
-        command = f":sens:{UnitMode(mode).name}:med:stat?;"
+        command = f":sens:{enums.UnitMode(mode).name}:med:stat?;"
         return command
 
     def get_filter_status(self, mode, filter_type):
@@ -74,7 +74,7 @@ class ElectrometerCommandFactory:
         command : str
             The generated command string.
         """
-        command = f":sens:{UnitMode(mode).name}:{Filter(filter_type).name}:stat?;"
+        command = f":sens:{enums.UnitMode(mode).name}:{enums.Filter(filter_type).name}:stat?;"
         return command
 
     def set_avg_filter_status(self, mode, aver_filter_type):
@@ -92,7 +92,8 @@ class ElectrometerCommandFactory:
         command : str
             The generated command string.
         """
-        command = f":sens:{UnitMode(mode).name}:aver:type {AverFilterType(aver_filter_type).name};"
+        command = (f":sens:{enums.UnitMode(mode).name}:aver:type "
+                   f"{enums.AverFilterType(aver_filter_type).name};")
         return command
 
     def set_med_filter_status(self, mode, active):
@@ -110,7 +111,7 @@ class ElectrometerCommandFactory:
         command : str
             The generated command string.
         """
-        command = f":sens:{UnitMode(mode).name}:med:stat {int(active)};"
+        command = f":sens:{enums.UnitMode(mode).name}:med:stat {int(active)};"
         return command
 
     def always_read(self):
@@ -241,7 +242,7 @@ class ElectrometerCommandFactory:
         command : str
             The generated command string.
         """
-        if (ReadingOption(read_option) == ReadingOption.LATEST):
+        if (enums.ReadingOption(read_option) == enums.ReadingOption.LATEST):
             command = ":sens:data?;"
         else:
             command = ":sens:data:fres?;"
@@ -354,7 +355,7 @@ class ElectrometerCommandFactory:
         command : str
             The generated command string.
         """
-        command = f":sens:{UnitMode(mode).name}:aper {str(time)};"
+        command = f":sens:{enums.UnitMode(mode).name}:aper {str(time)};"
         return command
 
     def set_mode(self, mode):
@@ -370,7 +371,7 @@ class ElectrometerCommandFactory:
         command : str
             The generated command string.
         """
-        command = f":sens:func '{UnitMode(mode).name}';"
+        command = f":sens:func '{enums.UnitMode(mode).name}';"
         return command
 
     def set_range(self, auto, range_value, mode):
@@ -392,10 +393,10 @@ class ElectrometerCommandFactory:
             The generated command string.
         """
         if(auto):
-            command = ":sens:" + UnitMode(mode).name + ":rang:auto 1;"
+            command = ":sens:" + enums.UnitMode(mode).name + ":rang:auto 1;"
         else:
-            command = ":sens:" + UnitMode(mode).name + ":rang:auto 0;"
-            command += "\n:sens:" + UnitMode(mode).name + ":rang " + str(range_value) + ";"
+            command = ":sens:" + enums.UnitMode(mode).name + ":rang:auto 0;"
+            command += "\n:sens:" + enums.UnitMode(mode).name + ":rang " + str(range_value) + ";"
         return command
 
     def enable_sync(self, enable):
@@ -481,7 +482,7 @@ class ElectrometerCommandFactory:
         command : str
             The generated command string.
         """
-        command = ":sens:" + UnitMode(mode).name + ":rang?;"
+        command = ":sens:" + enums.UnitMode(mode).name + ":rang?;"
         return command
 
     def get_integration_time(self, mode):
@@ -497,7 +498,7 @@ class ElectrometerCommandFactory:
         command : str
             The generated command string.
         """
-        command = ":sens:" + UnitMode(mode).name + ":aper?;"
+        command = ":sens:" + enums.UnitMode(mode).name + ":aper?;"
         return command
 
     def enable_display(self, enable):
