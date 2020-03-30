@@ -24,7 +24,7 @@ This package is compatible with the scons build system and eups package manageme
 
 Developing ts_Electrometer
 ==========================
-Developing the ts_Electrometer package follows the TSSW developer guide.
+Developing the ts_Electrometer package follows the `TSSW developer guide <https://tssw-developer.lsst.io>`_.
 Code style is PEP-8 compliant with a few exceptions.
 Flake8 is a tool given by the development docker image for checking PEP-8 compliance.
 The setup.cfg file comes with the necessary exceptions already configured.
@@ -36,7 +36,7 @@ There is a mock_server module.
 Its not fully fleshed out yet.
 Currently you create a `socat` virtual serial port, then start the mock server using the master port as the argument.
 Commands can then be sent to the slave port and ideally any electrometer commands would respond similar to the real thing.
-However, the only command that's really implemented is the *IDN command.
+However, the only command that's really implemented is the `*IDN` command.
 
 Contributing
 ============
