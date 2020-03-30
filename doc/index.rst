@@ -34,9 +34,9 @@ Writing unit tests is done by using the unittest module style.
 
 There is a mock_server module.
 Its not fully fleshed out yet.
-Currently you create a `socat` virtual serial port, then start the mock server using the master port as the argument.
+Currently you create a ``socat`` virtual serial port, then start the mock server using the master port as the argument.
 Commands can then be sent to the slave port and ideally any electrometer commands would respond similar to the real thing.
-However, the only command that's really implemented is the `*IDN` command.
+However, the only command that's really implemented is the ``*IDN`` command.
 
 Contributing
 ============
