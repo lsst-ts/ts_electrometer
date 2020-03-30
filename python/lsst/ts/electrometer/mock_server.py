@@ -4,7 +4,7 @@ import re
 import threading
 import queue
 
-from serial import Serial
+import serial
 
 
 class ElectrometerSimulator:
@@ -32,11 +32,11 @@ class ElectrometerSimulator:
                     command_group = matched_command.group('cmd')
                     if command_group in self.command_calls:
                         called_command = self.command_calls[command_group]
-                        self.serial.write(called_command().encode())
+                        self.commander.write(called_command().encode())
 
     def start(self):
         self.log.debug(f"Starting simulator on {self.port}")
-        self.serial = Serial(self.port)
+        self.commander = serial.Serial(self.port)
         self.log.debug(f"real port is {self.serial.portstr}")
         thread = threading.Thread(target=self.cmd_loop)
         thread.start()

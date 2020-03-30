@@ -1,14 +1,13 @@
 import asyncio
 import time
 import re
-from types import SimpleNamespace
+import types
 
 import astropy.io.fits as fits
 import numpy as np
 import serial
 
-from .commands import ElectrometerCommandFactory
-from .enums import UnitMode, Filter
+from . import commands_factory, enums
 
 
 class ElectrometerController:
@@ -52,7 +51,7 @@ class ElectrometerController:
     """
     def __init__(self):
         self.commander = serial.Serial()
-        self.commands = ElectrometerCommandFactory()
+        self.commands = commands_factory.ElectrometerCommandFactory()
         self.mode = None
         self.range = None
         self.integration_time = 0.01
@@ -76,7 +75,7 @@ class ElectrometerController:
         config : types.Namespace
             The parsed yaml as a dict-like object.
         """
-        self.mode = UnitMode(config.mode)
+        self.mode = enums.UnitMode(config.mode)
         self.range = config.range
         self.integration_time = config.integration_time
         self.median_filter_active = config.median_filter_active
@@ -92,7 +91,7 @@ class ElectrometerController:
 
         Used for development purposes to develop/test controller code.
         """
-        config = SimpleNamespace()
+        config = types.SimpleNamespace()
         config.mode = 1
         config.range = -0.01
         config.integration_time = 0.01
@@ -163,13 +162,13 @@ class ElectrometerController:
             filter = False
         if activate_avg_filter is False and activate_filter is True:
             filter = False
-        await self.write(f"{self.commands.activate_filter(self.mode, Filter(2), filter)}")
+        await self.write(f"{self.commands.activate_filter(self.mode, enums.Filter(2), filter)}")
         filter = activate_filter
         if activate_med_filter is True and activate_filter is False:
             filter = False
         if activate_med_filter is False and activate_filter is True:
             filter = False
-        await self.send_command(f"{self.commands.activate_filter(self.mode, Filter(1), filter)}")
+        await self.send_command(f"{self.commands.activate_filter(self.mode, enums.Filter(1), filter)}")
         await self.check_error()
 
     async def set_integration_time(self, int_time):
@@ -307,7 +306,7 @@ class ElectrometerController:
         res = await self.send_command(f"{self.commands.get_mode()}", has_reply=True)
         mode, unit = res.split(":")
         mode = mode.replace('"', '')
-        self.mode = UnitMode(UnitMode[mode].value)
+        self.mode = enums.UnitMode(enums.UnitMode[mode].value)
 
     async def get_avg_filter_status(self):
         """Get the average filter status."""
