@@ -162,7 +162,7 @@ class ElectrometerController:
             filter = False
         if activate_avg_filter is False and activate_filter is True:
             filter = False
-        await self.write(f"{self.commands.activate_filter(self.mode, enums.Filter(2), filter)}")
+        await self.send_command(f"{self.commands.activate_filter(self.mode, enums.Filter(2), filter)}")
         filter = activate_filter
         if activate_med_filter is True and activate_filter is False:
             filter = False
@@ -223,7 +223,7 @@ class ElectrometerController:
         scan_duration : float
             The amount of time to store values for.
         """
-        await self.write(f"{self.commands.prepare_device_scan()}")
+        await self.send_command(f"{self.commands.prepare_device_scan()}")
         self.manual_start_time = time.time()
         dt = 0
         # FIXME blocking and needs to be non-blocking
