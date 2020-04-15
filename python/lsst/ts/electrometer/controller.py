@@ -235,7 +235,7 @@ class ElectrometerController:
         """Stop storing values to the buffer."""
         self.manual_end_time = time.time()
         await self.send_command(f"{self.commands.stop_storing_buffer()}")
-        res = await self.send_command(f"{self.commands.read_buffer()}")
+        res = await self.send_command(f"{self.commands.read_buffer()}", has_reply=True)
         intensity, times, temperature, unit = self.parse_buffer(res)
         self.write_fits_file(intensity, times, temperature, unit)
 
