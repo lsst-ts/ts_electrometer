@@ -121,9 +121,9 @@ class ElectrometerController:
             If false, then returns None.
         """
         async with self.serial_lock:
-            await self.commander.write(f"{command}\r".encode())
+            self.commander.write(f"{command}\r".encode())
         if has_reply:
-            reply = await self.commander.read_until(b"\n")
+            reply = self.commander.read_until(b"\n")
             return reply.decode().strip()
 
     async def connect(self):
