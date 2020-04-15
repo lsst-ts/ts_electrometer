@@ -122,9 +122,9 @@ class ElectrometerController:
         """
         async with self.serial_lock:
             self.commander.write(f"{command}\r".encode())
-        if has_reply:
-            reply = self.commander.read_until(b"\n")
-            return reply.decode().strip()
+            if has_reply:
+                reply = self.commander.read_until(b"\n")
+                return reply.decode().strip()
 
     async def connect(self):
         """Open connection to the electrometer."""
