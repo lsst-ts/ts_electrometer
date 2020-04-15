@@ -41,6 +41,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         self.controller = controller.ElectrometerController()
         self.run_event_loop = False
         self.event_loop_task = None
+        self._detailed_state = Electrometer.DetailedState.NOTREADINGSTATE
 
     def assert_substate(self, substates, action):
         """Assert the CSC is in the proper substate.
