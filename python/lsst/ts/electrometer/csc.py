@@ -107,8 +107,8 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
                 self.evt_integrationTime.set_put(intTime=self.controller.integration_time, force_output=True)
                 self.evt_measureRange.set_put(rangeValue=self.controller.range, force_output=True)
                 self.detailed_state = Electrometer.DetailedState.NOTREADINGSTATE
-        else:
-            self.controller.disconnect()
+            else:
+                self.controller.disconnect()
 
     async def do_performZeroCalib(self, data):
         """Perform zero calibration.
