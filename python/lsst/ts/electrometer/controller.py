@@ -66,6 +66,7 @@ class ElectrometerController:
         self.manual_start_time = None
         self.manual_end_time = None
         self.serial_lock = asyncio.Lock()
+        self.connected = False
 
     def configure(self, config):
         """Configure the controller.
@@ -120,7 +121,7 @@ class ElectrometerController:
             If false, then returns None.
         """
         async with self.serial_lock:
-            await self.commander.write(command.encode() + b"\r")
+            await self.commander.write(f"{command}\r".encode())
         if has_reply:
             reply = await self.commander.read_until(b"\n")
             return reply.decode().strip()
@@ -157,18 +158,18 @@ class ElectrometerController:
         activate_med_filter : bool
             Whether the median filter should be activated.
         """
-        filter = activate_filter
+        filter_active = activate_filter
         if activate_avg_filter is True and activate_filter is False:
-            filter = False
+            filter_active = False
         if activate_avg_filter is False and activate_filter is True:
-            filter = False
-        await self.send_command(f"{self.commands.activate_filter(self.mode, enums.Filter(2), filter)}")
-        filter = activate_filter
+            filter_active = False
+        await self.send_command(f"{self.commands.activate_filter(self.mode, enums.Filter(2), filter_active)}")
+        filter_active = activate_filter
         if activate_med_filter is True and activate_filter is False:
-            filter = False
+            filter_active = False
         if activate_med_filter is False and activate_filter is True:
-            filter = False
-        await self.send_command(f"{self.commands.activate_filter(self.mode, enums.Filter(1), filter)}")
+            filter_active = False
+        await self.send_command(f"{self.commands.activate_filter(self.mode, enums.Filter(1), filter_active)}")
         await self.check_error()
 
     async def set_integration_time(self, int_time):
@@ -201,9 +202,8 @@ class ElectrometerController:
         set_range : float
             The new range value.
         """
-        await self.send_command(self.commands.set_range(auto=self.auto_range,
-                                                        range_value=set_range,
-                                                        mode=self.mode))
+        await self.send_command(
+            f"{self.commands.set_range(auto=self.auto_range, range_value=set_range, mode=self.mode)}")
         await self.check_error()
 
     async def start_scan(self):
