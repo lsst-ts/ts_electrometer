@@ -95,7 +95,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
 
     async def handle_summary_state(self):
         if self.disabled_or_enabled:
-            if not self.connected:
+            if not self.controller.connected:
                 await self.controller.connect()
                 self.evt_measureType.set_put(mode=self.controller.mode.value, force_output=True)
                 self.evt_digitalFilterChange.set_put(
