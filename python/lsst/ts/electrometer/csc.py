@@ -94,9 +94,9 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         self.controller.configure(config)
 
     async def handle_summary_state(self):
-        if self.enabled_or_disabled:
+        if self.disabled_or_enabled:
             if not self.connected:
-                await self.connect()
+                await self.controller.connect()
                 self.evt_measureType.set_put(mode=self.controller.mode.value, force_output=True)
                 self.evt_digitalFilterChange.set_put(
                     activateFilter=self.controller.filter_active,
@@ -107,16 +107,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
                 self.evt_measureRange.set_put(rangeValue=self.controller.range, force_output=True)
                 self.detailed_state = Electrometer.DetailedState.NOTREADINGSTATE
         else:
-            self.disconnect()
-
-    async def end_enable(self, data):
-        """Connect the electrometer and configure to the settings specified.
-
-        Parameters
-        ----------
-        data : data
-            The data for the hook.
-        """
+            self.controller.disconnect()
 
     async def do_performZeroCalib(self, data):
         """Perform zero calibration.
