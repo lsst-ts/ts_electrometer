@@ -95,24 +95,21 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         self.controller.configure(config)
 
     async def handle_summary_state(self):
-        try:
-            if self.disabled_or_enabled:
-                if not self.controller.connected:
-                    await self.controller.connect()
-                    self.evt_measureType.set_put(mode=self.controller.mode.value, force_output=True)
-                    self.evt_digitalFilterChange.set_put(
-                        activateFilter=self.controller.filter_active,
-                        activateAverageFilter=self.controller.avg_filter_active,
-                        activateMedianFilter=self.controller.median_filter_active,
-                        force_output=True)
-                    self.evt_integrationTime.set_put(intTime=self.controller.integration_time,
-                                                     force_output=True)
-                    self.evt_measureRange.set_put(rangeValue=self.controller.range, force_output=True)
-                    self.detailed_state = Electrometer.DetailedState.NOTREADINGSTATE
-            else:
-                self.controller.disconnect()
-        except Exception as e:
-            self.log.exception(e)
+        if self.disabled_or_enabled:
+            if not self.controller.connected:
+                await self.controller.connect()
+                self.evt_measureType.set_put(mode=self.controller.mode.value, force_output=True)
+                self.evt_digitalFilterChange.set_put(
+                    activateFilter=self.controller.filter_active,
+                    activateAverageFilter=self.controller.avg_filter_active,
+                    activateMedianFilter=self.controller.median_filter_active,
+                    force_output=True)
+                self.evt_integrationTime.set_put(intTime=self.controller.integration_time,
+                                                 force_output=True)
+                self.evt_measureRange.set_put(rangeValue=self.controller.range, force_output=True)
+                self.detailed_state = Electrometer.DetailedState.NOTREADINGSTATE
+        else:
+            self.controller.disconnect()
 
     async def do_performZeroCalib(self, data):
         """Perform zero calibration.
