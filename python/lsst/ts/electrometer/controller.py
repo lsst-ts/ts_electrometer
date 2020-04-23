@@ -158,17 +158,9 @@ class ElectrometerController:
         activate_med_filter : bool
             Whether the median filter should be activated.
         """
-        filter_active = activate_filter
-        if activate_avg_filter is True and activate_filter is False:
-            filter_active = False
-        if activate_avg_filter is False and activate_filter is True:
-            filter_active = False
+        filter_active = activate_avg_filter and activate_filter
         await self.send_command(f"{self.commands.activate_filter(self.mode, enums.Filter(2), filter_active)}")
-        filter_active = activate_filter
-        if activate_med_filter is True and activate_filter is False:
-            filter_active = False
-        if activate_med_filter is False and activate_filter is True:
-            filter_active = False
+        filter_active = activate_med_filter and activate_filter
         await self.send_command(f"{self.commands.activate_filter(self.mode, enums.Filter(1), filter_active)}")
         await self.check_error()
 
