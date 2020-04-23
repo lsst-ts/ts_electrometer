@@ -41,6 +41,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         self.controller = controller.ElectrometerController()
         self.run_event_loop = False
         self.event_loop_task = None
+        self._detailed_state = Electrometer.DetailedState.NOTREADINGSTATE
 
     def assert_substate(self, substates, action):
         """Assert the CSC is in the proper substate.
@@ -94,29 +95,21 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         self.controller.configure(config)
 
     async def handle_summary_state(self):
-        if self.enabled_or_disabled:
-            if not self.connected:
-                await self.connect()
+        if self.disabled_or_enabled:
+            if not self.controller.connected:
+                await self.controller.connect()
                 self.evt_measureType.set_put(mode=self.controller.mode.value, force_output=True)
                 self.evt_digitalFilterChange.set_put(
                     activateFilter=self.controller.filter_active,
                     activateAverageFilter=self.controller.avg_filter_active,
                     activateMedianFilter=self.controller.median_filter_active,
                     force_output=True)
-                self.evt_integrationTime.set_put(intTime=self.controller.integration_time, force_output=True)
+                self.evt_integrationTime.set_put(intTime=self.controller.integration_time,
+                                                 force_output=True)
                 self.evt_measureRange.set_put(rangeValue=self.controller.range, force_output=True)
                 self.detailed_state = Electrometer.DetailedState.NOTREADINGSTATE
         else:
-            self.disconnect()
-
-    async def end_enable(self, data):
-        """Connect the electrometer and configure to the settings specified.
-
-        Parameters
-        ----------
-        data : data
-            The data for the hook.
-        """
+            self.controller.disconnect()
 
     async def do_performZeroCalib(self, data):
         """Perform zero calibration.

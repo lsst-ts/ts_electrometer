@@ -66,6 +66,7 @@ class ElectrometerController:
         self.manual_start_time = None
         self.manual_end_time = None
         self.serial_lock = asyncio.Lock()
+        self.connected = False
 
     def configure(self, config):
         """Configure the controller.
@@ -120,10 +121,10 @@ class ElectrometerController:
             If false, then returns None.
         """
         async with self.serial_lock:
-            await self.commander.write(command.encode() + b"\r")
-        if has_reply:
-            reply = await self.commander.read_until(b"\n")
-            return reply.decode().strip()
+            self.commander.write(f"{command}\r".encode())
+            if has_reply:
+                reply = self.commander.read_until(b"\n")
+                return reply.decode().strip()
 
     async def connect(self):
         """Open connection to the electrometer."""
@@ -157,18 +158,10 @@ class ElectrometerController:
         activate_med_filter : bool
             Whether the median filter should be activated.
         """
-        filter = activate_filter
-        if activate_avg_filter is True and activate_filter is False:
-            filter = False
-        if activate_avg_filter is False and activate_filter is True:
-            filter = False
-        await self.write(f"{self.commands.activate_filter(self.mode, enums.Filter(2), filter)}")
-        filter = activate_filter
-        if activate_med_filter is True and activate_filter is False:
-            filter = False
-        if activate_med_filter is False and activate_filter is True:
-            filter = False
-        await self.send_command(f"{self.commands.activate_filter(self.mode, enums.Filter(1), filter)}")
+        filter_active = activate_avg_filter and activate_filter
+        await self.send_command(f"{self.commands.activate_filter(self.mode, enums.Filter(2), filter_active)}")
+        filter_active = activate_med_filter and activate_filter
+        await self.send_command(f"{self.commands.activate_filter(self.mode, enums.Filter(1), filter_active)}")
         await self.check_error()
 
     async def set_integration_time(self, int_time):
@@ -201,9 +194,8 @@ class ElectrometerController:
         set_range : float
             The new range value.
         """
-        await self.send_command(self.commands.set_range(auto=self.auto_range,
-                                                        range_value=set_range,
-                                                        mode=self.mode))
+        await self.send_command(
+            f"{self.commands.set_range(auto=self.auto_range, range_value=set_range, mode=self.mode)}")
         await self.check_error()
 
     async def start_scan(self):
@@ -223,7 +215,7 @@ class ElectrometerController:
         scan_duration : float
             The amount of time to store values for.
         """
-        await self.write(f"{self.commands.prepare_device_scan()}")
+        await self.send_command(f"{self.commands.prepare_device_scan()}")
         self.manual_start_time = time.time()
         dt = 0
         # FIXME blocking and needs to be non-blocking
@@ -235,7 +227,7 @@ class ElectrometerController:
         """Stop storing values to the buffer."""
         self.manual_end_time = time.time()
         await self.send_command(f"{self.commands.stop_storing_buffer()}")
-        res = await self.send_command(f"{self.commands.read_buffer()}")
+        res = await self.send_command(f"{self.commands.read_buffer()}", has_reply=True)
         intensity, times, temperature, unit = self.parse_buffer(res)
         self.write_fits_file(intensity, times, temperature, unit)
 
