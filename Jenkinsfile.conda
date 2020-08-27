@@ -10,7 +10,7 @@ pipeline {
         }
     }
     environment {
-        package_name = electrometer
+        package_name = "electrometer"
         // name of the csc package without the ts prefix i.e. "athexapod"
         OSPL_HOME="/opt/OpenSpliceDDS/V6.9.0/HDE/x86_64.linux"
     }
