@@ -12,8 +12,8 @@ __all__ = ["__version__"]
 
 __version__ = "{version}"
 """
-tools_path = pathlib.PurePosixPath(setuptools.__path__[0])
-base_prefix = pathlib.PurePosixPath(sys.base_prefix)
+tools_path = pathlib.Path(setuptools.__path__[0])
+base_prefix = pathlib.Path(sys.base_prefix)
 data_files_path = tools_path.relative_to(base_prefix).parents[1]
 
 setuptools.setup(
