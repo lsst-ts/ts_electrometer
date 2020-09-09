@@ -11,11 +11,15 @@ Installation
 .. code::
 
     setup -kr .
-    scons python
+    scons
 
 .. code::
 
     pip install .[dev]
+
+.. code::
+
+    git config core.hooksPath .githooks
 
 
 Usage

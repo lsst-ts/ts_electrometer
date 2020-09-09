@@ -49,6 +49,7 @@ class ElectrometerController:
         The lock for protecting the synchronous serial communication.
 
     """
+
     def __init__(self):
         self.commander = serial.Serial()
         self.commands = commands_factory.ElectrometerCommandFactory()
@@ -133,7 +134,9 @@ class ElectrometerController:
         # self.commander.write(self.commands.enable_display(False).encode())
         await self.set_mode(self.mode)
         await self.set_range(self.range)
-        await self.set_digital_filter(self.filter_active, self.avg_filter_active, self.median_filter_active)
+        await self.set_digital_filter(
+            self.filter_active, self.avg_filter_active, self.median_filter_active
+        )
 
     def disconnect(self):
         """Close connection to the electrometer."""
@@ -144,9 +147,12 @@ class ElectrometerController:
     async def perform_zero_calibration(self):
         """Perform zero calibration."""
         await self.send_command(
-            f"{self.commands.perform_zero_calibration(self.mode,self.auto_range,self.range)}")
+            f"{self.commands.perform_zero_calibration(self.mode,self.auto_range,self.range)}"
+        )
 
-    async def set_digital_filter(self, activate_filter, activate_avg_filter, activate_med_filter):
+    async def set_digital_filter(
+        self, activate_filter, activate_avg_filter, activate_med_filter
+    ):
         """Set the digital filter(s).
 
         Parameters
@@ -159,9 +165,13 @@ class ElectrometerController:
             Whether the median filter should be activated.
         """
         filter_active = activate_avg_filter and activate_filter
-        await self.send_command(f"{self.commands.activate_filter(self.mode, enums.Filter(2), filter_active)}")
+        await self.send_command(
+            f"{self.commands.activate_filter(self.mode, enums.Filter(2), filter_active)}"
+        )
         filter_active = activate_med_filter and activate_filter
-        await self.send_command(f"{self.commands.activate_filter(self.mode, enums.Filter(1), filter_active)}")
+        await self.send_command(
+            f"{self.commands.activate_filter(self.mode, enums.Filter(1), filter_active)}"
+        )
         await self.check_error()
 
     async def set_integration_time(self, int_time):
@@ -172,7 +182,9 @@ class ElectrometerController:
         int_time : `float`
             The integration time.
         """
-        await self.send_command(f"{self.commands.integration_time(mode=self.mode, time=int_time)}")
+        await self.send_command(
+            f"{self.commands.integration_time(mode=self.mode, time=int_time)}"
+        )
         await self.check_error()
 
     async def set_mode(self, mode):
@@ -195,7 +207,8 @@ class ElectrometerController:
             The new range value.
         """
         await self.send_command(
-            f"{self.commands.set_range(auto=self.auto_range, range_value=set_range, mode=self.mode)}")
+            f"{self.commands.set_range(auto=self.auto_range, range_value=set_range, mode=self.mode)}"
+        )
         await self.check_error()
 
     async def start_scan(self):
@@ -248,9 +261,11 @@ class ElectrometerController:
         data = np.array([times, intensity])
         hdu = fits.PrimaryHDU(data)
         hdr = hdu.header
-        hdr['CLMN1'] = ("Time", "Time in seconds")
-        hdr['CLMN2'] = ("Intensity")
-        hdu.writeto(f'/home/saluser/{self.manual_start_time}_{self.manual_end_time}.fits')
+        hdr["CLMN1"] = ("Time", "Time in seconds")
+        hdr["CLMN2"] = "Intensity"
+        hdu.writeto(
+            f"/home/saluser/{self.manual_start_time}_{self.manual_end_time}.fits"
+        )
 
     def parse_buffer(self, response):
         """Parse the buffer values.
@@ -283,39 +298,49 @@ class ElectrometerController:
             temperature.append(0)
             unit.append(unsorted_str_values[i])
             i += 3
-            if(i >= len(unsorted_values) - 2):
+            if i >= len(unsorted_values) - 2:
                 break
 
         return intensity, time, temperature, unit
 
     async def check_error(self):
         """Check the error."""
-        res = await self.send_command(f"{self.commands.get_last_error()}", has_reply=True)
+        res = await self.send_command(
+            f"{self.commands.get_last_error()}", has_reply=True
+        )
         self.error_code, self.message = res.split(",")
 
     async def get_mode(self):
         """Get the mode/unit."""
         res = await self.send_command(f"{self.commands.get_mode()}", has_reply=True)
         mode, unit = res.split(":")
-        mode = mode.replace('"', '')
+        mode = mode.replace('"', "")
         self.mode = enums.UnitMode(enums.UnitMode[mode].value)
 
     async def get_avg_filter_status(self):
         """Get the average filter status."""
-        res = await self.send_command(f"{self.commands.get_filter_status(self.mode, 2)}", has_reply=True)
+        res = await self.send_command(
+            f"{self.commands.get_filter_status(self.mode, 2)}", has_reply=True
+        )
         self.avg_filter_active = bool(res)
 
     async def get_med_filter_status(self):
         """Get the median filter status."""
-        res = await self.send_command(f"{self.commands.get_filter_status(self.mode, 1)}", has_reply=True)
+        res = await self.send_command(
+            f"{self.commands.get_filter_status(self.mode, 1)}", has_reply=True
+        )
         self.median_filter_active = bool(res)
 
     async def get_range(self):
         """Get the range value."""
-        res = await self.send_command(f"{self.commands.get_range(self.mode)}", has_reply=True)
+        res = await self.send_command(
+            f"{self.commands.get_range(self.mode)}", has_reply=True
+        )
         self.range = float(res)
 
     async def get_integration_time(self):
         """Get the integration time value."""
-        res = await self.send_command(f"{self.commands.get_integration_time(self.mode)}", has_reply=True)
+        res = await self.send_command(
+            f"{self.commands.get_integration_time(self.mode)}", has_reply=True
+        )
         self.integration_time = float(res)

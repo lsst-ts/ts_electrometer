@@ -4,6 +4,7 @@ import enum
 class UnitMode(enum.IntEnum):
     """The units for the electrometer.
     """
+
     CURR = 1
     """Current"""
     CHAR = 2
@@ -17,6 +18,7 @@ class UnitMode(enum.IntEnum):
 class Filter(enum.IntEnum):
     """The type of filters
     """
+
     MED = 1
     """Median filter"""
     AVER = 2
@@ -26,6 +28,7 @@ class Filter(enum.IntEnum):
 class AverFilterType(enum.IntEnum):
     """The type of average filters.
     """
+
     NONE = 1
     """No algorithm applied"""
     SCAL = 2
@@ -37,6 +40,7 @@ class AverFilterType(enum.IntEnum):
 class ReadingOption(enum.IntEnum):
     """The type of data reading.
     """
+
     LATEST = 1
     """Get the latest reading"""
     NEWREAD = 2
