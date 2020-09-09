@@ -30,7 +30,7 @@ setuptools.setup(
     data_files=[
         (os.path.join(data_files_path, "schema"), ["schema/Electrometer.yaml"])
     ],
-    scripts=["bin/RunElectrometer.py"],
+    scripts=["bin/run_electrometer.py"],
     tests_require=test_reqs,
     license="GPL",
     extras_require={"dev": dev_reqs},

@@ -15,37 +15,37 @@ class ElectrometerController:
 
     Attributes
     ----------
-    commander : serial.Serial
+    commander : `serial.Serial`
         The serial interface for writing and reading from the device.
-    commands : ElectrometerCommand
+    commands : `ElectrometerCommandFactory`
         The interface for providing formatted commands for the commander.
-    mode : UnitMode
+    mode : `UnitMode`
         The mode/unit of the electrometer.
-    range : float
+    range : `float`
         The range of intensities that the electrometer can read.
-    integration_time : float
+    integration_time : `float`
         The amount of time the electrometer reads per scan.
-    median_filter_active : bool
+    median_filter_active : `bool`
         Whether the median filter is active.
-    filter_active : bool
+    filter_active : `bool`
         Whether any filter is active.
-    avg_filter_active : bool
+    avg_filter_active : `bool`
         Whether the average filter is active.
-    connected : bool
+    connected : `bool`
         Whether the port is open.
-    last_value : int
+    last_value : `int`
         The last value of the electrometer intensity read.
-    read_freq : float
+    read_freq : `float`
         The frequency that readings are gotten from the device buffer.
-    configuration_delay : float
+    configuration_delay : `float`
         The delay to allow the electrometer to configure.
-    auto_range : bool
+    auto_range : `bool`
         Whether automatic range is active.
-    manual_start_time : int
+    manual_start_time : `int`
         The start time of a scan.
-    manual_end_time : int
+    manual_end_time : `int`
         The end time of a scan.
-    serial_lock : asyncio.Lock
+    serial_lock : `asyncio.Lock`
         The lock for protecting the synchronous serial communication.
 
     """
@@ -73,7 +73,7 @@ class ElectrometerController:
 
         Parameters
         ----------
-        config : types.Namespace
+        config : `types.Namespace`
             The parsed yaml as a dict-like object.
         """
         self.mode = enums.UnitMode(config.mode)
@@ -109,14 +109,14 @@ class ElectrometerController:
 
         Parameters
         ----------
-        command : str
+        command : `str`
             The message to be sent.
-        has_reply : bool
+        has_reply : `bool`
             Whether the message has a reply.
 
         Returns
         -------
-        reply : str or None
+        reply : `str` or `None`
             If has_reply is True then returns string reply.
             If false, then returns None.
         """
@@ -151,11 +151,11 @@ class ElectrometerController:
 
         Parameters
         ----------
-        activate_filter: bool
+        activate_filter: `bool`
             Whether any filter should be activated.
-        activate_avg_filter : bool
+        activate_avg_filter : `bool`
             Whether the average filter should be activated.
-        activate_med_filter : bool
+        activate_med_filter : `bool`
             Whether the median filter should be activated.
         """
         filter_active = activate_avg_filter and activate_filter
@@ -169,7 +169,7 @@ class ElectrometerController:
 
         Parameters
         ----------
-        int_time : float
+        int_time : `float`
             The integration time.
         """
         await self.send_command(f"{self.commands.integration_time(mode=self.mode, time=int_time)}")
@@ -180,7 +180,7 @@ class ElectrometerController:
 
         Parameters
         ----------
-        mode : int
+        mode : `int`
             The mode of the electrometer.
         """
         await self.send_command(f"{self.commands.set_mode(mode=mode)}")
@@ -191,7 +191,7 @@ class ElectrometerController:
 
         Parameters
         ----------
-        set_range : float
+        set_range : `float`
             The new range value.
         """
         await self.send_command(
@@ -212,7 +212,7 @@ class ElectrometerController:
 
         Parameters
         ----------
-        scan_duration : float
+        scan_duration : `float`
             The amount of time to store values for.
         """
         await self.send_command(f"{self.commands.prepare_device_scan()}")
@@ -236,13 +236,13 @@ class ElectrometerController:
 
         Parameters
         ----------
-        intensity : list
+        intensity : `list`
             The intensity values
-        times : list
+        times : `list`
             The time of the intensity value
-        temperature : list
+        temperature : `list`
             The temperature of the intensity value
-        unit : list
+        unit : `list`
             The unit of the intensity value.
         """
         data = np.array([times, intensity])
@@ -257,18 +257,18 @@ class ElectrometerController:
 
         Parameters
         ----------
-        response : str
+        response : `str`
             The response from the read buffer command.
 
         Returns
         -------
-        intensity : list
+        intensity : `list`
             The intensity values
-        time : list
+        time : `list`
             The time values
-        temperature : list
+        temperature : `list`
             The temperature values.
-        unit : list
+        unit : `list`
             The unit values.
         """
         regex_numbers = r"[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?"

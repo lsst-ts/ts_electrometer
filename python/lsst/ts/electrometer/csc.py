@@ -11,24 +11,24 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
 
     Parameters
     ----------
-    index : int
+    index : `int`
         The index of the CSC.
-    config_dir : str
+    config_dir : `str`
         Path to config directory.
         One is provided for you in another method.
-    initial_state : salobj.State
+    initial_state : `salobj.State`
         The initial state of the CSC.
         Should be used for unit tests and development.
-    initial_simulation_mode : int
+    initial_simulation_mode : `int`
         The simulation mode of the CSC.
 
     Attributes
     ----------
-    controller : controller.ElectrometerController
+    controller : `ElectrometerController`
         The controller object for the electrometer.
-    run_event_loop : bool
+    run_event_loop : `bool`
         Whether the event loop runs.
-    event_loop_task : asyncio.Task
+    event_loop_task : `asyncio.Task`
         A task for handling the event loop.
         Currently not implemented.
     """
