@@ -55,6 +55,19 @@ pipeline {
                 }
             }
         }
+        stage('Build and Upload Documentation') {
+            steps {
+                withEnv(["HOME=${env.WORKSPACE}"]) {
+                    sh """
+                        source /home/saluser/.setup_dev.sh
+                        pip install .
+                        pip install -r doc/requirements.txt
+                        package-docs build
+                        ltd upload --product ts-electrometer --git-ref ${GIT_BRANCH} --dir doc/_build/html
+                    """
+                }
+            }
+        }
     }
 
     post {
