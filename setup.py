@@ -18,7 +18,7 @@ data_files_path = tools_path.relative_to(base_prefix).parents[1]
 
 setuptools.setup(
     name="ts-electrometer",
-    user_scm_version={
+    use_scm_version={
         "write_to": "python/lsst/ts/electrometer/version.py",
         "write_to_template": scm_version_template,
     },
