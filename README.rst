@@ -2,9 +2,12 @@
 ts_electrometer
 ###############
 
-The Electrometer is a CSC for the Vera C. Rubin Observatory.
-It is part of the Observatory Control System.
-It measures the amount of light within a given space.
+The Electrometer CSC is used to control a Keithley 6417b Electrometer which are used to monitor photodiodes throughout the Vera C. Rubin Observatory.
+The photodiode is used to measure the intensity of light sources.
+The photons release electrons in the photodiode, which get readout and quantified by the electrometer.
+The primary use-case of the photodiode+electrometer system is for the calibration (flat field) screens for both the main and auxiliary telescopes.
+
+`Documentation <https://ts-electrometer.lsst.io>`_
 
 Installation
 ============

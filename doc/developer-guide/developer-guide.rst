@@ -7,6 +7,8 @@ Electrometer Developer Guide
 The Electrometer is a standard salobj CSC.
 It communicates over a RS-232 serial communication.
 
+`Docushare collection <https://docushare.lsst.org/docushare/dsweb/View/Collection-5176>`_
+
 .. _Dependencies:
 
 Dependencies
@@ -68,6 +70,8 @@ Simulator
 =========
 
 A prototype simulator is provided but it needs a way to convert a tcp/ip connection to serial.
+The simulator opens a tcp/ip connection as thats easier to handle for writing a simulator.
+However, the device is a serial connection and so the simulator needs to be able to transfer the data to a serial port.
 
 
 .. _Firmware:
@@ -83,6 +87,9 @@ The firmware for the electrometer is not updatable.
 Building the Documentation
 ==========================
 
+It is assumed that the user is inside the develop-env container.
+The following command will build a local copy of the documentation.
+
 .. prompt:: bash
 
     package-docs clean && package-docs build
@@ -93,6 +100,6 @@ Contributing
 ============
 
 Code and documentation contributions utilize pull-requests on github.
-Feature requests can be made by filing a Jira ticket with the `ts_electrometer2` label.
+Feature requests can be made by filing a Jira ticket with the `ts_electrometer` label.
 In all cases, reaching out to the :ref:`contacts for this CSC <ts_xml:index:master-csc-table:Electrometer>` is recommended.
 

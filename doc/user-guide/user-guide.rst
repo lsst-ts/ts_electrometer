@@ -4,9 +4,15 @@
 Electrometer User Guide
 #######################
 
-The electrometer is a Keithley Spectrograph that measures the amount of electrons in proximity with a sensor.
+This CSC is used to control Keithley 6417b electrometers.
+The primary use-case is to read/monitor the electrical signals from a Hamamatsu S2281 photodiode, however it can be used with other devices.
+The device is generally used in a current and charge measuring modes.
 It communicates over RS-232 serial cable.
-The computer that it is connected to uses a RS-232 to USB type A cable.
+The computer that it is connected to uses a straight-through RS-232 to USB type A cable.
+
+The device creates a FITS file.
+It tracks time and intensity.
+The fits files are stored on the disk of the docker container.
 
 Electrometer Interface
 ======================
@@ -16,6 +22,8 @@ Link to the XML is located at the top of the :doc:`index </index>`.
 
 Example Use-Case
 ================
+
+The following example demonstrates how to instantiate a single electrometer, then perform a reading of an arbitrary length.
 
 .. code::
 
