@@ -70,8 +70,8 @@ Simulator
 =========
 
 A prototype simulator is provided but it needs a way to convert a tcp/ip connection to serial.
-The simulator opens a tcp/ip connection as thats easier to handle for writing a simulator.
-However, the device is a serial connection and so the simulator needs to be able to transfer the data to a serial port.
+The simulator opens a tcp/ip connection as thats an easier connection to handle for writing a simulator.
+However, the device is a serial connection and so the simulator needs to be able to be able to open a fake serial connection.
 
 
 .. _Firmware:
