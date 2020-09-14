@@ -13,9 +13,7 @@ class ElectrometerSimulator:
         self.log = logging.Logger(__name__)
         self.buffer = queue.Queue(maxsize=50000)
         self.command_calls = {"*IDN?": self.get_identification}
-        self.commands_regexes = [
-            re.compile(r"^(?P<cmd>\*IDN\?)$")
-        ]
+        self.commands_regexes = [re.compile(r"^(?P<cmd>\*IDN\?)$")]
 
     def cmd_loop(self):
         while True:
@@ -29,7 +27,7 @@ class ElectrometerSimulator:
                 self.log.debug(f"{matched_command}")
                 if matched_command:
                     self.log.debug(f"Matched {decoded_rec}")
-                    command_group = matched_command.group('cmd')
+                    command_group = matched_command.group("cmd")
                     if command_group in self.command_calls:
                         called_command = self.command_calls[command_group]
                         self.commander.write(called_command().encode())
@@ -53,12 +51,12 @@ def main():
     ch = logging.StreamHandler()
     ch.setLevel(logging.DEBUG)
     parser = argparse.ArgumentParser(description="Run the electrometer simulator")
-    parser.add_argument('port', type=str, nargs=1, help='The master serial port')
+    parser.add_argument("port", type=str, nargs=1, help="The master serial port")
     args = parser.parse_args()
     electrometer_simulator = ElectrometerSimulator(args.port[0])
     electrometer_simulator.log.addHandler(ch)
     electrometer_simulator.start()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

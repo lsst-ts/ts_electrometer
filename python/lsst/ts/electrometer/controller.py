@@ -15,40 +15,41 @@ class ElectrometerController:
 
     Attributes
     ----------
-    commander : serial.Serial
+    commander : `serial.Serial`
         The serial interface for writing and reading from the device.
-    commands : ElectrometerCommand
+    commands : `ElectrometerCommandFactory`
         The interface for providing formatted commands for the commander.
-    mode : UnitMode
+    mode : `UnitMode`
         The mode/unit of the electrometer.
-    range : float
+    range : `float`
         The range of intensities that the electrometer can read.
-    integration_time : float
+    integration_time : `float`
         The amount of time the electrometer reads per scan.
-    median_filter_active : bool
+    median_filter_active : `bool`
         Whether the median filter is active.
-    filter_active : bool
+    filter_active : `bool`
         Whether any filter is active.
-    avg_filter_active : bool
+    avg_filter_active : `bool`
         Whether the average filter is active.
-    connected : bool
+    connected : `bool`
         Whether the port is open.
-    last_value : int
+    last_value : `int`
         The last value of the electrometer intensity read.
-    read_freq : float
+    read_freq : `float`
         The frequency that readings are gotten from the device buffer.
-    configuration_delay : float
+    configuration_delay : `float`
         The delay to allow the electrometer to configure.
-    auto_range : bool
+    auto_range : `bool`
         Whether automatic range is active.
-    manual_start_time : int
+    manual_start_time : `int`
         The start time of a scan.
-    manual_end_time : int
+    manual_end_time : `int`
         The end time of a scan.
-    serial_lock : asyncio.Lock
+    serial_lock : `asyncio.Lock`
         The lock for protecting the synchronous serial communication.
 
     """
+
     def __init__(self):
         self.commander = serial.Serial()
         self.commands = commands_factory.ElectrometerCommandFactory()
@@ -73,7 +74,7 @@ class ElectrometerController:
 
         Parameters
         ----------
-        config : types.Namespace
+        config : `types.Namespace`
             The parsed yaml as a dict-like object.
         """
         self.mode = enums.UnitMode(config.mode)
@@ -109,14 +110,14 @@ class ElectrometerController:
 
         Parameters
         ----------
-        command : str
+        command : `str`
             The message to be sent.
-        has_reply : bool
+        has_reply : `bool`
             Whether the message has a reply.
 
         Returns
         -------
-        reply : str or None
+        reply : `str` or `None`
             If has_reply is True then returns string reply.
             If false, then returns None.
         """
@@ -133,7 +134,9 @@ class ElectrometerController:
         # self.commander.write(self.commands.enable_display(False).encode())
         await self.set_mode(self.mode)
         await self.set_range(self.range)
-        await self.set_digital_filter(self.filter_active, self.avg_filter_active, self.median_filter_active)
+        await self.set_digital_filter(
+            self.filter_active, self.avg_filter_active, self.median_filter_active
+        )
 
     def disconnect(self):
         """Close connection to the electrometer."""
@@ -144,24 +147,31 @@ class ElectrometerController:
     async def perform_zero_calibration(self):
         """Perform zero calibration."""
         await self.send_command(
-            f"{self.commands.perform_zero_calibration(self.mode,self.auto_range,self.range)}")
+            f"{self.commands.perform_zero_calibration(self.mode,self.auto_range,self.range)}"
+        )
 
-    async def set_digital_filter(self, activate_filter, activate_avg_filter, activate_med_filter):
+    async def set_digital_filter(
+        self, activate_filter, activate_avg_filter, activate_med_filter
+    ):
         """Set the digital filter(s).
 
         Parameters
         ----------
-        activate_filter: bool
+        activate_filter: `bool`
             Whether any filter should be activated.
-        activate_avg_filter : bool
+        activate_avg_filter : `bool`
             Whether the average filter should be activated.
-        activate_med_filter : bool
+        activate_med_filter : `bool`
             Whether the median filter should be activated.
         """
         filter_active = activate_avg_filter and activate_filter
-        await self.send_command(f"{self.commands.activate_filter(self.mode, enums.Filter(2), filter_active)}")
+        await self.send_command(
+            f"{self.commands.activate_filter(self.mode, enums.Filter(2), filter_active)}"
+        )
         filter_active = activate_med_filter and activate_filter
-        await self.send_command(f"{self.commands.activate_filter(self.mode, enums.Filter(1), filter_active)}")
+        await self.send_command(
+            f"{self.commands.activate_filter(self.mode, enums.Filter(1), filter_active)}"
+        )
         await self.check_error()
 
     async def set_integration_time(self, int_time):
@@ -169,10 +179,12 @@ class ElectrometerController:
 
         Parameters
         ----------
-        int_time : float
+        int_time : `float`
             The integration time.
         """
-        await self.send_command(f"{self.commands.integration_time(mode=self.mode, time=int_time)}")
+        await self.send_command(
+            f"{self.commands.integration_time(mode=self.mode, time=int_time)}"
+        )
         await self.check_error()
 
     async def set_mode(self, mode):
@@ -180,7 +192,7 @@ class ElectrometerController:
 
         Parameters
         ----------
-        mode : int
+        mode : `int`
             The mode of the electrometer.
         """
         await self.send_command(f"{self.commands.set_mode(mode=mode)}")
@@ -191,11 +203,12 @@ class ElectrometerController:
 
         Parameters
         ----------
-        set_range : float
+        set_range : `float`
             The new range value.
         """
         await self.send_command(
-            f"{self.commands.set_range(auto=self.auto_range, range_value=set_range, mode=self.mode)}")
+            f"{self.commands.set_range(auto=self.auto_range, range_value=set_range, mode=self.mode)}"
+        )
         await self.check_error()
 
     async def start_scan(self):
@@ -212,7 +225,7 @@ class ElectrometerController:
 
         Parameters
         ----------
-        scan_duration : float
+        scan_duration : `float`
             The amount of time to store values for.
         """
         await self.send_command(f"{self.commands.prepare_device_scan()}")
@@ -236,39 +249,41 @@ class ElectrometerController:
 
         Parameters
         ----------
-        intensity : list
+        intensity : `list`
             The intensity values
-        times : list
+        times : `list`
             The time of the intensity value
-        temperature : list
+        temperature : `list`
             The temperature of the intensity value
-        unit : list
+        unit : `list`
             The unit of the intensity value.
         """
         data = np.array([times, intensity])
         hdu = fits.PrimaryHDU(data)
         hdr = hdu.header
-        hdr['CLMN1'] = ("Time", "Time in seconds")
-        hdr['CLMN2'] = ("Intensity")
-        hdu.writeto(f'/home/saluser/{self.manual_start_time}_{self.manual_end_time}.fits')
+        hdr["CLMN1"] = ("Time", "Time in seconds")
+        hdr["CLMN2"] = "Intensity"
+        hdu.writeto(
+            f"/home/saluser/{self.manual_start_time}_{self.manual_end_time}.fits"
+        )
 
     def parse_buffer(self, response):
         """Parse the buffer values.
 
         Parameters
         ----------
-        response : str
+        response : `str`
             The response from the read buffer command.
 
         Returns
         -------
-        intensity : list
+        intensity : `list`
             The intensity values
-        time : list
+        time : `list`
             The time values
-        temperature : list
+        temperature : `list`
             The temperature values.
-        unit : list
+        unit : `list`
             The unit values.
         """
         regex_numbers = r"[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?"
@@ -283,39 +298,49 @@ class ElectrometerController:
             temperature.append(0)
             unit.append(unsorted_str_values[i])
             i += 3
-            if(i >= len(unsorted_values) - 2):
+            if i >= len(unsorted_values) - 2:
                 break
 
         return intensity, time, temperature, unit
 
     async def check_error(self):
         """Check the error."""
-        res = await self.send_command(f"{self.commands.get_last_error()}", has_reply=True)
+        res = await self.send_command(
+            f"{self.commands.get_last_error()}", has_reply=True
+        )
         self.error_code, self.message = res.split(",")
 
     async def get_mode(self):
         """Get the mode/unit."""
         res = await self.send_command(f"{self.commands.get_mode()}", has_reply=True)
         mode, unit = res.split(":")
-        mode = mode.replace('"', '')
+        mode = mode.replace('"', "")
         self.mode = enums.UnitMode(enums.UnitMode[mode].value)
 
     async def get_avg_filter_status(self):
         """Get the average filter status."""
-        res = await self.send_command(f"{self.commands.get_filter_status(self.mode, 2)}", has_reply=True)
+        res = await self.send_command(
+            f"{self.commands.get_filter_status(self.mode, 2)}", has_reply=True
+        )
         self.avg_filter_active = bool(res)
 
     async def get_med_filter_status(self):
         """Get the median filter status."""
-        res = await self.send_command(f"{self.commands.get_filter_status(self.mode, 1)}", has_reply=True)
+        res = await self.send_command(
+            f"{self.commands.get_filter_status(self.mode, 1)}", has_reply=True
+        )
         self.median_filter_active = bool(res)
 
     async def get_range(self):
         """Get the range value."""
-        res = await self.send_command(f"{self.commands.get_range(self.mode)}", has_reply=True)
+        res = await self.send_command(
+            f"{self.commands.get_range(self.mode)}", has_reply=True
+        )
         self.range = float(res)
 
     async def get_integration_time(self):
         """Get the integration time value."""
-        res = await self.send_command(f"{self.commands.get_integration_time(self.mode)}", has_reply=True)
+        res = await self.send_command(
+            f"{self.commands.get_integration_time(self.mode)}", has_reply=True
+        )
         self.integration_time = float(res)

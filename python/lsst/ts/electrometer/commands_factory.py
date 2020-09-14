@@ -4,6 +4,7 @@ from . import enums
 class ElectrometerCommandFactory:
     """Class that formats commands to control the electrometer via RS-232.
     """
+
     def __init__(self):
         pass
 
@@ -74,7 +75,9 @@ class ElectrometerCommandFactory:
         command : str
             The generated command string.
         """
-        command = f":sens:{enums.UnitMode(mode).name}:{enums.Filter(filter_type).name}:stat?;"
+        command = (
+            f":sens:{enums.UnitMode(mode).name}:{enums.Filter(filter_type).name}:stat?;"
+        )
         return command
 
     def set_avg_filter_status(self, mode, aver_filter_type):
@@ -92,8 +95,10 @@ class ElectrometerCommandFactory:
         command : str
             The generated command string.
         """
-        command = (f":sens:{enums.UnitMode(mode).name}:aver:type "
-                   f"{enums.AverFilterType(aver_filter_type).name};")
+        command = (
+            f":sens:{enums.UnitMode(mode).name}:aver:type "
+            f"{enums.AverFilterType(aver_filter_type).name};"
+        )
         return command
 
     def set_med_filter_status(self, mode, active):
@@ -187,20 +192,20 @@ class ElectrometerCommandFactory:
             The generated command string.
         """
         isFirst = True
-        if(not (timestamp or temperature or channel)):
+        if not (timestamp or temperature or channel):
             command = ":trac:elem NONE"
         else:
             command = ":trac:elem "
-            if (channel):
+            if channel:
                 isFirst = False
                 command += "CHAN"
-            if(timestamp):
-                if (not isFirst):
+            if timestamp:
+                if not isFirst:
                     command += ", "
                 isFirst = False
                 command += "TST"
-            if (temperature):
-                if (not isFirst):
+            if temperature:
+                if not isFirst:
                     command += ", "
                 isFirst = False
                 command += "ETEM"
@@ -242,7 +247,7 @@ class ElectrometerCommandFactory:
         command : str
             The generated command string.
         """
-        if (enums.ReadingOption(read_option) == enums.ReadingOption.LATEST):
+        if enums.ReadingOption(read_option) == enums.ReadingOption.LATEST:
             command = ":sens:data?;"
         else:
             command = ":sens:data:fres?;"
@@ -272,7 +277,7 @@ class ElectrometerCommandFactory:
         command : str
             The generated command string.
         """
-        if(enable):
+        if enable:
             command = ":syst:tsc ON;"
         else:
             command = ":syst:tsc OFF;"
@@ -392,11 +397,17 @@ class ElectrometerCommandFactory:
         command : str
             The generated command string.
         """
-        if(auto):
+        if auto:
             command = ":sens:" + enums.UnitMode(mode).name + ":rang:auto 1;"
         else:
             command = ":sens:" + enums.UnitMode(mode).name + ":rang:auto 0;"
-            command += "\n:sens:" + enums.UnitMode(mode).name + ":rang " + str(range_value) + ";"
+            command += (
+                "\n:sens:"
+                + enums.UnitMode(mode).name
+                + ":rang "
+                + str(range_value)
+                + ";"
+            )
         return command
 
     def enable_sync(self, enable):
@@ -536,9 +547,11 @@ class ElectrometerCommandFactory:
         command : str
             The generated command string.
         """
-        command = (f"{self.clear_buffer()} "
-                   f" {self.format_trac(channel=False, timestamp=True, temperature=False)} "
-                   f"{self.set_buffer_size(50000)}")
+        command = (
+            f"{self.clear_buffer()} "
+            f" {self.format_trac(channel=False, timestamp=True, temperature=False)} "
+            f"{self.set_buffer_size(50000)}"
+        )
         return command
 
     def perform_zero_calibration(self, mode, auto, range_value):
@@ -558,11 +571,13 @@ class ElectrometerCommandFactory:
         command : str
             The generated command string
         """
-        command = (f"{self.enable_zero_check(True)} "
-                   f"{self.set_mode(mode)} "
-                   f" {self.set_range(auto=auto, range_value=range_value, mode=mode)} "
-                   f" {self.enable_zero_correction(enable=True)} "
-                   f"{self.enable_zero_check(False)}")
+        command = (
+            f"{self.enable_zero_check(True)} "
+            f"{self.set_mode(mode)} "
+            f" {self.set_range(auto=auto, range_value=range_value, mode=mode)} "
+            f" {self.enable_zero_correction(enable=True)} "
+            f"{self.enable_zero_check(False)}"
+        )
         return command
 
     def disable_all(self):

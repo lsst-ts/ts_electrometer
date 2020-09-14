@@ -19,8 +19,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from . import csc
-from . import controller
+from .csc import *
+from .controller import *
+from .commands_factory import *
+from .enums import *
+from .mock_server import *
 
 try:
     from .version import *
