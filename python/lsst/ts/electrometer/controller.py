@@ -2,6 +2,7 @@ import asyncio
 import time
 import re
 import types
+import logging
 
 import astropy.io.fits as fits
 import numpy as np
@@ -67,7 +68,7 @@ class ElectrometerController:
         self.manual_start_time = None
         self.manual_end_time = None
         self.serial_lock = asyncio.Lock()
-        self.connected = False
+        self.log = logging.getLogger(__name__)
 
     def configure(self, config):
         """Configure the controller.
@@ -129,14 +130,20 @@ class ElectrometerController:
 
     async def connect(self):
         """Open connection to the electrometer."""
-        self.commander.open()
+        try:
+            self.commander.open()
+        except serial.SerialException:
+            self.log.exception("Device not connected")
         self.connected = True
         # self.commander.write(self.commands.enable_display(False).encode())
-        await self.set_mode(self.mode)
-        await self.set_range(self.range)
-        await self.set_digital_filter(
-            self.filter_active, self.avg_filter_active, self.median_filter_active
-        )
+        try:
+            await self.set_mode(self.mode)
+            await self.set_range(self.range)
+            await self.set_digital_filter(
+                self.filter_active, self.avg_filter_active, self.median_filter_active
+            )
+        except serial.SerialException:
+            self.log.exception("Device not connected.")
 
     def disconnect(self):
         """Close connection to the electrometer."""

@@ -33,12 +33,14 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         Currently not implemented.
     """
 
+    valid_simulation_modes = [0]
+
     def __init__(
         self,
         index,
         config_dir=None,
         initial_state=salobj.State.STANDBY,
-        initial_simulation_mode=0,
+        simulation_mode=0,
     ):
         schema_path = (
             pathlib.Path(__file__)
@@ -52,11 +54,11 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             schema_path=schema_path,
             config_dir=config_dir,
             initial_state=initial_state,
-            initial_simulation_mode=initial_simulation_mode,
+            simulation_mode=simulation_mode,
         )
         self.controller = controller.ElectrometerController()
         self.run_event_loop = False
-        self.event_loop_task = None
+        self.event_loop_task = salobj.make_done_future()
         self._detailed_state = Electrometer.DetailedState.NOTREADINGSTATE
 
     def assert_substate(self, substates, action):
@@ -135,7 +137,8 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
                 )
                 self.detailed_state = Electrometer.DetailedState.NOTREADINGSTATE
         else:
-            self.controller.disconnect()
+            if self.controller.connected:
+                self.controller.disconnect()
 
     async def do_performZeroCalib(self, data):
         """Perform zero calibration.
