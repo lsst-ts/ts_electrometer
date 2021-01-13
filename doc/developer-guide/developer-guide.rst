@@ -69,9 +69,8 @@ Usage
 Simulator
 =========
 
-A prototype simulator is provided but it needs a way to convert a tcp/ip connection to serial.
-The simulator opens a tcp/ip connection as thats an easier connection to handle for writing a simulator.
-However, the device is a serial connection and so the simulator needs to be able to be able to open a fake serial connection.
+There is a basic simulation mode.
+Its mostly meant for unit testing the CSC.
 
 
 .. _Firmware:

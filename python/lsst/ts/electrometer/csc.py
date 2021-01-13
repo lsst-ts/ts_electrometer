@@ -16,10 +16,10 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
     config_dir : `str`
         Path to config directory.
         One is provided for you in another method.
-    initial_state : `salobj.State`
+    initial_state : `lsst.ts.salobj.State`
         The initial state of the CSC.
         Should be used for unit tests and development.
-    initial_simulation_mode : `int`
+    simulation_mode : `int`
         The simulation mode of the CSC.
 
     Attributes
@@ -33,7 +33,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         Currently not implemented.
     """
 
-    valid_simulation_modes = [0]
+    valid_simulation_modes = (0, 1)
 
     def __init__(
         self,
@@ -56,7 +56,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             initial_state=initial_state,
             simulation_mode=simulation_mode,
         )
-        self.controller = controller.ElectrometerController()
+        self.controller = controller.ElectrometerController(simulation_mode)
         self.run_event_loop = False
         self.event_loop_task = salobj.make_done_future()
         self._detailed_state = Electrometer.DetailedState.NOTREADINGSTATE
@@ -92,7 +92,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
 
         Returns
         -------
-        detailed_state : Electrometer.DetailedState
+        detailed_state : `lsst.ts.idl.enums.Electrometer.DetailedState`
             The sub state of the CSC.
         """
         return self._detailed_state
@@ -145,7 +145,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
 
         Parameters
         ----------
-        data : data
+        data : `cmd_performZeroCalib.DataType`
             The data for the command.
         """
         self.assert_enabled()
@@ -162,7 +162,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
 
         Parameters
         ----------
-        data : data
+        data : `cmd_setDigitalFilter.DataType`
             The data for the command.
         """
         self.assert_enabled()
@@ -171,15 +171,15 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             action="setDigitalFilter",
         )
         self.detailed_state = Electrometer.DetailedState.CONFIGURINGSTATE
-        self.controller.set_digital_filter(
-            activate_filter=data.activate_filter,
-            activate_avg_filter=data.activate_avg_filter,
-            activate_med_filter=data.activate_med_filter,
+        await self.controller.set_digital_filter(
+            activate_filter=data.activateFilter,
+            activate_avg_filter=data.activateAvgFilter,
+            activate_med_filter=data.activateMedFilter,
         )
         self.evt_digitalFilterChange.set_put(
             activateFilter=self.controller.filter_active,
-            activateAvgFilter=self.controller.avg_filter_active,
-            activateMedFilter=self.controller.med_filter_active,
+            activateAverageFilter=self.controller.avg_filter_active,
+            activateMedianFilter=self.controller.median_filter_active,
         )
         self.detailed_state = Electrometer.DetailedState.NOTREADINGSTATE
 
@@ -188,7 +188,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
 
         Parameters
         ----------
-        data : data
+        data : `cmd_setIntegrationTime.DataType`
             The data for the command.
         """
         self.assert_enabled()
@@ -197,7 +197,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             action="setIntegrationTime",
         )
         self.detailed_state = Electrometer.DetailedState.CONFIGURINGSTATE
-        await self.controller.set_integration_time(int_time=data.int_time)
+        await self.controller.set_integration_time(int_time=data.intTime)
         self.evt_integrationTime.set_put(
             intTime=self.controller.integration_time, force_output=True
         )
@@ -208,7 +208,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
 
         Parameters
         ----------
-        data : data
+        data : `cmd_setMode.DataType`
             The data for the command.
         """
         self.assert_enabled()
@@ -226,7 +226,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
 
         Parameters
         ----------
-        data : data
+        data : `cmd_setRange.DataType`
             The data for the command.
         """
         self.assert_enabled()
@@ -234,7 +234,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             substates=[Electrometer.DetailedState.NOTREADINGSTATE], action="setRange"
         )
         self.detailed_state = Electrometer.DetailedState.CONFIGURINGSTATE
-        await self.controller.set_range(set_range=data.set_range)
+        await self.controller.set_range(set_range=data.setRange)
         self.evt_measureRange.set_put(rangeValue=self.controller.range)
         self.detailed_state = Electrometer.DetailedState.NOTREADINGSTATE
 
@@ -243,7 +243,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
 
         Parameters
         ----------
-        data : data
+        data : `cmd_startScan.DataType`
             The data for the command.
         """
         self.assert_enabled()
@@ -258,7 +258,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
 
         Parameters
         ----------
-        data : data
+        data : `cmd_startScanDt.DataType`
             The data for the command.
         """
         self.assert_enabled()
@@ -276,7 +276,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
 
         Parameters
         ----------
-        data : data
+        data : `cmd_stopScan.DataType`
             The data for the command.
         """
         self.assert_enabled()

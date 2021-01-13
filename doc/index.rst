@@ -1,6 +1,6 @@
-#########################
+############
 Electrometer
-#########################
+############
 
 .. image:: https://img.shields.io/badge/SAL-API-gray.svg
     :target: https://ts-xml.lsst.io/sal_interfaces/Electrometer.html
@@ -42,7 +42,7 @@ User-level documentation, found at the link below, is aimed at personnel looking
 .. _Configuration:
 
 Configuring the Electrometer
-=========================================
+============================
 
 The configuration for the Electrometer is described at the following link.
 
@@ -62,7 +62,7 @@ This area of documentation focuses on the classes used, API's, and how to partic
     developer-guide/developer-guide
     :maxdepth: 1
 
-.. _Version_History:
+.. _index:Version_History:
 
 Version History
 ===============

@@ -3,16 +3,23 @@ import time
 import re
 import types
 import logging
+import pty
+import os
 
 import astropy.io.fits as fits
 import numpy as np
 import serial
 
-from . import commands_factory, enums
+from . import commands_factory, enums, mock_server
 
 
 class ElectrometerController:
     """Class that provides high level control for electrometer.
+
+    Parameters
+    ----------
+    simulation_mode : `int`
+        Is the electrometer in simulation mode?
 
     Attributes
     ----------
@@ -51,7 +58,7 @@ class ElectrometerController:
 
     """
 
-    def __init__(self):
+    def __init__(self, simulation_mode):
         self.commander = serial.Serial()
         self.commands = commands_factory.ElectrometerCommandFactory()
         self.mode = None
@@ -68,6 +75,7 @@ class ElectrometerController:
         self.manual_start_time = None
         self.manual_end_time = None
         self.serial_lock = asyncio.Lock()
+        self.simulation_mode = simulation_mode
         self.log = logging.getLogger(__name__)
 
     def configure(self, config):
@@ -75,7 +83,7 @@ class ElectrometerController:
 
         Parameters
         ----------
-        config : `types.Namespace`
+        config : `types.SimpleNamespace`
             The parsed yaml as a dict-like object.
         """
         self.mode = enums.UnitMode(config.mode)
@@ -93,6 +101,11 @@ class ElectrometerController:
         """Generate a development config object.
 
         Used for development purposes to develop/test controller code.
+
+        Returns
+        -------
+        config : `types.SimpleNamespace`
+            A development configuration object.
         """
         config = types.SimpleNamespace()
         config.mode = 1
@@ -131,7 +144,11 @@ class ElectrometerController:
     async def connect(self):
         """Open connection to the electrometer."""
         try:
-            self.commander.open()
+            if not self.simulation_mode:
+                self.commander.open()
+            else:
+                main, reader = pty.openpty()
+                self.commander = mock_server.MockSerial(os.ttyname(main))
         except serial.SerialException:
             self.log.exception("Device not connected")
         self.connected = True
@@ -164,7 +181,7 @@ class ElectrometerController:
 
         Parameters
         ----------
-        activate_filter: `bool`
+        activate_filter : `bool`
             Whether any filter should be activated.
         activate_avg_filter : `bool`
             Whether the average filter should be activated.
@@ -235,7 +252,11 @@ class ElectrometerController:
         scan_duration : `float`
             The amount of time to store values for.
         """
-        await self.send_command(f"{self.commands.prepare_device_scan()}")
+        await self.send_command(f"{self.commands.clear_buffer()}")
+        await self.send_command(f"{self.commands.format_trac()}")
+        await self.send_command(f"{self.commands.set_buffer_size(50000)}")
+        await self.send_command(f"{self.commands.select_device_timer()}")
+        await self.send_command(f"{self.commands.next_read()}")
         self.manual_start_time = time.time()
         dt = 0
         # FIXME blocking and needs to be non-blocking
