@@ -13,16 +13,16 @@ class ElectrometerCommandFactory:
 
         Parameters
         ----------
-        mode : enums.UnitMode
+        mode : `UnitMode`
             The unit of the filter to activate.
-        filter_type : enums.Filter
+        filter_type : `Filter`
             The filter type to activate
-        active : int
+        active : `int`
             Whether to activate or not.
 
         Returns
         -------
-        command : str
+        command : `str`
             The generated command string.
         """
         command = f":sens:{enums.UnitMode(mode).name}:{enums.Filter(filter_type).name}:stat {int(active)};"
@@ -33,12 +33,12 @@ class ElectrometerCommandFactory:
 
         Parameters
         ----------
-        mode : enums.UnitMode
+        mode : `UnitMode`
             The unit of the filter to check.
 
         Returns
         -------
-        command : str
+        command : `str`
             The generated command string.
         """
         command = f":sens:{enums.UnitMode(mode).name}:aver:type?;"
@@ -49,12 +49,12 @@ class ElectrometerCommandFactory:
 
         Parameters
         ----------
-        mode : enums.UnitMode
+        mode : `UnitMode`
             The unit of the filter to check.
 
         Returns
         -------
-        command : str
+        command : `str`
             The generated command string.
         """
         command = f":sens:{enums.UnitMode(mode).name}:med:stat?;"
@@ -65,14 +65,14 @@ class ElectrometerCommandFactory:
 
         Parameters
         ----------
-        mode : enums.UnitMode
+        mode : `UnitMode`
             The unit of the filter to check
-        filter_type : enums.Filter
+        filter_type : `Filter`
             The type of the filter to check.
 
         Returns
         -------
-        command : str
+        command : `str`
             The generated command string.
         """
         command = (
@@ -85,14 +85,14 @@ class ElectrometerCommandFactory:
 
         Parameters
         ----------
-        mode : enums.UnitMode
+        mode : `UnitMode`
             The unit of the filter to set.
-        aver_filter_type : enums.AverFilterType
+        aver_filter_type : `AverFilterType`
             The type of the average filter to set.
 
         Returns
         -------
-        command : str
+        command : `str`
             The generated command string.
         """
         command = (
@@ -106,14 +106,14 @@ class ElectrometerCommandFactory:
 
         Parameters
         ----------
-        mode : enums.UnitMode
+        mode : `UnitMode`
             The unit of the filter to set.
-        active : int
+        active : `int`
             Whether to activate.
 
         Returns
         -------
-        command : str
+        command : `str`
             The generated command string.
         """
         command = f":sens:{enums.UnitMode(mode).name}:med:stat {int(active)};"
@@ -124,7 +124,7 @@ class ElectrometerCommandFactory:
 
         Returns
         -------
-        commmand : str
+        commmand : `str`
             The generated command string.
         """
         command = f":trac:feed:cont alw;{self.init_buffer()}"
@@ -135,7 +135,7 @@ class ElectrometerCommandFactory:
 
         Returns
         -------
-        command : str
+        command : `str`
             The generated command string.
         """
         command = f":trac:feed:cont next;{self.init_buffer()}"
@@ -146,7 +146,7 @@ class ElectrometerCommandFactory:
 
         Returns
         -------
-        command : str
+        command : `str`
             The generated command string.
         """
         command = ":trac:cle;"
@@ -157,7 +157,7 @@ class ElectrometerCommandFactory:
 
         Returns
         -------
-        command : str
+        command : `str`
             The generated command string.
         """
         command = "^C"
@@ -168,7 +168,7 @@ class ElectrometerCommandFactory:
 
         Returns
         -------
-        command : str
+        command : `str`
             The generated command string.
         """
         command = ":syst:err?;"
@@ -179,16 +179,16 @@ class ElectrometerCommandFactory:
 
         Parameters
         ----------
-        channel : bool
+        channel : `bool`
             Whether to store channel data.
-        timestamp : bool
+        timestamp : `bool`
             Whether to store timestamp data.
-        temperature : bool
+        temperature : `bool`
             Whether to store temperature data.
 
         Returns
         -------
-        command : str
+        command : `str`
             The generated command string.
         """
         isFirst = True
@@ -217,7 +217,7 @@ class ElectrometerCommandFactory:
 
         Returns
         -------
-        command : str
+        command : `str`
             The generated command string.
         """
         command = ":trac:poin:act?;"
@@ -228,7 +228,7 @@ class ElectrometerCommandFactory:
 
         Returns
         -------
-        command : str
+        command : `str`
             The generated command string.
         """
         command = "*idn?"
@@ -239,12 +239,12 @@ class ElectrometerCommandFactory:
 
         Parameters
         ----------
-        read_option : enums.ReadingOption
+        read_option : `ReadingOption`
             The reading option.
 
         Returns
         -------
-        command : str
+        command : `str`
             The generated command string.
         """
         if enums.ReadingOption(read_option) == enums.ReadingOption.LATEST:
@@ -258,7 +258,7 @@ class ElectrometerCommandFactory:
 
         Returns
         -------
-        command : str
+        command : `str`
             The generated command string.
         """
         command = ":sens:func?;"
@@ -269,12 +269,12 @@ class ElectrometerCommandFactory:
 
         Parameters
         ----------
-        enable : bool
+        enable : `bool`
             Whether to enable temperature reading.
 
         Returns
         -------
-        command : str
+        command : `str`
             The generated command string.
         """
         if enable:
@@ -288,7 +288,7 @@ class ElectrometerCommandFactory:
 
         Returns
         -------
-        command : str
+        command : `str`
             The generated command string.
         """
         command = ":trac:data?;"
@@ -299,7 +299,7 @@ class ElectrometerCommandFactory:
 
         Returns
         -------
-        command : str
+        command : `str`
             The generated command string.
         """
         command = f"*RST; {self.clear_buffer()}"
@@ -310,13 +310,13 @@ class ElectrometerCommandFactory:
 
         Parameters
         ----------
-        timer : float
+        timer : `float`
             The internal device loop timer. Values below 0.001 can cause
-            instablity.
+            instability.
 
         Returns
         -------
-        command : str
+        command : `str`
             The generated command string.
         """
         command = f":trig:sour tim;\n:trig:tim {timer:.3f};"
@@ -327,7 +327,7 @@ class ElectrometerCommandFactory:
 
         Parameters
         ----------
-        buffer_size: int
+        buffer_size: `int`
             The number of values to store in the buffer.
             Maximum is 50000.
         """
@@ -339,7 +339,7 @@ class ElectrometerCommandFactory:
 
         Returns
         -------
-        command : str
+        command : `str`
             The generated command string.
         """
         command = ":init;"
@@ -350,14 +350,14 @@ class ElectrometerCommandFactory:
 
         Parameters
         ----------
-        mode : enums.UnitMode
+        mode : `UnitMode`
             The unit of the aperature to set.
-        time : float
+        time : `float`
             The integration time of the aperture.
 
         Returns
         -------
-        command : str
+        command : `str`
             The generated command string.
         """
         command = f":sens:{enums.UnitMode(mode).name}:aper {str(time)};"
@@ -368,12 +368,12 @@ class ElectrometerCommandFactory:
 
         Parameters
         ----------
-        mode : enums.UnitMode
+        mode : `UnitMode`
             The unit to switch to.
 
         Returns
         -------
-        command : str
+        command : `str`
             The generated command string.
         """
         command = f":sens:func '{enums.UnitMode(mode).name}';"
@@ -384,17 +384,17 @@ class ElectrometerCommandFactory:
 
         Parameters
         ----------
-        auto : bool
+        auto : `bool`
             Whether auto range is activated.
-        range_value : float
+        range_value : `float`
             The range to set.
             Not used if auto is true.
-        mode : enums.UnitMode
+        mode : `enums.UnitMode`
             The unit of the range to set.
 
         Returns
         -------
-        command : str
+        command : `str`
             The generated command string.
         """
         if auto:
@@ -415,12 +415,12 @@ class ElectrometerCommandFactory:
 
         Parameters
         ----------
-        enable : bool
+        enable : `bool`
             Whether to enable sync.
 
         Returns
         -------
-        command : str
+        command : `str`
             The generated command string.
         """
         command = ":syst:lsyn:stat ON;" if enable else ":syst:lsyn:stat OFF;"
@@ -431,7 +431,7 @@ class ElectrometerCommandFactory:
 
         Returns
         -------
-        command : str
+        command : `str`
             The generated command string.
         """
         command = ":trac:feed:cont NEV;"
@@ -442,7 +442,7 @@ class ElectrometerCommandFactory:
 
         Returns
         -------
-        command : str
+        command : `str`
             The generated command string.
         """
         command = ":stat:que:enab (-440:+958);"
@@ -453,12 +453,12 @@ class ElectrometerCommandFactory:
 
         Parameters
         ----------
-        enable : bool
+        enable : `bool`
             Whether to enable zero check.
 
         Returns
         -------
-        command : str
+        command : `str`
             The generated command string.
         """
         command = ":syst:zch ON;" if enable else ":syst:zch OFF;"
@@ -469,12 +469,12 @@ class ElectrometerCommandFactory:
 
         Parameters
         ----------
-        enable : bool
+        enable : `bool`
             Whether to enable zero correction.
 
         Returns
         -------
-        command : str
+        command : `str`
             The generated command string.
         """
         command = ":syst:zcor ON;" if enable else ":syst:zcor OFF;"
@@ -485,12 +485,12 @@ class ElectrometerCommandFactory:
 
         Parameters
         ----------
-        mode : enums.UnitMode
+        mode : `UnitMode`
             The unit of the range to check.
 
         Returns
         -------
-        command : str
+        command : `str`
             The generated command string.
         """
         command = ":sens:" + enums.UnitMode(mode).name + ":rang?;"
@@ -501,12 +501,12 @@ class ElectrometerCommandFactory:
 
         Parameters
         ----------
-        mode : enums.UnitMode
+        mode : UnitMode
             The unit of the integration time to check.
 
         Returns
         -------
-        command : str
+        command : `str`
             The generated command string.
         """
         command = ":sens:" + enums.UnitMode(mode).name + ":aper?;"
@@ -522,7 +522,7 @@ class ElectrometerCommandFactory:
 
         Returns
         -------
-        command : str
+        command : `str`
             The generated command string.
         """
         command = ":disp:enab ON;" if enable is True else ":disp:enab OFF;"
@@ -533,7 +533,7 @@ class ElectrometerCommandFactory:
 
         Returns
         -------
-        command : str
+        command : `str`
             The generated command string.
         """
         command = ":sens:curr:nplc 0.01;"
@@ -544,7 +544,7 @@ class ElectrometerCommandFactory:
 
         Returns
         -------
-        command : str
+        command : `str`
             The generated command string.
         """
         command = (
@@ -559,16 +559,16 @@ class ElectrometerCommandFactory:
 
         Parameters
         ----------
-        mode : enums.UnitMode
+        mode : `UnitMode`
             The unit of the device
-        auto : bool
+        auto : `bool`
             Whether auto range is activated.
-        range_value : float
+        range_value : `float`
             The range of the values.
 
         Returns
         -------
-        command : str
+        command : `str`
             The generated command string
         """
         command = (
@@ -585,7 +585,7 @@ class ElectrometerCommandFactory:
 
         Returns
         -------
-        command : str
+        command : `str`
             The generated command string.
         """
         command = f"{self.enable_sync(False)} :trig:del 0.0;"

@@ -7,7 +7,7 @@ import lsst.ts.electrometer
 _g = globals()
 _g.update(
     build_package_configs(
-        project_name="ts_electrometer2",
+        project_name="ts_electrometer",
         version=lsst.ts.electrometer.version.__version__,
     )
 )
