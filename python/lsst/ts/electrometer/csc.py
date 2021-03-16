@@ -1,9 +1,9 @@
-import pathlib
-
 from lsst.ts import salobj
 from lsst.ts.idl.enums import Electrometer
 
+from . import __version__
 from . import controller
+from .config_schema import CONFIG_SCHEMA
 
 
 class ElectrometerCsc(salobj.ConfigurableCsc):
@@ -34,6 +34,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
     """
 
     valid_simulation_modes = (0, 1)
+    version = __version__
 
     def __init__(
         self,
@@ -42,16 +43,10 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         initial_state=salobj.State.STANDBY,
         simulation_mode=0,
     ):
-        schema_path = (
-            pathlib.Path(__file__)
-            .resolve()
-            .parents[4]
-            .joinpath("schema", "Electrometer.yaml")
-        )
         super().__init__(
             name="Electrometer",
             index=index,
-            schema_path=schema_path,
+            config_schema=CONFIG_SCHEMA,
             config_dir=config_dir,
             initial_state=initial_state,
             simulation_mode=simulation_mode,

@@ -1,16 +1,11 @@
 """Sphinx configuration file for TSSW package"""
 
-from documenteer.sphinxconfig.stackconf import build_package_configs
-import lsst.ts.electrometer
+from documenteer.conf.pipelinespkg import *
 
-
-_g = globals()
-_g.update(
-    build_package_configs(
-        project_name="ts_electrometer",
-        version=lsst.ts.electrometer.version.__version__,
-    )
-)
+project = "ts_electrometer"
+html_theme_options["logotext"] = project
+html_title = project
+html_short_title = project
 
 intersphinx_mapping["ts_xml"] = ("https://ts-xml.lsst.io", None)
 intersphinx_mapping["pyserial"] = ("https://pyserial.readthedocs.io/en/latest", None)

@@ -19,13 +19,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+try:
+    from .version import *
+except ImportError:
+    __version__ = "?"
+
 from .csc import *
 from .controller import *
 from .commands_factory import *
 from .enums import *
 from .mock_server import *
-
-try:
-    from .version import *
-except ImportError:
-    __version__ = "?"
+from .config_schema import *

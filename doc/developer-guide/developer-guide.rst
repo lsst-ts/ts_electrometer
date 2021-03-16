@@ -14,9 +14,9 @@ It communicates over a RS-232 serial communication.
 Dependencies
 ============
 
-* `SAL <https://ts-sal.lsst.io>`_ - v4.0.0
-* ts_salobj - v5.x.0
-* pyserial - v3.4.0
+* `SAL <https://ts-sal.lsst.io>`_ - v5.1.0
+* `ts_salobj <https://ts-salobj.lsst.io>`_ - v6.3.x
+* pyserial - v3.5.0
 
 .. Linking to the previous versions may also be worthwhile, depending on the CSC
 

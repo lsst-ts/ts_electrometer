@@ -1,14 +1,12 @@
 import unittest
 
-import asynctest
-
 from lsst.ts import salobj, electrometer
 
 
 STD_TIMEOUT = 10
 
 
-class ElectrometerCscTestCase(asynctest.TestCase, salobj.BaseCscTestCase):
+class ElectrometerCscTestCase(unittest.IsolatedAsyncioTestCase, salobj.BaseCscTestCase):
     def basic_make_csc(self, initial_state, config_dir, simulation_mode, index):
         return electrometer.ElectrometerCsc(
             initial_state=initial_state,

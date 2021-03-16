@@ -1,6 +1,5 @@
 import setuptools
 import pathlib
-import os
 import sys
 
 setup_reqs = ["setuptools_scm"]
@@ -27,9 +26,6 @@ setuptools.setup(
     package_dir={"": "python"},
     packages=setuptools.find_namespace_packages(where="python"),
     package_data={"": ["*.rst", "*.yaml"]},
-    data_files=[
-        (os.path.join(data_files_path, "schema"), ["schema/Electrometer.yaml"])
-    ],
     scripts=["bin/run_electrometer.py"],
     tests_require=test_reqs,
     license="GPL",
