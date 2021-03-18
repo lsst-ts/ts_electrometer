@@ -2,8 +2,7 @@ from . import enums
 
 
 class ElectrometerCommandFactory:
-    """Class that formats commands to control the electrometer via RS-232.
-    """
+    """Class that formats commands to control the electrometer via RS-232."""
 
     def __init__(self):
         pass

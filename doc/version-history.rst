@@ -10,4 +10,7 @@ Version History
 .. No new work should be required in order to complete this section.
 .. Below is an example of a version history format.
 
-There are no releases.
+v0.1.0 <unreleased>
+===================
+
+* Initial CSC release

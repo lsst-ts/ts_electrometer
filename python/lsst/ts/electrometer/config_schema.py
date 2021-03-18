@@ -1,6 +1,13 @@
+__all__ = ["CONFIG_SCHEMA"]
+
+import yaml
+
+
+CONFIG_SCHEMA = yaml.safe_load(
+    """
 $schema: http://json-schema.org/draft-07/schema#
 $id: https://github.com/lsst-ts/ts_electrometer2/blob/master/schema/Electrometer.yaml
-title: Electrometer v1 
+title: Electrometer v1
 description: Schema for Electrometer configuration files
 type: object
 properties:
@@ -53,3 +60,6 @@ properties:
     description: The timeout of the serial connection.
     type: integer
     default: 2
+"""
+)
+"""Configuration schema as a constant."""
