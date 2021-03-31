@@ -14,3 +14,4 @@ v0.1.0 <unreleased>
 ===================
 
 * Initial CSC release
+* Upgrade to black 20.8
