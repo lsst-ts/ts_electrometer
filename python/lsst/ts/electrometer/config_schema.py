@@ -7,23 +7,14 @@ CONFIG_SCHEMA = yaml.safe_load(
     """
 $schema: http://json-schema.org/draft-07/schema#
 $id: https://github.com/lsst-ts/ts_electrometer2/blob/master/schema/Electrometer.yaml
-title: Electrometer v1
+title: Electrometer v2
 description: Schema for Electrometer configuration files
 type: object
 properties:
   fits_files_path:
-    description: The path of where the copied fits file are located.
+    description: The path of where the fits file are written to disk.
     type: string
-    default: "~/electrometerFitsFiles"
-  file_server_address:
-    description: The ip address of the file transfer server
-    type: string
-    format: ipv4
-    default: "0.0.0.0"
-  file_server_port:
-    description: The port of the file transfer server
-    type: integer
-    default: 8000
+    default: "~develop/electrometerFitsFiles"
   mode:
     description: The scanning mode of the Electrometer
     type: integer
