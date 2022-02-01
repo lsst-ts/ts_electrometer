@@ -24,6 +24,7 @@ test:
         - ts-dds
         - ts-idl {{ idl_version }}
         - ts-salobj {{ salobj_version }}
+        - ts-tcpip
     source_files:
         - python
         - bin
@@ -44,5 +45,5 @@ requirements:
         - setuptools
         - setuptools_scm
         - ts-salobj
-        - pyserial
+        - ts-tcpip
         - ts-idl

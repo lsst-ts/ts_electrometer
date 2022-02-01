@@ -14,9 +14,9 @@ It communicates over a RS-232 serial communication.
 Dependencies
 ============
 
-* `SAL <https://ts-sal.lsst.io>`_ - v5.1.0
-* `ts_salobj <https://ts-salobj.lsst.io>`_ - v6.3.x
-* pyserial - v3.5.0
+* `SAL <https://ts-sal.lsst.io>`_ - v6.0.0
+* `ts_salobj <https://ts-salobj.lsst.io>`_ - v6.x
+* ts_tcpip
 
 .. Linking to the previous versions may also be worthwhile, depending on the CSC
 
@@ -42,7 +42,6 @@ Build and Test
 .. prompt:: bash
 
     setup -kr .
-    pip install pyserial
     scons
 
 

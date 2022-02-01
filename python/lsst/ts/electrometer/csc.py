@@ -1,8 +1,8 @@
-from lsst.ts import salobj
+from lsst.ts import salobj, utils
 from lsst.ts.idl.enums import Electrometer
 
 from . import __version__
-from . import controller
+from . import controller, mock_server
 from .config_schema import CONFIG_SCHEMA
 
 
@@ -51,11 +51,10 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             initial_state=initial_state,
             simulation_mode=simulation_mode,
         )
-        self.controller = controller.ElectrometerController(
-            simulation_mode, log=self.log
-        )
+        self.controller = controller.ElectrometerController(log=self.log)
+        self.simulator = None
         self.run_event_loop = False
-        self.event_loop_task = salobj.make_done_future()
+        self.event_loop_task = utils.make_done_future()
         self._detailed_state = Electrometer.DetailedState.NOTREADINGSTATE
 
     def assert_substate(self, substates, action):
@@ -115,6 +114,9 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
 
     async def handle_summary_state(self):
         if self.disabled_or_enabled:
+            if self.simulation_mode and self.simulator is None:
+                self.simulator = mock_server.MockServer()
+                await self.simulator.start_task
             if not self.controller.connected:
                 await self.controller.connect()
                 self.evt_measureType.set_put(
@@ -135,7 +137,10 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
                 self.detailed_state = Electrometer.DetailedState.NOTREADINGSTATE
         else:
             if self.controller.connected:
-                self.controller.disconnect()
+                await self.controller.disconnect()
+            if self.simulator is not None:
+                await self.simulator.close()
+                self.simulator = None
 
     async def do_performZeroCalib(self, data):
         """Perform zero calibration.
@@ -299,3 +304,10 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             The name of the package where the configuration is stored.
         """
         return "ts_config_ocs"
+
+    async def close_tasks(self):
+        await super().close_tasks()
+        await self.controller.disconnect()
+        if self.simulator is not None:
+            await self.simulator.close()
+            self.simulator = None
