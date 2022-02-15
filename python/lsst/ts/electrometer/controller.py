@@ -83,8 +83,6 @@ class ElectrometerController:
         else:
             self.log = log.getChild(type(self).__name__)
 
-
-
     def configure(self, config):
         """Configure the controller.
 
@@ -283,7 +281,7 @@ class ElectrometerController:
 
     def write_fits_file(self, intensity, times, temperature, unit):
         """Write fits file of the intensity, time, and temperature values.
-        
+
         Parameters
         ----------
         intensity : `list`
@@ -300,10 +298,8 @@ class ElectrometerController:
         hdr = hdu.header
         hdr["CLMN1"] = ("Time", "Time in seconds")
         hdr["CLMN2"] = "Intensity"
-        filename=f'{self.manual_start_time}_{self.manual_end_time}.fits'
-        hdu.writeto(
-            f"{self.file_output_dir}/{filename}"
-        )
+        filename = f"{self.manual_start_time}_{self.manual_end_time}.fits"
+        hdu.writeto(f"{self.file_output_dir}/{filename}")
         self.log.info(f"Electrometer Scan data file written: {filename}")
 
     def parse_buffer(self, response):

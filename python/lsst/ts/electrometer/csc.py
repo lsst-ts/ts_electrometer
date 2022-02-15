@@ -51,7 +51,9 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             initial_state=initial_state,
             simulation_mode=simulation_mode,
         )
-        self.controller = controller.ElectrometerController(simulation_mode, log=self.log)
+        self.controller = controller.ElectrometerController(
+            simulation_mode, log=self.log
+        )
         self.run_event_loop = False
         self.event_loop_task = salobj.make_done_future()
         self._detailed_state = Electrometer.DetailedState.NOTREADINGSTATE
