@@ -58,7 +58,7 @@ class ElectrometerController:
 
     """
 
-    def __init__(self, simulation_mode):
+    def __init__(self, simulation_mode, log=None):
         self.commander = serial.Serial()
         self.commands = commands_factory.ElectrometerCommandFactory()
         self.mode = None
@@ -76,7 +76,12 @@ class ElectrometerController:
         self.manual_end_time = None
         self.serial_lock = asyncio.Lock()
         self.simulation_mode = simulation_mode
-        self.log = logging.getLogger(__name__)
+        # Create a logger if none were passed during the instantiation of
+        # the class
+        if log is None:
+            self.log = logging.getLogger(type(self).__name__)
+        else:
+            self.log = log.getChild(type(self).__name__)
 
     def configure(self, config):
         """Configure the controller.
@@ -96,6 +101,7 @@ class ElectrometerController:
         self.commander.port = config.serial_port
         self.commander.baudrate = config.baudrate
         self.commander.timeout = config.timeout
+        self.file_output_dir = config.fits_files_path
 
     def generate_development_configure(self):
         """Generate a development config object.
@@ -173,6 +179,7 @@ class ElectrometerController:
         await self.send_command(
             f"{self.commands.perform_zero_calibration(self.mode,self.auto_range,self.range)}"
         )
+        self.log.debug("Zero Calibration sent to controller")
 
     async def set_digital_filter(
         self, activate_filter, activate_avg_filter, activate_med_filter
@@ -273,7 +280,7 @@ class ElectrometerController:
         self.write_fits_file(intensity, times, temperature, unit)
 
     def write_fits_file(self, intensity, times, temperature, unit):
-        """Write fits file given values from buffer.
+        """Write fits file of the intensity, time, and temperature values.
 
         Parameters
         ----------
@@ -291,9 +298,9 @@ class ElectrometerController:
         hdr = hdu.header
         hdr["CLMN1"] = ("Time", "Time in seconds")
         hdr["CLMN2"] = "Intensity"
-        hdu.writeto(
-            f"/home/saluser/{self.manual_start_time}_{self.manual_end_time}.fits"
-        )
+        filename = f"{self.manual_start_time}_{self.manual_end_time}.fits"
+        hdu.writeto(f"{self.file_output_dir}/{filename}")
+        self.log.info(f"Electrometer Scan data file written: {filename}")
 
     def parse_buffer(self, response):
         """Parse the buffer values.
