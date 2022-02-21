@@ -39,10 +39,15 @@ properties:
     description: Is the avg filter active?
     type: boolean
     default: false
-  serial_port:
-    description: the location of the USB mount for the the electrometer
+  tcp_port:
+    description: the location of the USB mount for the electrometer
+    type: integer
+    default: 9999
+  host:
+    description: The ip or hostname address for the electrometer
     type: string
-    default: "/dev/electrometer"
+    format: hostname
+    default: 127.0.0.1
   baudrate:
     description: The baudrate of the serial connection.
     type: integer

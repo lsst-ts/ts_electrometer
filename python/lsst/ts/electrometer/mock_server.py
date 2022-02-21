@@ -1,73 +1,55 @@
 import logging
-import queue
 import re
+import asyncio
 
-import serial
+from lsst.ts import tcpip
 
 
-class MockSerial(serial.Serial):
-    """A mock serial object.
-
-    Parameters
-    ----------
-    port
-    baudrate
-    bytesize
-    parity
-    stopbits
-    timeout
-    xonxoff
-    rtscts
-    write_timeout
-    dsrdtr
-    inter_byte_timeout
-    exclusive
+class MockServer(tcpip.OneClientServer):
+    """Implements a mock server for the electrometer.
 
     Attributes
     ----------
     log
     device
-    message_queue
+    read_loop_task
     """
 
-    def __init__(
-        self,
-        port,
-        baudrate=19200,
-        bytesize=serial.EIGHTBITS,
-        parity=serial.PARITY_NONE,
-        stopbits=serial.STOPBITS_ONE,
-        timeout=3,
-        xonxoff=False,
-        rtscts=False,
-        write_timeout=None,
-        dsrdtr=False,
-        inter_byte_timeout=None,
-        exclusive=None,
-    ):
-        super().__init__(port=port, baudrate=baudrate, timeout=timeout)
+    def __init__(self) -> None:
         self.log = logging.getLogger(__name__)
-
         self.device = MockKeithley()
-        self.message_queue = queue.Queue()
+        self.read_loop_task = asyncio.Future()
+        super().__init__(
+            name="Electrometer Mock Server",
+            host=tcpip.LOCAL_HOST,
+            port=9999,
+            connect_callback=self.connect_callback,
+            log=self.log,
+        )
 
-        self.log.info("MockSerial created")
+    async def cmd_loop(self):
+        """Implement the command loop for the electrometer"""
+        while self.connected:
+            line = await self.reader.readuntil(b"\r")
+            reply = self.device.parse_message(line)
+            self.log.debug(f"reply={reply}")
+            if reply is not None:
+                reply = reply + "\n"
+                reply = reply.encode("ascii")
+                self.log.debug(f"writing reply={reply}")
+                self.writer.write(reply)
+                await self.writer.drain()
 
-    def read_until(self, character):
-        """Read until the following character is seen."""
-        self.log.info("Reading from queue")
-        msg = self.message_queue.get()
-        self.log.info(msg.encode())
-        return msg.encode() + b"\n"
+    def connect_callback(self, server):
+        """Start the command loop when client is connected.
 
-    def write(self, data):
-        """Write data to the serial port."""
-        self.log.info(data)
-        msg = self.device.parse_message(data)
-        if msg is not None:
-            self.log.debug(msg)
-            self.message_queue.put(msg)
-            self.log.info("Putting into queue")
+        Parameters
+        ----------
+        server
+        """
+        self.read_loop_task.cancel()
+        if server.connected:
+            self.read_loop_task = asyncio.create_task(self.cmd_loop())
 
 
 class MockKeithley:

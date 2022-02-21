@@ -3,14 +3,11 @@ import time
 import re
 import types
 import logging
-import pty
-import os
 
 import astropy.io.fits as fits
 import numpy as np
-import serial
 
-from . import commands_factory, enums, mock_server
+from . import commands_factory, enums, commander
 
 
 class ElectrometerController:
@@ -58,8 +55,8 @@ class ElectrometerController:
 
     """
 
-    def __init__(self, simulation_mode, log=None):
-        self.commander = serial.Serial()
+    def __init__(self, log=None):
+        self.commander = commander.Commander()
         self.commands = commands_factory.ElectrometerCommandFactory()
         self.mode = None
         self.range = None
@@ -67,7 +64,6 @@ class ElectrometerController:
         self.median_filter_active = False
         self.filter_active = False
         self.avg_filter_active = False
-        self.connected = False
         self.last_value = 0
         self.read_freq = 0.01
         self.configuration_delay = 0.1
@@ -75,13 +71,16 @@ class ElectrometerController:
         self.manual_start_time = None
         self.manual_end_time = None
         self.serial_lock = asyncio.Lock()
-        self.simulation_mode = simulation_mode
         # Create a logger if none were passed during the instantiation of
         # the class
         if log is None:
             self.log = logging.getLogger(type(self).__name__)
         else:
             self.log = log.getChild(type(self).__name__)
+
+    @property
+    def connected(self):
+        return self.commander.connected
 
     def configure(self, config):
         """Configure the controller.
@@ -98,8 +97,8 @@ class ElectrometerController:
         self.filter_active = config.filter_active
         self.avg_filter_active = config.avg_filter_active
         self.auto_range = True if self.range <= 0 else False
-        self.commander.port = config.serial_port
-        self.commander.baudrate = config.baudrate
+        self.commander.port = config.tcp_port
+        self.commander.host = config.host
         self.commander.timeout = config.timeout
         self.file_output_dir = config.fits_files_path
 
@@ -142,37 +141,15 @@ class ElectrometerController:
             If false, then returns None.
         """
         async with self.serial_lock:
-            self.commander.write(f"{command}\r".encode())
-            if has_reply:
-                reply = self.commander.read_until(b"\n")
-                return reply.decode().strip()
+            return await self.commander.send_command(msg=command, has_reply=has_reply)
 
     async def connect(self):
         """Open connection to the electrometer."""
-        try:
-            if not self.simulation_mode:
-                self.commander.open()
-            else:
-                main, reader = pty.openpty()
-                self.commander = mock_server.MockSerial(os.ttyname(main))
-        except serial.SerialException:
-            self.log.exception("Device not connected")
-        self.connected = True
-        # self.commander.write(self.commands.enable_display(False).encode())
-        try:
-            await self.set_mode(self.mode)
-            await self.set_range(self.range)
-            await self.set_digital_filter(
-                self.filter_active, self.avg_filter_active, self.median_filter_active
-            )
-        except serial.SerialException:
-            self.log.exception("Device not connected.")
+        await self.commander.connect()
 
-    def disconnect(self):
+    async def disconnect(self):
         """Close connection to the electrometer."""
-        # self.commander.write(self.commands.enable_display(True).encode())
-        self.commander.close()
-        self.connected = False
+        await self.commander.disconnect()
 
     async def perform_zero_calibration(self):
         """Perform zero calibration."""
