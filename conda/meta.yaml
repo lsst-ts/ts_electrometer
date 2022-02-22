@@ -17,6 +17,7 @@ build:
         - PYTHON_BUILD_LOCATION
         - LSST_DDS_DOMAIN
         - TS_CONFIG_OCS_DIR
+    noarch: python
 
 test:
     requires:
@@ -34,13 +35,13 @@ test:
 
 requirements:
     host:
-        - python
+        - python >3
         - pip
         - setuptools_scm
         - setuptools
         - pytest-runner
     run:
-        - python
+        - python >3
         - setuptools
         - setuptools_scm
         - ts-salobj

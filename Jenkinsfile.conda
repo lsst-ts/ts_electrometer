@@ -1,2 +1,2 @@
 @Library('JenkinsShared')_
-CondaPipeline(["ts_config_ocs"], "ts-electrometer", "lsst.ts.electrometer")
+CondaPipeline(["ts_config_ocs"], "ts-electrometer", "lsst.ts.electrometer", "noarch")
