@@ -16,13 +16,13 @@ Electrometer
 Overview
 ========
 
-The :ref:`Contact info <ts_xml:index:master-csc-table:Electrometer>` will show who the lead developer and product owner are.
+The :ref:`Contact info <ts_xml:index:csc-table:Electrometer>` will show who the lead developer and product owner are.
 
 The Electrometer is used in conjunction with a photodiode to measure the intensity of a light source.
 The device supports multiple modes.
 Generally, it is used in the modes that measure current and accumulated/integrated charge.
-The electrometer is connected via USB, using RS-232 converter to a co-located embedded PC running CentOS 7.
-It is deployed as docker container.
+The electrometer is connected via ethernet, using a serial-ethernet terminal to a docker container running centos 7.
+It is deployed as a docker container.
 The component is indexable and so it is possible to command multiple electrometers simultaneously.
 
 .. note:: If you are interested in viewing other branches of this repository append a `/v` to the end of the url link. For example `https://ts-electrometer.lsst.io/v/`

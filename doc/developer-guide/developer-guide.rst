@@ -5,7 +5,7 @@ Electrometer Developer Guide
 #########################################
 
 The Electrometer is a standard salobj CSC.
-It communicates over a RS-232 serial communication.
+It communicates over ethernet.
 
 `Docushare collection <https://docushare.lsst.org/docushare/dsweb/View/Collection-5176>`_
 
@@ -99,5 +99,5 @@ Contributing
 
 Code and documentation contributions utilize pull-requests on github.
 Feature requests can be made by filing a Jira ticket with the `ts_electrometer` label.
-In all cases, reaching out to the :ref:`contacts for this CSC <ts_xml:index:master-csc-table:Electrometer>` is recommended.
+In all cases, reaching out to the :ref:`contacts for this CSC <ts_xml:index:csc-table:Electrometer>` is recommended.
 

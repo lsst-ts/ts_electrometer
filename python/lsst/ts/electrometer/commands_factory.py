@@ -359,7 +359,7 @@ class ElectrometerCommandFactory:
         command : `str`
             The generated command string.
         """
-        command = f":sens:{enums.UnitMode(mode).name}:aper {str(time)};"
+        command = f":sens:{enums.UnitMode(mode).name}:aper {time:f};"
         return command
 
     def set_mode(self, mode):
