@@ -17,6 +17,7 @@ build:
         - PYTHON_BUILD_LOCATION
         - LSST_DDS_DOMAIN
         - TS_CONFIG_OCS_DIR
+        - LSST_SITE
 
 test:
     requires:
@@ -25,6 +26,7 @@ test:
         - ts-idl {{ idl_version }}
         - ts-salobj {{ salobj_version }}
         - ts-tcpip
+        - ts-utils
     source_files:
         - python
         - bin
@@ -47,3 +49,4 @@ requirements:
         - ts-salobj
         - ts-tcpip
         - ts-idl
+        - ts-utils

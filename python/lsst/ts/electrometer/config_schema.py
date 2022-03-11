@@ -7,7 +7,7 @@ CONFIG_SCHEMA = yaml.safe_load(
     """
 $schema: http://json-schema.org/draft-07/schema#
 $id: https://github.com/lsst-ts/ts_electrometer2/blob/master/schema/Electrometer.yaml
-title: Electrometer v2
+title: Electrometer v3
 description: Schema for Electrometer configuration files
 type: object
 properties:
