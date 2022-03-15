@@ -7,12 +7,12 @@ Electrometer User Guide
 This CSC is used to control Keithley 6417b electrometers.
 The primary use-case is to read/monitor the electrical signals from a Hamamatsu S2281 photodiode, however it can be used with other devices.
 The device is generally used in a current and charge measuring modes.
-It communicates over RS-232 serial cable.
-The computer that it is connected to uses a straight-through RS-232 to USB type A cable.
-
+It communicates over ethernet cable.
+The device is connected to a serial-ethernet terminal on a network switch.
 The device creates a FITS file.
 It tracks time and intensity.
 The fits files are stored on the disk of the docker container.
+It does not support any LFO effort yet as that is currently undergoing a rewrite.
 
 Electrometer Interface
 ======================

@@ -180,6 +180,8 @@ class ElectrometerController:
         await self.send_command(
             f"{self.commands.activate_filter(self.mode, enums.Filter(1), filter_active)}"
         )
+        await self.get_avg_filter_status()
+        await self.get_med_filter_status()
         await self.check_error()
 
     async def set_integration_time(self, int_time):
@@ -193,6 +195,7 @@ class ElectrometerController:
         await self.send_command(
             f"{self.commands.integration_time(mode=self.mode, time=int_time)}"
         )
+        await self.get_integration_time()
         await self.check_error()
 
     async def set_mode(self, mode):
@@ -217,6 +220,7 @@ class ElectrometerController:
         await self.send_command(
             f"{self.commands.set_range(auto=self.auto_range, range_value=set_range, mode=self.mode)}"
         )
+        await self.get_range()
         await self.check_error()
 
     async def start_scan(self):
@@ -243,7 +247,7 @@ class ElectrometerController:
         await self.send_command(f"{self.commands.next_read()}")
         self.manual_start_time = time.time()
         dt = 0
-        # FIXME blocking and needs to be non-blocking
+        # FIXME blocking and needs to be non-blocking DM-33990
         while dt < scan_duration:
             await asyncio.sleep(self.integration_time)
             dt = time.monotonic() - self.manual_start_time

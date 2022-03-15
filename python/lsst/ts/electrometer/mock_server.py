@@ -65,18 +65,36 @@ class MockKeithley:
         self.commands = {
             re.compile(r"^\*idn$"): self.do_get_hardware_info,
             re.compile(
+                r"^:sens:(CURR|CHAR|VOlT|RES):aper \d\.\d+;$"
+            ): self.do_integration_time,
+            re.compile(
+                r"^:sens:(CURR|CHAR|VOLT|RES):aper\?;$"
+            ): self.do_get_integration_time,
+            re.compile(
                 r"^:syst:zch (?P<parameter>ON|OFF);$"
             ): self.do_enable_zero_check,
             re.compile(
                 r"^:sens:func (?P<parameter>'CURR'|'CHAR'|'VOLT'|'RES');$"
             ): self.do_set_mode,
-            re.compile(r"^:sens:CURR|CHAR|VOLT|RES:rang:auto 0|1;$"): self.do_set_range,
+            re.compile(
+                r"^:sens:(CURR|CHAR|VOLT|RES):rang:auto (0|1);$"
+            ): self.do_set_range,
+            re.compile(r"^:sens:(CURR|CHAR|VOLT|RES):rang\?;$"): self.do_get_range,
             re.compile(
                 r"^:syst:zcor (?P<parameter>ON|OFF);$"
             ): self.do_enable_zero_correction,
             re.compile(
-                r"^:sens:CURR|CHAR|VOLT|RES:MED|AVG:stat 0|1;$"
+                r"^:sens:(CURR|CHAR|VOLT|RES):(MED|AVER):stat (0|1);$"
             ): self.do_activate_filter,
+            re.compile(
+                r"^:sens:(CURR|CHAR|VOLT|RES):AVER:type\?;$"
+            ): self.do_get_avg_filter_status,
+            re.compile(
+                r"^:sens:(CURR|CHAR|VOLT|RES):AVER:stat\?;$"
+            ): self.do_get_avg_filter_status,
+            re.compile(
+                r"^:sens:(CURR|CHAR|VOLT|RES):MED:stat\?;$"
+            ): self.do_get_med_filter_status,
             re.compile(r"^:syst:err\?;$"): self.do_get_last_error,
             re.compile(r"^:sens:func\?;$"): self.do_get_mode,
             re.compile(r"^:trac:cle;$"): self.do_clear_buffer,
@@ -203,3 +221,18 @@ class MockKeithley:
     def do_read_buffer(self):
         """Read the values in the buffer."""
         return "1 0 0 0\n0 0 0 0"
+
+    def do_get_avg_filter_status(self):
+        return "0"
+
+    def do_get_med_filter_status(self):
+        return "1"
+
+    def do_integration_time(self):
+        return ""
+
+    def do_get_integration_time(self):
+        return "0.01"
+
+    def do_get_range(self):
+        return "0.01"

@@ -97,7 +97,7 @@ class TestElectrometerCommandFactory(unittest.TestCase):
 
     def test_integration_time(self):
         reply = self.commands.integration_time(1)
-        self.assertEqual(reply, ":sens:CURR:aper 0.001;")
+        self.assertEqual(reply, ":sens:CURR:aper 0.001000;")
 
     def test_set_mode(self):
         reply = self.commands.set_mode(2)

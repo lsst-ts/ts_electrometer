@@ -2,6 +2,8 @@ import unittest
 import os
 import pathlib
 
+import pytest
+
 from lsst.ts import salobj, electrometer
 
 
@@ -63,6 +65,7 @@ class ElectrometerCscTestCase(unittest.IsolatedAsyncioTestCase, salobj.BaseCscTe
             simulation_mode=1,
             config_dir=TEST_CONFIG_DIR,
         ):
+            self.remote.evt_digitalFilterChange.flush()
             await self.remote.cmd_setDigitalFilter.set_start(
                 activateFilter=True,
                 activateAvgFilter=False,
@@ -97,7 +100,11 @@ class ElectrometerCscTestCase(unittest.IsolatedAsyncioTestCase, salobj.BaseCscTe
             simulation_mode=1,
             config_dir=TEST_CONFIG_DIR,
         ):
+            self.remote.evt_measureRange.flush()
             await self.remote.cmd_setRange.set_start(setRange=0.01, timeout=STD_TIMEOUT)
+            await self.assert_next_sample(
+                topic=self.remote.evt_measureRange, rangeValue=0.01
+            )
 
     async def test_start_scan(self):
         async with self.make_csc(
@@ -107,6 +114,13 @@ class ElectrometerCscTestCase(unittest.IsolatedAsyncioTestCase, salobj.BaseCscTe
             config_dir=TEST_CONFIG_DIR,
         ):
             await self.remote.cmd_startScan.set_start(timeout=STD_TIMEOUT)
+
+    @pytest.mark.skip("DM-33990")
+    async def test_start_scan_dt(self):
+        async with self.make_csc(
+            initial_state=salobj.State.ENABLED, index=1, simulation_mode=1
+        ):
+            await self.remote.cmd_startScanDt.set_start(scanDuration=2)
 
 
 if __name__ == "__main__":
