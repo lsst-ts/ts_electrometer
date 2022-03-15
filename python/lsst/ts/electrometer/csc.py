@@ -55,7 +55,6 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         self.simulator = None
         self.run_event_loop = False
         self.event_loop_task = utils.make_done_future()
-        self._detailed_state = Electrometer.DetailedState.NOTREADINGSTATE
 
     def assert_substate(self, substates, action):
         """Assert the CSC is in the proper substate.
@@ -91,16 +90,12 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         detailed_state : `lsst.ts.idl.enums.Electrometer.DetailedState`
             The sub state of the CSC.
         """
-        return self._detailed_state
+        return self.evt_detailedState.data.detailedState
 
-    @detailed_state.setter
-    def detailed_state(self, new_state):
-        self._detailed_state = Electrometer.DetailedState(new_state)
-        self.report_detailed_state()
-
-    def report_detailed_state(self):
+    async def report_detailed_state(self, new_state):
         """Report the new detailed state."""
-        self.evt_detailedState.set_put(detailedState=self.detailed_state)
+        detailed_state = Electrometer.DetailedState(new_state)
+        await self.evt_detailedState.set_write(detailedState=detailed_state)
 
     async def configure(self, config):
         """Configure the Electrometer CSC.
@@ -119,22 +114,24 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
                 await self.simulator.start_task
             if not self.controller.connected:
                 await self.controller.connect()
-                self.evt_measureType.set_put(
+                await self.evt_measureType.set_write(
                     mode=self.controller.mode.value, force_output=True
                 )
-                self.evt_digitalFilterChange.set_put(
+                await self.evt_digitalFilterChange.set_write(
                     activateFilter=self.controller.filter_active,
                     activateAverageFilter=self.controller.avg_filter_active,
                     activateMedianFilter=self.controller.median_filter_active,
                     force_output=True,
                 )
-                self.evt_integrationTime.set_put(
+                await self.evt_integrationTime.set_write(
                     intTime=self.controller.integration_time, force_output=True
                 )
-                self.evt_measureRange.set_put(
+                await self.evt_measureRange.set_write(
                     rangeValue=self.controller.range, force_output=True
                 )
-                self.detailed_state = Electrometer.DetailedState.NOTREADINGSTATE
+                await self.report_detailed_state(
+                    Electrometer.DetailedState.NOTREADINGSTATE
+                )
         else:
             if self.controller.connected:
                 await self.controller.disconnect()
@@ -155,9 +152,9 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             substates=[Electrometer.DetailedState.NOTREADINGSTATE],
             action="performZeroCalib",
         )
-        self.detailed_state = Electrometer.DetailedState.CONFIGURINGSTATE
+        await self.report_detailed_state(Electrometer.DetailedState.CONFIGURINGSTATE)
         await self.controller.perform_zero_calibration()
-        self.detailed_state = Electrometer.DetailedState.NOTREADINGSTATE
+        await self.report_detailed_state(Electrometer.DetailedState.NOTREADINGSTATE)
         self.log.info("Zero Calibration Completed")
 
     async def do_setDigitalFilter(self, data):
@@ -173,18 +170,18 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             substates=[Electrometer.DetailedState.NOTREADINGSTATE],
             action="setDigitalFilter",
         )
-        self.detailed_state = Electrometer.DetailedState.CONFIGURINGSTATE
+        await self.report_detailed_state(Electrometer.DetailedState.CONFIGURINGSTATE)
         await self.controller.set_digital_filter(
             activate_filter=data.activateFilter,
             activate_avg_filter=data.activateAvgFilter,
             activate_med_filter=data.activateMedFilter,
         )
-        self.evt_digitalFilterChange.set_put(
+        await self.evt_digitalFilterChange.set_write(
             activateFilter=self.controller.filter_active,
             activateAverageFilter=self.controller.avg_filter_active,
             activateMedianFilter=self.controller.median_filter_active,
         )
-        self.detailed_state = Electrometer.DetailedState.NOTREADINGSTATE
+        await self.report_detailed_state(Electrometer.DetailedState.NOTREADINGSTATE)
 
     async def do_setIntegrationTime(self, data):
         """Set the integration time.
@@ -199,12 +196,12 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             substates=[Electrometer.DetailedState.NOTREADINGSTATE],
             action="setIntegrationTime",
         )
-        self.detailed_state = Electrometer.DetailedState.CONFIGURINGSTATE
+        await self.report_detailed_state(Electrometer.DetailedState.CONFIGURINGSTATE)
         await self.controller.set_integration_time(int_time=data.intTime)
-        self.evt_integrationTime.set_put(
+        await self.evt_integrationTime.set_write(
             intTime=self.controller.integration_time, force_output=True
         )
-        self.detailed_state = Electrometer.DetailedState.NOTREADINGSTATE
+        await self.report_detailed_state(Electrometer.DetailedState.NOTREADINGSTATE)
 
     async def do_setMode(self, data):
         """Set the mode/unit.
@@ -218,11 +215,11 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         self.assert_substate(
             substates=[Electrometer.DetailedState.NOTREADINGSTATE], action="setMode"
         )
-        self.detailed_state = Electrometer.DetailedState.CONFIGURINGSTATE
+        await self.report_detailed_state(Electrometer.DetailedState.CONFIGURINGSTATE)
         await self.controller.set_mode(mode=data.mode)
         await self.controller.get_mode()
-        self.evt_measureType.set_put(mode=self.controller.mode.value)
-        self.detailed_state = Electrometer.DetailedState.NOTREADINGSTATE
+        await self.evt_measureType.set_write(mode=self.controller.mode.value)
+        await self.report_detailed_state(Electrometer.DetailedState.NOTREADINGSTATE)
 
     async def do_setRange(self, data):
         """Set the range.
@@ -236,10 +233,10 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         self.assert_substate(
             substates=[Electrometer.DetailedState.NOTREADINGSTATE], action="setRange"
         )
-        self.detailed_state = Electrometer.DetailedState.CONFIGURINGSTATE
+        await self.report_detailed_state(Electrometer.DetailedState.CONFIGURINGSTATE)
         await self.controller.set_range(set_range=data.setRange)
-        self.evt_measureRange.set_put(rangeValue=self.controller.range)
-        self.detailed_state = Electrometer.DetailedState.NOTREADINGSTATE
+        await self.evt_measureRange.set_write(rangeValue=self.controller.range)
+        await self.report_detailed_state(Electrometer.DetailedState.NOTREADINGSTATE)
 
     async def do_startScan(self, data):
         """Start scan.
@@ -254,7 +251,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             substates=[Electrometer.DetailedState.NOTREADINGSTATE], action="startScan"
         )
         await self.controller.start_scan()
-        self.detailed_state = Electrometer.DetailedState.MANUALREADINGSTATE
+        await self.report_detailed_state(Electrometer.DetailedState.MANUALREADINGSTATE)
 
     async def do_startScanDt(self, data):
         """Start the scan with a set duration.
@@ -268,11 +265,13 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         self.assert_substate(
             substates=[Electrometer.DetailedState.NOTREADINGSTATE], action="startScanDt"
         )
-        self.detailed_state = Electrometer.DetailedState.SETDURATIONREADINGSTATE
+        await self.report_detailed_state(
+            Electrometer.DetailedState.SETDURATIONREADINGSTATE
+        )
         await self.controller.start_scan_dt(scan_duration=data.scanDuration)
-        self.detailed_state = Electrometer.DetailedState.READINGBUFFERSTATE
+        await self.report_detailed_state(Electrometer.DetailedState.READINGBUFFERSTATE)
         await self.controller.stop_scan()
-        self.detailed_state = Electrometer.DetailedState.NOTREADINGSTATE
+        await self.report_detailed_state(Electrometer.DetailedState.NOTREADINGSTATE)
 
     async def do_stopScan(self, data):
         """Stop the scan.
@@ -290,9 +289,9 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             ],
             action="stopScan",
         )
-        self.detailed_state = Electrometer.DetailedState.READINGBUFFERSTATE
+        await self.report_detailed_state(Electrometer.DetailedState.READINGBUFFERSTATE)
         await self.controller.stop_scan()
-        self.detailed_state = Electrometer.DetailedState.NOTREADINGSTATE
+        await self.report_detailed_state(Electrometer.DetailedState.NOTREADINGSTATE)
 
     @staticmethod
     def get_config_pkg():
