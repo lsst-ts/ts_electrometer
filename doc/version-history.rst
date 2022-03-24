@@ -10,10 +10,14 @@ Version History
 .. No new work should be required in order to complete this section.
 .. Below is an example of a version history format.
 
-v0.2.0
+v0.3.0
 ======
 * Fix integrationTime, digitalFilter and range not being updated
 * Make package generic
+
+v0.2.0
+======
+* Fix file writing
 
 v0.1.0
 ======

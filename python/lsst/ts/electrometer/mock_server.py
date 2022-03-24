@@ -235,4 +235,4 @@ class MockKeithley:
         return "0.01"
 
     def do_get_range(self):
-        return "0.01"
+        return "0.1"
