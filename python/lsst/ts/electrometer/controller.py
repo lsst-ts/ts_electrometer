@@ -59,7 +59,7 @@ class ElectrometerController:
         self.commander = commander.Commander()
         self.commands = commands_factory.ElectrometerCommandFactory()
         self.mode = None
-        self.range = None
+        self.range = 0.1
         self.integration_time = 0.01
         self.median_filter_active = False
         self.filter_active = False
