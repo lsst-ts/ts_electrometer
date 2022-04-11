@@ -72,6 +72,7 @@ class Commander:
         msg = msg + self.command_terminator
         msg = msg.encode("ascii")
         if self.writer is not None:
+            self.log.debug(f'Commanding using: {msg}')
             self.writer.write(msg)
             await self.writer.drain()
             if has_reply:
@@ -83,4 +84,4 @@ class Commander:
                 return reply
             return None
         else:
-            raise RuntimeError("CSC not connected.ß")
+            raise RuntimeError("CSC not connected.")
