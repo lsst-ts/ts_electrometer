@@ -188,6 +188,7 @@ class ElectrometerController:
         await self.get_med_filter_status()
         self.log.debug('sending set_digital_filter command3')
         await self.check_error()
+        self.log.debug('set_digital_filter error check completed')
 
     async def set_integration_time(self, int_time):
         """Set the integration time.

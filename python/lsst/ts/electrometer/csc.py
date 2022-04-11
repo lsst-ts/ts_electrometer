@@ -55,6 +55,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         self.simulator = None
         self.run_event_loop = False
         self.event_loop_task = utils.make_done_future()
+        self.default_force_output = True
 
     def assert_substate(self, substates, action):
         """Assert the CSC is in the proper substate.
@@ -177,6 +178,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             activate_avg_filter=data.activateAvgFilter,
             activate_med_filter=data.activateMedFilter,
         )
+        self.log.debug("setDigitalFilter controller interaction completed")
         await self.evt_digitalFilterChange.set_write(
             activateFilter=self.controller.filter_active,
             activateAverageFilter=self.controller.avg_filter_active,
