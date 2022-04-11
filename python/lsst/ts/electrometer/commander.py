@@ -40,7 +40,7 @@ class Commander:
 
         self.reader = None
         self.writer = None
-        self.reply_terminator = b"\n"
+        self.reply_terminator = b"\r"
         self.command_terminator = "\r"
         self.lock = asyncio.Lock()
         self.host = tcpip.LOCAL_HOST
@@ -77,9 +77,8 @@ class Commander:
         """
         msg = msg + self.command_terminator
         msg = msg.encode("ascii")
-        self.log.debug(f'self.writer is {self.writer}')
         if self.writer is not None:
-            self.log.debug(f'Commanding using: {msg}')
+            self.log.debug(f"Commanding using: {msg}")
             self.writer.write(msg)
             await self.writer.drain()
             if has_reply:
