@@ -56,7 +56,15 @@ class ElectrometerController:
     """
 
     def __init__(self, log=None):
-        self.commander = commander.Commander()
+
+        # Create a logger if none were passed during the instantiation of
+        # the class
+        if log is None:
+            self.log = logging.getLogger(type(self).__name__)
+        else:
+            self.log = log.getChild(type(self).__name__)
+
+        self.commander = commander.Commander(log=self.log)
         self.commands = commands_factory.ElectrometerCommandFactory()
         self.mode = None
         self.range = 0.1
@@ -71,12 +79,7 @@ class ElectrometerController:
         self.manual_start_time = None
         self.manual_end_time = None
         self.serial_lock = asyncio.Lock()
-        # Create a logger if none were passed during the instantiation of
-        # the class
-        if log is None:
-            self.log = logging.getLogger(type(self).__name__)
-        else:
-            self.log = log.getChild(type(self).__name__)
+
 
     @property
     def connected(self):

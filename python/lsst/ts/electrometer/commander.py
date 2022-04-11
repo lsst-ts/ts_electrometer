@@ -30,8 +30,14 @@ class Commander:
         Whether the electrometer is connected or not.
     """
 
-    def __init__(self) -> None:
-        self.log = logging.getLogger(__name__)
+    def __init__(self, log=None) -> None:
+        # Create a logger if none were passed during the instantiation of
+        # the class
+        if log is None:
+            self.log = logging.getLogger(type(self).__name__)
+        else:
+            self.log = log.getChild(type(self).__name__)
+
         self.reader = None
         self.writer = None
         self.reply_terminator = b"\n"
