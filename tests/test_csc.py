@@ -1,6 +1,7 @@
 import unittest
 import os
 import pathlib
+import logging
 
 import pytest
 
@@ -14,6 +15,7 @@ TEST_CONFIG_DIR = pathlib.Path(__file__).parents[1].joinpath("tests", "data", "c
 class ElectrometerCscTestCase(unittest.IsolatedAsyncioTestCase, salobj.BaseCscTestCase):
     def setUp(self) -> None:
         os.environ["LSST_SITE"] = "electrometer"
+        self.log = logging.getLogger(type(self).__name__)
         return super().setUp()
 
     def basic_make_csc(self, initial_state, config_dir, simulation_mode, index):
@@ -48,6 +50,14 @@ class ElectrometerCscTestCase(unittest.IsolatedAsyncioTestCase, salobj.BaseCscTe
                     "stopScan",
                 ]
             )
+
+            heartbeat = self.remote.evt_heartbeat.get()
+            evt=await self.remote.evt_configurationsAvailable.aget(timeout=5)
+            print(f'evt is {evt}')
+            self.log.debug(f'evt is {evt}')
+            evt=await self.remote.evt_configurationApplied.aget(timeout=5)
+            print(f'evt is {evt}')
+            assert False
 
     async def test_perform_zero_calib(self):
         async with self.make_csc(
