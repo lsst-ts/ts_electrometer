@@ -173,13 +173,16 @@ class ElectrometerController:
             Whether the median filter should be activated.
         """
         filter_active = activate_avg_filter and activate_filter
+        self.log.debug('sending set_digital_filter command1')
         await self.send_command(
             f"{self.commands.activate_filter(self.mode, enums.Filter(2), filter_active)}"
         )
         filter_active = activate_med_filter and activate_filter
+        self.log.debug('sending set_digital_filter command2')
         await self.send_command(
             f"{self.commands.activate_filter(self.mode, enums.Filter(1), filter_active)}"
         )
+        self.log.debug('sending set_digital_filter command3')
         await self.get_avg_filter_status()
         await self.get_med_filter_status()
         await self.check_error()

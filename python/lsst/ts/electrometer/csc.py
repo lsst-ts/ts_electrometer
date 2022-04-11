@@ -165,6 +165,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         data : `cmd_setDigitalFilter.DataType`
             The data for the command.
         """
+        self.log.debug("setDigitalFilter Started")
         self.assert_enabled()
         self.assert_substate(
             substates=[Electrometer.DetailedState.NOTREADINGSTATE],
@@ -182,6 +183,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             activateMedianFilter=self.controller.median_filter_active,
         )
         await self.report_detailed_state(Electrometer.DetailedState.NOTREADINGSTATE)
+        self.log.info("setDigitalFilter Completed")
 
     async def do_setIntegrationTime(self, data):
         """Set the integration time.
@@ -246,12 +248,14 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         data : `cmd_startScan.DataType`
             The data for the command.
         """
+        self.log.debug("Starting startScan")
         self.assert_enabled()
         self.assert_substate(
             substates=[Electrometer.DetailedState.NOTREADINGSTATE], action="startScan"
         )
         await self.controller.start_scan()
         await self.report_detailed_state(Electrometer.DetailedState.MANUALREADINGSTATE)
+        self.log.debug("startScan Completed")
 
     async def do_startScanDt(self, data):
         """Start the scan with a set duration.
@@ -261,6 +265,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         data : `cmd_startScanDt.DataType`
             The data for the command.
         """
+        self.log.debug("Starting startScanDt")
         self.assert_enabled()
         self.assert_substate(
             substates=[Electrometer.DetailedState.NOTREADINGSTATE], action="startScanDt"
@@ -272,6 +277,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         await self.report_detailed_state(Electrometer.DetailedState.READINGBUFFERSTATE)
         await self.controller.stop_scan()
         await self.report_detailed_state(Electrometer.DetailedState.NOTREADINGSTATE)
+        self.log.info("startScanDt Completed")
 
     async def do_stopScan(self, data):
         """Stop the scan.
@@ -281,6 +287,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         data : `cmd_stopScan.DataType`
             The data for the command.
         """
+        self.log.debug("Starting stopScan")
         self.assert_enabled()
         self.assert_substate(
             substates=[
@@ -292,6 +299,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         await self.report_detailed_state(Electrometer.DetailedState.READINGBUFFERSTATE)
         await self.controller.stop_scan()
         await self.report_detailed_state(Electrometer.DetailedState.NOTREADINGSTATE)
+        self.log.info("stopScan Completed")
 
     @staticmethod
     def get_config_pkg():
