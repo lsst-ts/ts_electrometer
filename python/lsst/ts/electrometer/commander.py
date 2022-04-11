@@ -71,6 +71,7 @@ class Commander:
         """
         msg = msg + self.command_terminator
         msg = msg.encode("ascii")
+        self.log.debug(f'self.writer is {self.writer}')
         if self.writer is not None:
             self.log.debug(f'Commanding using: {msg}')
             self.writer.write(msg)

@@ -345,7 +345,7 @@ class ElectrometerController:
 
     async def get_avg_filter_status(self):
         """Get the average filter status."""
-        self.log.debug('Getting avg_filter_status')
+        self.log.debug(f'Getting avg_filter_status, by sending {self.commands.get_filter_status(self.mode, 2)}')
         res = await self.send_command(
             f"{self.commands.get_filter_status(self.mode, 2)}", has_reply=True
         )
