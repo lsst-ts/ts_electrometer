@@ -82,9 +82,10 @@ class Commander:
             self.writer.write(msg)
             await self.writer.drain()
             if has_reply:
-                reply = await asyncio.wait_for(
-                    self.reader.readuntil(self.reply_terminator), timeout=self.timeout
-                )
+                # reply = await asyncio.wait_for(
+                #     self.reader.readuntil(self.reply_terminator), timeout=self.timeout
+                # )
+                reply = await self.reader.readuntil(self.reply_terminator)
                 self.log.debug(f"reply={reply}")
                 reply = reply.decode().strip()
                 return reply

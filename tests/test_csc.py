@@ -51,13 +51,7 @@ class ElectrometerCscTestCase(unittest.IsolatedAsyncioTestCase, salobj.BaseCscTe
                 ]
             )
 
-            heartbeat = self.remote.evt_heartbeat.get()
-            evt=await self.remote.evt_configurationsAvailable.aget(timeout=5)
-            print(f'evt is {evt}')
-            self.log.debug(f'evt is {evt}')
-            evt=await self.remote.evt_configurationApplied.aget(timeout=5)
-            print(f'evt is {evt}')
-            assert False
+
 
     async def test_perform_zero_calib(self):
         async with self.make_csc(
