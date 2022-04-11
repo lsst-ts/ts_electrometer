@@ -184,7 +184,9 @@ class ElectrometerController:
         )
         self.log.debug('sending set_digital_filter command3')
         await self.get_avg_filter_status()
+        self.log.debug('sending set_digital_filter command3')
         await self.get_med_filter_status()
+        self.log.debug('sending set_digital_filter command3')
         await self.check_error()
 
     async def set_integration_time(self, int_time):
@@ -232,6 +234,7 @@ class ElectrometerController:
         await self.send_command(f"{self.commands.format_trac()}")
         await self.send_command(f"{self.commands.set_buffer_size(50000)}")
         await self.send_command(f"{self.commands.select_device_timer()}")
+        self.log.debug('Start_scan ready to read')
         await self.send_command(f"{self.commands.next_read()}")
         self.manual_start_time = time.time()
 
@@ -259,6 +262,7 @@ class ElectrometerController:
         """Stop storing values to the buffer."""
         self.manual_end_time = time.time()
         await self.send_command(f"{self.commands.stop_storing_buffer()}")
+        self.log.debug('Scanning stopped, Now reading buffer.')
         res = await self.send_command(f"{self.commands.read_buffer()}", has_reply=True)
         intensity, times, temperature, unit = self.parse_buffer(res)
         self.write_fits_file(intensity, times, temperature, unit)
