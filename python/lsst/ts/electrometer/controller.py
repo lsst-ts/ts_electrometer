@@ -184,9 +184,9 @@ class ElectrometerController:
         )
         self.log.debug('sending set_digital_filter command3')
         await self.get_avg_filter_status()
-        self.log.debug('sending set_digital_filter command3')
+        self.log.debug('sending set_digital_filter command4')
         await self.get_med_filter_status()
-        self.log.debug('sending set_digital_filter command3')
+        self.log.debug('sending set_digital_filter command5')
         await self.check_error()
         self.log.debug('set_digital_filter error check completed')
 
@@ -345,9 +345,11 @@ class ElectrometerController:
 
     async def get_avg_filter_status(self):
         """Get the average filter status."""
+        self.log.debug('Getting avg_filter_status')
         res = await self.send_command(
             f"{self.commands.get_filter_status(self.mode, 2)}", has_reply=True
         )
+        self.log.debug(f'get_avg_filter_status returned {res}')
         self.avg_filter_active = bool(res)
 
     async def get_med_filter_status(self):
