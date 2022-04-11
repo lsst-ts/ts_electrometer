@@ -329,9 +329,11 @@ class ElectrometerController:
 
     async def check_error(self):
         """Check the error."""
+        self.log.debug('Checking for controller errors')
         res = await self.send_command(
             f"{self.commands.get_last_error()}", has_reply=True
         )
+        self.log.debug(f'Got error of {res}.')
         self.error_code, self.message = res.split(",")
 
     async def get_mode(self):
