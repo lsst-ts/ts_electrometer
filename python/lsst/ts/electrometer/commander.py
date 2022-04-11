@@ -40,7 +40,7 @@ class Commander:
 
         self.reader = None
         self.writer = None
-        self.reply_terminator = b"\n"
+        self.reply_terminator = b"\r"
         self.command_terminator = "\r"
         self.lock = asyncio.Lock()
         self.host = tcpip.LOCAL_HOST
