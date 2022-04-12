@@ -80,7 +80,6 @@ class ElectrometerController:
         self.manual_end_time = None
         self.serial_lock = asyncio.Lock()
 
-
     @property
     def connected(self):
         return self.commander.connected
@@ -150,6 +149,18 @@ class ElectrometerController:
         """Open connection to the electrometer."""
         await self.commander.connect()
 
+        # Send a message and verify the response to ensure connectivity
+        res = await self.send_command(
+            f"{self.commands.get_hardware_info()}", has_reply=True
+        )
+        expected = "KEITHLEY INSTRUMENTS INC."
+        if expected not in res:
+            self.log.error(
+                f"Communication verification test failed."
+                f"Expected:\n {expected} \n but got: \n{res} \n"
+            )
+            raise RuntimeError("Communication verification failed.")
+
     async def disconnect(self):
         """Close connection to the electrometer."""
         await self.commander.disconnect()
@@ -176,22 +187,16 @@ class ElectrometerController:
             Whether the median filter should be activated.
         """
         filter_active = activate_avg_filter and activate_filter
-        self.log.debug('sending set_digital_filter command1')
         await self.send_command(
             f"{self.commands.activate_filter(self.mode, enums.Filter(2), filter_active)}"
         )
         filter_active = activate_med_filter and activate_filter
-        self.log.debug('sending set_digital_filter command2')
         await self.send_command(
             f"{self.commands.activate_filter(self.mode, enums.Filter(1), filter_active)}"
         )
-        self.log.debug('sending set_digital_filter command3')
         await self.get_avg_filter_status()
-        self.log.debug('sending set_digital_filter command4')
         await self.get_med_filter_status()
-        self.log.debug('sending set_digital_filter command5')
         await self.check_error()
-        self.log.debug('set_digital_filter error check completed')
 
     async def set_integration_time(self, int_time):
         """Set the integration time.
@@ -238,7 +243,6 @@ class ElectrometerController:
         await self.send_command(f"{self.commands.format_trac()}")
         await self.send_command(f"{self.commands.set_buffer_size(50000)}")
         await self.send_command(f"{self.commands.select_device_timer()}")
-        self.log.debug('Start_scan ready to read')
         await self.send_command(f"{self.commands.next_read()}")
         self.manual_start_time = time.time()
 
@@ -266,7 +270,7 @@ class ElectrometerController:
         """Stop storing values to the buffer."""
         self.manual_end_time = time.time()
         await self.send_command(f"{self.commands.stop_storing_buffer()}")
-        self.log.debug('Scanning stopped, Now reading buffer.')
+        self.log.debug("Scanning stopped, Now reading buffer.")
         res = await self.send_command(f"{self.commands.read_buffer()}", has_reply=True)
         intensity, times, temperature, unit = self.parse_buffer(res)
         self.write_fits_file(intensity, times, temperature, unit)
@@ -332,11 +336,9 @@ class ElectrometerController:
 
     async def check_error(self):
         """Check the error."""
-        self.log.debug('Checking for controller errors')
         res = await self.send_command(
             f"{self.commands.get_last_error()}", has_reply=True
         )
-        self.log.debug(f'Got error of {res}.')
         self.error_code, self.message = res.split(",")
 
     async def get_mode(self):
@@ -348,11 +350,9 @@ class ElectrometerController:
 
     async def get_avg_filter_status(self):
         """Get the average filter status."""
-        self.log.debug(f'Getting avg_filter_status, by sending {self.commands.get_filter_status(self.mode, 2)}')
         res = await self.send_command(
             f"{self.commands.get_filter_status(self.mode, 2)}", has_reply=True
         )
-        self.log.debug(f'get_avg_filter_status returned {res}')
         self.avg_filter_active = bool(res)
 
     async def get_med_filter_status(self):

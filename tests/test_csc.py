@@ -51,8 +51,6 @@ class ElectrometerCscTestCase(unittest.IsolatedAsyncioTestCase, salobj.BaseCscTe
                 ]
             )
 
-
-
     async def test_perform_zero_calib(self):
         async with self.make_csc(
             initial_state=salobj.State.ENABLED,

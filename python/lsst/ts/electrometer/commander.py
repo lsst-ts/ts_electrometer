@@ -78,14 +78,13 @@ class Commander:
         msg = msg + self.command_terminator
         msg = msg.encode("ascii")
         if self.writer is not None:
-            self.log.debug(f'Commanding using: {msg}')
+            self.log.debug(f"Commanding using: {msg}")
             self.writer.write(msg)
             await self.writer.drain()
             if has_reply:
-                # reply = await asyncio.wait_for(
-                #     self.reader.readuntil(self.reply_terminator), timeout=self.timeout
-                # )
-                reply = await self.reader.readuntil(self.reply_terminator)
+                reply = await asyncio.wait_for(
+                    self.reader.readuntil(self.reply_terminator), timeout=self.timeout
+                )
                 self.log.debug(f"reply={reply}")
                 reply = reply.decode().strip()
                 return reply

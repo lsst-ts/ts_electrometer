@@ -34,7 +34,7 @@ class MockServer(tcpip.OneClientServer):
             reply = self.device.parse_message(line)
             self.log.debug(f"reply={reply}")
             if reply is not None:
-                reply = reply + "\n"
+                reply = reply + "\r"
                 reply = reply.encode("ascii")
                 self.log.debug(f"writing reply={reply}")
                 self.writer.write(reply)
@@ -63,7 +63,7 @@ class MockKeithley:
         """
         self.log = logging.getLogger(__name__)
         self.commands = {
-            re.compile(r"^\*idn$"): self.do_get_hardware_info,
+            re.compile(r"^\*idn\?;$"): self.do_get_hardware_info,
             re.compile(
                 r"^:sens:(CURR|CHAR|VOlT|RES):aper \d\.\d+;$"
             ): self.do_integration_time,
