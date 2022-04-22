@@ -55,7 +55,7 @@ class ElectrometerController:
 
     """
 
-    def __init__(self, log=None):
+    def __init__(self, csc, log=None):
 
         # Create a logger if none were passed during the instantiation of
         # the class
@@ -64,6 +64,7 @@ class ElectrometerController:
         else:
             self.log = log.getChild(type(self).__name__)
 
+        self.csc = csc
         self.commander = commander.Commander(log=self.log)
         self.commands = commands_factory.ElectrometerCommandFactory()
         self.mode = None
@@ -244,7 +245,7 @@ class ElectrometerController:
         await self.send_command(f"{self.commands.set_buffer_size(50000)}")
         await self.send_command(f"{self.commands.select_device_timer()}")
         await self.send_command(f"{self.commands.next_read()}")
-        self.manual_start_time = time.time()
+        self.manual_start_time = time.monotonic()
 
     async def start_scan_dt(self, scan_duration):
         """Start storing values to the buffer for a set duration.
@@ -259,16 +260,17 @@ class ElectrometerController:
         await self.send_command(f"{self.commands.set_buffer_size(50000)}")
         await self.send_command(f"{self.commands.select_device_timer()}")
         await self.send_command(f"{self.commands.next_read()}")
-        self.manual_start_time = time.time()
+        self.manual_start_time = time.monotonic()
         dt = 0
-        # FIXME blocking and needs to be non-blocking DM-33990
         while dt < scan_duration:
+            await self.get_intensity()
+            await self.csc.evt_intensity.set_write(intensity=self.last_value)
             await asyncio.sleep(self.integration_time)
             dt = time.monotonic() - self.manual_start_time
 
     async def stop_scan(self):
         """Stop storing values to the buffer."""
-        self.manual_end_time = time.time()
+        self.manual_end_time = time.monotonic()
         await self.send_command(f"{self.commands.stop_storing_buffer()}")
         self.log.debug("Scanning stopped, Now reading buffer.")
         res = await self.send_command(f"{self.commands.read_buffer()}", has_reply=True)
@@ -375,3 +377,9 @@ class ElectrometerController:
             f"{self.commands.get_integration_time(self.mode)}", has_reply=True
         )
         self.integration_time = float(res)
+
+    async def get_intensity(self):
+        res = await self.send_command(f"{self.commands.get_measure(1)}", has_reply=True)
+        res = res.split(",")
+        res = res[0].strip("ZVDCNA")
+        self.last_value = float(res)

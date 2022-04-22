@@ -51,7 +51,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             initial_state=initial_state,
             simulation_mode=simulation_mode,
         )
-        self.controller = controller.ElectrometerController(log=self.log)
+        self.controller = controller.ElectrometerController(csc=self, log=self.log)
         self.simulator = None
         self.run_event_loop = False
         self.event_loop_task = utils.make_done_future()
@@ -255,9 +255,14 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         self.assert_substate(
             substates=[Electrometer.DetailedState.NOTREADINGSTATE], action="startScan"
         )
-        await self.controller.start_scan()
-        await self.report_detailed_state(Electrometer.DetailedState.MANUALREADINGSTATE)
-        self.log.debug("startScan Completed")
+        try:
+            await self.controller.start_scan()
+            await self.report_detailed_state(
+                Electrometer.DetailedState.MANUALREADINGSTATE
+            )
+            self.log.debug("startScan Completed")
+        except Exception:
+            await self.report_detailed_state(Electrometer.DetailedState.NOTREADINGSTATE)
 
     async def do_startScanDt(self, data):
         """Start the scan with a set duration.
@@ -298,10 +303,15 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             ],
             action="stopScan",
         )
-        await self.report_detailed_state(Electrometer.DetailedState.READINGBUFFERSTATE)
-        await self.controller.stop_scan()
-        await self.report_detailed_state(Electrometer.DetailedState.NOTREADINGSTATE)
-        self.log.info("stopScan Completed")
+        try:
+            await self.report_detailed_state(
+                Electrometer.DetailedState.READINGBUFFERSTATE
+            )
+            await self.controller.stop_scan()
+            await self.report_detailed_state(Electrometer.DetailedState.NOTREADINGSTATE)
+            self.log.info("stopScan Completed")
+        except Exception:
+            await self.report_detailed_state(Electrometer.DetailedState.NOTREADINGSTATE)
 
     @staticmethod
     def get_config_pkg():
