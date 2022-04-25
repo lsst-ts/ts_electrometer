@@ -1,5 +1,4 @@
 import asyncio
-import time
 import re
 import types
 import logging
@@ -8,6 +7,7 @@ import astropy.io.fits as fits
 import numpy as np
 
 from . import commands_factory, enums, commander
+from lsst.ts import utils
 
 
 class ElectrometerController:
@@ -46,10 +46,10 @@ class ElectrometerController:
         The delay to allow the electrometer to configure.
     auto_range : `bool`
         Whether automatic range is active.
-    manual_start_time : `int`
-        The start time of a scan.
-    manual_end_time : `int`
-        The end time of a scan.
+    manual_start_time : `float`
+        The start TAI time of a scan [s].
+    manual_end_time : `float`
+        The end TAI time of a scan [s].
     serial_lock : `asyncio.Lock`
         The lock for protecting the synchronous serial communication.
 
@@ -239,16 +239,17 @@ class ElectrometerController:
         await self.check_error()
 
     async def start_scan(self):
-        """Start storing values to the buffer."""
+        """Start storing values in the Kiethley electrometer."""
         await self.send_command(f"{self.commands.clear_buffer()}")
         await self.send_command(f"{self.commands.format_trac()}")
         await self.send_command(f"{self.commands.set_buffer_size(50000)}")
         await self.send_command(f"{self.commands.select_device_timer()}")
         await self.send_command(f"{self.commands.next_read()}")
-        self.manual_start_time = time.monotonic()
+        self.manual_start_time = utils.current_tai
 
     async def start_scan_dt(self, scan_duration):
-        """Start storing values to the buffer for a set duration.
+        """Start storing values in the Kiethley electrometer, for a
+        set duration.
 
         Parameters
         ----------
@@ -260,17 +261,17 @@ class ElectrometerController:
         await self.send_command(f"{self.commands.set_buffer_size(50000)}")
         await self.send_command(f"{self.commands.select_device_timer()}")
         await self.send_command(f"{self.commands.next_read()}")
-        self.manual_start_time = time.monotonic()
+        self.manual_start_time = utils.current_tai
         dt = 0
         while dt < scan_duration:
             await self.get_intensity()
             await self.csc.evt_intensity.set_write(intensity=self.last_value)
             await asyncio.sleep(self.integration_time)
-            dt = time.monotonic() - self.manual_start_time
+            dt = utils.current_tai - self.manual_start_time
 
     async def stop_scan(self):
-        """Stop storing values to the buffer."""
-        self.manual_end_time = time.monotonic()
+        """Stop storing values in the Kiethley electrometer."""
+        self.manual_end_time = utils.current_tai
         await self.send_command(f"{self.commands.stop_storing_buffer()}")
         self.log.debug("Scanning stopped, Now reading buffer.")
         res = await self.send_command(f"{self.commands.read_buffer()}", has_reply=True)
@@ -379,6 +380,7 @@ class ElectrometerController:
         self.integration_time = float(res)
 
     async def get_intensity(self):
+        """Get the intensity."""
         res = await self.send_command(f"{self.commands.get_measure(1)}", has_reply=True)
         res = res.split(",")
         res = res[0].strip("ZVDCNA")
