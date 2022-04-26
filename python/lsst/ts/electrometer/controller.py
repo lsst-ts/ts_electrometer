@@ -1,5 +1,4 @@
 import asyncio
-import time
 import re
 import types
 import logging
@@ -8,6 +7,7 @@ import astropy.io.fits as fits
 import numpy as np
 
 from . import commands_factory, enums, commander
+from lsst.ts import utils
 
 
 class ElectrometerController:
@@ -46,17 +46,26 @@ class ElectrometerController:
         The delay to allow the electrometer to configure.
     auto_range : `bool`
         Whether automatic range is active.
-    manual_start_time : `int`
-        The start time of a scan.
-    manual_end_time : `int`
-        The end time of a scan.
+    manual_start_time : `float`
+        The start TAI time of a scan [s].
+    manual_end_time : `float`
+        The end TAI time of a scan [s].
     serial_lock : `asyncio.Lock`
         The lock for protecting the synchronous serial communication.
 
     """
 
-    def __init__(self, log=None):
-        self.commander = commander.Commander()
+    def __init__(self, csc, log=None):
+
+        # Create a logger if none were passed during the instantiation of
+        # the class
+        if log is None:
+            self.log = logging.getLogger(type(self).__name__)
+        else:
+            self.log = log.getChild(type(self).__name__)
+
+        self.csc = csc
+        self.commander = commander.Commander(log=self.log)
         self.commands = commands_factory.ElectrometerCommandFactory()
         self.mode = None
         self.range = 0.1
@@ -71,12 +80,6 @@ class ElectrometerController:
         self.manual_start_time = None
         self.manual_end_time = None
         self.serial_lock = asyncio.Lock()
-        # Create a logger if none were passed during the instantiation of
-        # the class
-        if log is None:
-            self.log = logging.getLogger(type(self).__name__)
-        else:
-            self.log = log.getChild(type(self).__name__)
 
     @property
     def connected(self):
@@ -146,6 +149,18 @@ class ElectrometerController:
     async def connect(self):
         """Open connection to the electrometer."""
         await self.commander.connect()
+
+        # Send a message and verify the response to ensure connectivity
+        res = await self.send_command(
+            f"{self.commands.get_hardware_info()}", has_reply=True
+        )
+        expected = "KEITHLEY INSTRUMENTS INC."
+        if expected not in res:
+            self.log.error(
+                f"Communication verification test failed."
+                f"Expected:\n {expected} \n but got: \n{res} \n"
+            )
+            raise RuntimeError("Communication verification failed.")
 
     async def disconnect(self):
         """Close connection to the electrometer."""
@@ -224,16 +239,17 @@ class ElectrometerController:
         await self.check_error()
 
     async def start_scan(self):
-        """Start storing values to the buffer."""
+        """Start storing values in the Keithley electrometer's buffer."""
         await self.send_command(f"{self.commands.clear_buffer()}")
         await self.send_command(f"{self.commands.format_trac()}")
         await self.send_command(f"{self.commands.set_buffer_size(50000)}")
         await self.send_command(f"{self.commands.select_device_timer()}")
         await self.send_command(f"{self.commands.next_read()}")
-        self.manual_start_time = time.time()
+        self.manual_start_time = utils.current_tai
 
     async def start_scan_dt(self, scan_duration):
-        """Start storing values to the buffer for a set duration.
+        """Start storing values in the Keithley electrometer's buffer, for a
+        set duration.
 
         Parameters
         ----------
@@ -245,17 +261,19 @@ class ElectrometerController:
         await self.send_command(f"{self.commands.set_buffer_size(50000)}")
         await self.send_command(f"{self.commands.select_device_timer()}")
         await self.send_command(f"{self.commands.next_read()}")
-        self.manual_start_time = time.time()
+        self.manual_start_time = utils.current_tai
         dt = 0
-        # FIXME blocking and needs to be non-blocking DM-33990
         while dt < scan_duration:
+            await self.get_intensity()
+            await self.csc.evt_intensity.set_write(intensity=self.last_value)
             await asyncio.sleep(self.integration_time)
-            dt = time.monotonic() - self.manual_start_time
+            dt = utils.current_tai - self.manual_start_time
 
     async def stop_scan(self):
-        """Stop storing values to the buffer."""
-        self.manual_end_time = time.time()
+        """Stop storing values in the Keithley electrometer."""
+        self.manual_end_time = utils.current_tai
         await self.send_command(f"{self.commands.stop_storing_buffer()}")
+        self.log.debug("Scanning stopped, Now reading buffer.")
         res = await self.send_command(f"{self.commands.read_buffer()}", has_reply=True)
         intensity, times, temperature, unit = self.parse_buffer(res)
         self.write_fits_file(intensity, times, temperature, unit)
@@ -360,3 +378,10 @@ class ElectrometerController:
             f"{self.commands.get_integration_time(self.mode)}", has_reply=True
         )
         self.integration_time = float(res)
+
+    async def get_intensity(self):
+        """Get the intensity."""
+        res = await self.send_command(f"{self.commands.get_measure(1)}", has_reply=True)
+        res = res.split(",")
+        res = res[0].strip("ZVDCNA")
+        self.last_value = float(res)

@@ -30,11 +30,17 @@ class Commander:
         Whether the electrometer is connected or not.
     """
 
-    def __init__(self) -> None:
-        self.log = logging.getLogger(__name__)
+    def __init__(self, log=None) -> None:
+        # Create a logger if none were passed during the instantiation of
+        # the class
+        if log is None:
+            self.log = logging.getLogger(type(self).__name__)
+        else:
+            self.log = log.getChild(type(self).__name__)
+
         self.reader = None
         self.writer = None
-        self.reply_terminator = b"\n"
+        self.reply_terminator = b"\r"
         self.command_terminator = "\r"
         self.lock = asyncio.Lock()
         self.host = tcpip.LOCAL_HOST
@@ -72,6 +78,7 @@ class Commander:
         msg = msg + self.command_terminator
         msg = msg.encode("ascii")
         if self.writer is not None:
+            self.log.debug(f"Commanding using: {msg}")
             self.writer.write(msg)
             await self.writer.drain()
             if has_reply:
@@ -83,4 +90,4 @@ class Commander:
                 return reply
             return None
         else:
-            raise RuntimeError("CSC not connected.ß")
+            raise RuntimeError("CSC not connected.")

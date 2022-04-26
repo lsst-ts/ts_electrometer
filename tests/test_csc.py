@@ -1,6 +1,7 @@
 import unittest
 import os
 import pathlib
+import logging
 
 import pytest
 
@@ -14,6 +15,7 @@ TEST_CONFIG_DIR = pathlib.Path(__file__).parents[1].joinpath("tests", "data", "c
 class ElectrometerCscTestCase(unittest.IsolatedAsyncioTestCase, salobj.BaseCscTestCase):
     def setUp(self) -> None:
         os.environ["LSST_SITE"] = "electrometer"
+        self.log = logging.getLogger(type(self).__name__)
         return super().setUp()
 
     def basic_make_csc(self, initial_state, config_dir, simulation_mode, index):
