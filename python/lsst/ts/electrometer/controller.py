@@ -245,7 +245,7 @@ class ElectrometerController:
         await self.send_command(f"{self.commands.set_buffer_size(50000)}")
         await self.send_command(f"{self.commands.select_device_timer()}")
         await self.send_command(f"{self.commands.next_read()}")
-        self.manual_start_time = utils.current_tai
+        self.manual_start_time = utils.current_tai()
 
     async def start_scan_dt(self, scan_duration):
         """Start storing values in the Keithley electrometer's buffer, for a
@@ -261,17 +261,17 @@ class ElectrometerController:
         await self.send_command(f"{self.commands.set_buffer_size(50000)}")
         await self.send_command(f"{self.commands.select_device_timer()}")
         await self.send_command(f"{self.commands.next_read()}")
-        self.manual_start_time = utils.current_tai
+        self.manual_start_time = utils.current_tai()
         dt = 0
         while dt < scan_duration:
             await self.get_intensity()
             await self.csc.evt_intensity.set_write(intensity=self.last_value)
             await asyncio.sleep(self.integration_time)
-            dt = utils.current_tai - self.manual_start_time
+            dt = utils.current_tai() - self.manual_start_time
 
     async def stop_scan(self):
         """Stop storing values in the Keithley electrometer."""
-        self.manual_end_time = utils.current_tai
+        self.manual_end_time = utils.current_tai()
         await self.send_command(f"{self.commands.stop_storing_buffer()}")
         self.log.debug("Scanning stopped, Now reading buffer.")
         res = await self.send_command(f"{self.commands.read_buffer()}", has_reply=True)
@@ -300,6 +300,10 @@ class ElectrometerController:
         filename = f"{self.manual_start_time}_{self.manual_end_time}.fits"
         hdu.writeto(f"{self.file_output_dir}/{filename}")
         self.log.info(f"Electrometer Scan data file written: {filename}")
+        self.log.info(
+            f"Scan Summary of [Mean, median, std] is: "
+            f"[{np.mean(intensity):0.5e}, {np.median(intensity):0.5e}, {np.std(intensity):0.5e}]"
+        )
 
     def parse_buffer(self, response):
         """Parse the buffer values.
