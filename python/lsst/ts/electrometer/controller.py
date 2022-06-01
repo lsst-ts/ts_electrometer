@@ -161,6 +161,14 @@ class ElectrometerController:
                 f"Expected:\n {expected} \n but got: \n{res} \n"
             )
             raise RuntimeError("Communication verification failed.")
+        await self.set_mode(self.mode)
+        await self.set_range(self.range)
+        await self.set_integration_time(self.integration_time)
+        await self.set_digital_filter(
+            activate_filter=self.filter_active,
+            activate_avg_filter=self.avg_filter_active,
+            activate_med_filter=self.median_filter_active,
+        )
 
     async def disconnect(self):
         """Close connection to the electrometer."""
@@ -195,6 +203,7 @@ class ElectrometerController:
         await self.send_command(
             f"{self.commands.activate_filter(self.mode, enums.Filter(1), filter_active)}"
         )
+        await self.csc.evt_digitalFilterChange.set_write(activateFilter=filter_active)
         await self.get_avg_filter_status()
         await self.get_med_filter_status()
         await self.check_error()
@@ -222,6 +231,7 @@ class ElectrometerController:
             The mode of the electrometer.
         """
         await self.send_command(f"{self.commands.set_mode(mode=mode)}")
+        await self.get_mode()
         await self.check_error()
 
     async def set_range(self, set_range):
@@ -351,23 +361,36 @@ class ElectrometerController:
     async def get_mode(self):
         """Get the mode/unit."""
         res = await self.send_command(f"{self.commands.get_mode()}", has_reply=True)
-        mode, unit = res.split(":")
-        mode = mode.replace('"', "")
+        if res not in ['"CHAR"', '"RES"']:
+            mode, unit = res.split(":")
+            mode = mode.replace('"', "")
+        else:
+            mode = res
+            mode = mode.replace('"', "")
         self.mode = enums.UnitMode(enums.UnitMode[mode].value)
+        await self.csc.evt_measureType.set_write(mode=self.mode, force_output=True)
 
     async def get_avg_filter_status(self):
         """Get the average filter status."""
         res = await self.send_command(
             f"{self.commands.get_filter_status(self.mode, 2)}", has_reply=True
         )
-        self.avg_filter_active = bool(res)
+        self.log.debug(f"Average filter response is {res}")
+        self.avg_filter_active = bool(int(res))
+        await self.csc.evt_digitalFilterChange.set_write(
+            activateAverageFilter=self.avg_filter_active
+        )
 
     async def get_med_filter_status(self):
         """Get the median filter status."""
         res = await self.send_command(
             f"{self.commands.get_filter_status(self.mode, 1)}", has_reply=True
         )
-        self.median_filter_active = bool(res)
+        self.log.debug(f"median filter response is {res}")
+        self.median_filter_active = bool(int(res))
+        await self.csc.evt_digitalFilterChange.set_write(
+            activateMedianFilter=self.median_filter_active
+        )
 
     async def get_range(self):
         """Get the range value."""
@@ -375,6 +398,9 @@ class ElectrometerController:
             f"{self.commands.get_range(self.mode)}", has_reply=True
         )
         self.range = float(res)
+        await self.csc.evt_measureRange.set_write(
+            rangeValue=self.range, force_output=True
+        )
 
     async def get_integration_time(self):
         """Get the integration time value."""
@@ -382,6 +408,9 @@ class ElectrometerController:
             f"{self.commands.get_integration_time(self.mode)}", has_reply=True
         )
         self.integration_time = float(res)
+        await self.csc.evt_integrationTime.set_write(
+            intTime=self.integration_time, force_output=True
+        )
 
     async def get_intensity(self):
         """Get the intensity."""

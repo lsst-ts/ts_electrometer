@@ -10,6 +10,14 @@ Version History
 .. No new work should be required in order to complete this section.
 .. Below is an example of a version history format.
 
+v0.4.0
+======
+* Fix not applying configuration to device
+* Fix digitalFilterChange truthiness being incorrect
+* Make events publish when getting values read from the controller
+* Add a scan summary to the log
+* Fix CHAR and RES modes not being set properly
+
 v0.3.0
 ======
 * Fix integrationTime, digitalFilter and range not being updated

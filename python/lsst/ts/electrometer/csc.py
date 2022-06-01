@@ -115,21 +115,6 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
                 await self.simulator.start_task
             if not self.controller.connected:
                 await self.controller.connect()
-                await self.evt_measureType.set_write(
-                    mode=self.controller.mode.value, force_output=True
-                )
-                await self.evt_digitalFilterChange.set_write(
-                    activateFilter=self.controller.filter_active,
-                    activateAverageFilter=self.controller.avg_filter_active,
-                    activateMedianFilter=self.controller.median_filter_active,
-                    force_output=True,
-                )
-                await self.evt_integrationTime.set_write(
-                    intTime=self.controller.integration_time, force_output=True
-                )
-                await self.evt_measureRange.set_write(
-                    rangeValue=self.controller.range, force_output=True
-                )
                 await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
         else:
             if self.controller.connected:
@@ -177,11 +162,9 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             activate_med_filter=data.activateMedFilter,
         )
         self.log.debug("setDigitalFilter controller interaction completed")
-        await self.evt_digitalFilterChange.set_write(
-            activateFilter=self.controller.filter_active,
-            activateAverageFilter=self.controller.avg_filter_active,
-            activateMedianFilter=self.controller.median_filter_active,
-        )
+        self.log.debug(f"filter_active={self.controller.filter_active}")
+        self.log.debug(f"avg_filter_active={self.controller.avg_filter_active}")
+        self.log.debug(f"median_filter_active={self.controller.median_filter_active}")
         await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
         self.log.info("setDigitalFilter Completed")
 
@@ -200,9 +183,6 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         )
         await self.report_detailed_state(DetailedState.CONFIGURINGSTATE)
         await self.controller.set_integration_time(int_time=data.intTime)
-        await self.evt_integrationTime.set_write(
-            intTime=self.controller.integration_time, force_output=True
-        )
         await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
 
     async def do_setMode(self, data):
@@ -219,8 +199,6 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         )
         await self.report_detailed_state(DetailedState.CONFIGURINGSTATE)
         await self.controller.set_mode(mode=data.mode)
-        await self.controller.get_mode()
-        await self.evt_measureType.set_write(mode=self.controller.mode.value)
         await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
 
     async def do_setRange(self, data):
@@ -237,7 +215,6 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         )
         await self.report_detailed_state(DetailedState.CONFIGURINGSTATE)
         await self.controller.set_range(set_range=data.setRange)
-        await self.evt_measureRange.set_write(rangeValue=self.controller.range)
         await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
 
     async def do_startScan(self, data):
