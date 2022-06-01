@@ -28,7 +28,7 @@ class ElectrometerCscTestCase(unittest.IsolatedAsyncioTestCase, salobj.BaseCscTe
 
     async def test_bin_script(self):
         await self.check_bin_script(
-            name="Electrometer", index=1, exe_name="run_electrometer.py"
+            name="Electrometer", index=1, exe_name="run_electrometer"
         )
 
     async def test_standard_state_transitions(self):

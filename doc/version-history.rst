@@ -17,6 +17,8 @@ v0.4.0
 * Make events publish when getting values read from the controller
 * Add a scan summary to the log
 * Fix CHAR and RES modes not being set properly
+* Add pyproject.toml
+* Remove extensions from command and run_electrometer script
 
 v0.3.0
 ======
