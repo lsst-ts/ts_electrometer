@@ -30,3 +30,4 @@ from .commands_factory import *
 from .enums import *
 from .mock_server import *
 from .config_schema import *
+from .cli import *
