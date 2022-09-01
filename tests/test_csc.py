@@ -95,7 +95,6 @@ class ElectrometerCscTestCase(unittest.IsolatedAsyncioTestCase, salobj.BaseCscTe
         ):
             await self.remote.cmd_setMode.set_start(mode=2, timeout=STD_TIMEOUT)
 
-    @pytest.mark.skip("DM-????")
     async def test_set_range(self):
         async with self.make_csc(
             initial_state=salobj.State.ENABLED,
@@ -118,7 +117,7 @@ class ElectrometerCscTestCase(unittest.IsolatedAsyncioTestCase, salobj.BaseCscTe
         ):
             await self.remote.cmd_startScan.set_start(timeout=STD_TIMEOUT)
 
-    @pytest.mark.skip("DM-33990")
+    @pytest.mark.skip()
     async def test_start_scan_dt(self):
         async with self.make_csc(
             initial_state=salobj.State.ENABLED, index=1, simulation_mode=1

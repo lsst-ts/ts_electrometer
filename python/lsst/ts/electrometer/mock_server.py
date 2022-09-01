@@ -103,7 +103,7 @@ class MockKeithley:
             ): self.do_format_trac,
             re.compile(r"^:trac:points 50000;$"): self.do_set_buffer_size,
             re.compile(r"^:trig:count 50000;$"): self.do_set_buffer_size,
-            re.compile(r"^:trig:sour tim;$"): self.do_select_device_timer,
+            re.compile(r"^:trig:sour imm;$"): self.do_select_device_timer,
             re.compile(
                 r"^:trig:tim (?P<parameter>\d\.\d\d\d);$"
             ): self.do_select_device_timer,
@@ -111,6 +111,7 @@ class MockKeithley:
             re.compile(r"^:init;$"): self.do_init_buffer,
             re.compile(r"^:trac:feed:cont NEV;$"): self.do_stop_storing_buffer,
             re.compile(r"^:trac:data\?;$"): self.do_read_buffer,
+            re.compile(r"^:sens:data\?;$"): self.do_read_sensor,
         }
 
     def parse_message(self, msg):
@@ -220,7 +221,10 @@ class MockKeithley:
 
     def do_read_buffer(self):
         """Read the values in the buffer."""
-        return "1 0 0 0\n0 0 0 0"
+        return "1 0 0 c\n0 0 0 c"
+
+    def do_read_sensor(self):
+        return "0"
 
     def do_get_avg_filter_status(self):
         return "0"

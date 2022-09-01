@@ -85,7 +85,7 @@ class TestElectrometerCommandFactory(unittest.TestCase):
 
     def test_select_device_time(self):
         reply = self.commands.select_device_timer()
-        self.assertEqual(reply, ":trig:sour tim;\n:trig:tim 0.001;")
+        self.assertEqual(reply, ":trig:tim 0.001;")
 
     def test_set_buffer_size(self):
         reply = self.commands.set_buffer_size()

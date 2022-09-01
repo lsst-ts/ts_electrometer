@@ -253,7 +253,9 @@ class ElectrometerController:
         await self.send_command(f"{self.commands.clear_buffer()}")
         await self.send_command(f"{self.commands.format_trac()}")
         await self.send_command(f"{self.commands.set_buffer_size(50000)}")
-        await self.send_command(f"{self.commands.select_device_timer()}")
+        await self.send_command(
+            f"{self.commands.select_source(source=enums.Source.IMM)}"
+        )
         await self.send_command(f"{self.commands.next_read()}")
         self.manual_start_time = utils.current_tai()
 
@@ -269,7 +271,9 @@ class ElectrometerController:
         await self.send_command(f"{self.commands.clear_buffer()}")
         await self.send_command(f"{self.commands.format_trac()}")
         await self.send_command(f"{self.commands.set_buffer_size(50000)}")
-        await self.send_command(f"{self.commands.select_device_timer()}")
+        await self.send_command(
+            f"{self.commands.select_source(source=enums.Source.IMM)}"
+        )
         await self.send_command(f"{self.commands.next_read()}")
         self.manual_start_time = utils.current_tai()
         dt = 0

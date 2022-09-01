@@ -304,6 +304,10 @@ class ElectrometerCommandFactory:
         command = f"*RST; {self.clear_buffer()}"
         return command
 
+    def select_source(self, source=enums.Source.TIM):
+        command = f":trig:sour {enums.Source(source)};"
+        return command
+
     def select_device_timer(self, timer=0.001):
         """Return select device timer.
 
@@ -318,7 +322,7 @@ class ElectrometerCommandFactory:
         command : `str`
             The generated command string.
         """
-        command = f":trig:sour tim;\n:trig:tim {timer:.3f};"
+        command = f":trig:tim {timer:.3f};"
         return command
 
     def set_buffer_size(self, buffer_size=50000):

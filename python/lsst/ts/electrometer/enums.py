@@ -23,6 +23,11 @@ class Filter(enum.IntEnum):
     """Average filter"""
 
 
+class Source(str, enum.Enum):
+    IMM = "imm"
+    TIM = "tim"
+
+
 class AverFilterType(enum.IntEnum):
     """The type of average filters."""
 
