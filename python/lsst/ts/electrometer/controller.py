@@ -256,6 +256,7 @@ class ElectrometerController:
         await self.send_command(
             f"{self.commands.select_source(source=enums.Source.IMM)}"
         )
+        await self.send_command(f"{self.commands.enable_display(False)}")
         await self.send_command(f"{self.commands.next_read()}")
         self.manual_start_time = utils.current_tai()
 
@@ -274,6 +275,7 @@ class ElectrometerController:
         await self.send_command(
             f"{self.commands.select_source(source=enums.Source.IMM)}"
         )
+        await self.send_command(f"{self.commands.enable_display(False)}")
         await self.send_command(f"{self.commands.next_read()}")
         self.manual_start_time = utils.current_tai()
         dt = 0
@@ -287,6 +289,7 @@ class ElectrometerController:
         """Stop storing values in the Keithley electrometer."""
         self.manual_end_time = utils.current_tai()
         await self.send_command(f"{self.commands.stop_storing_buffer()}")
+        await self.send_command(f"{self.commands.enable_display(True)}")
         self.log.debug("Scanning stopped, Now reading buffer.")
         res = await self.send_command(f"{self.commands.read_buffer()}", has_reply=True)
         intensity, times, temperature, unit = self.parse_buffer(res)

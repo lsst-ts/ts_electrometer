@@ -197,9 +197,12 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         self.assert_substate(
             substates=[DetailedState.NOTREADINGSTATE], action="setMode"
         )
-        await self.report_detailed_state(DetailedState.CONFIGURINGSTATE)
-        await self.controller.set_mode(mode=data.mode)
-        await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
+        try:
+            await self.report_detailed_state(DetailedState.CONFIGURINGSTATE)
+            await self.controller.set_mode(mode=data.mode)
+            await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
+        except Exception:
+            await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
 
     async def do_setRange(self, data):
         """Set the range.
@@ -213,9 +216,12 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         self.assert_substate(
             substates=[DetailedState.NOTREADINGSTATE], action="setRange"
         )
-        await self.report_detailed_state(DetailedState.CONFIGURINGSTATE)
-        await self.controller.set_range(set_range=data.setRange)
-        await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
+        try:
+            await self.report_detailed_state(DetailedState.CONFIGURINGSTATE)
+            await self.controller.set_range(set_range=data.setRange)
+            await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
+        except Exception:
+            await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
 
     async def do_startScan(self, data):
         """Start scan.
@@ -250,11 +256,14 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         self.assert_substate(
             substates=[DetailedState.NOTREADINGSTATE], action="startScanDt"
         )
-        await self.report_detailed_state(DetailedState.SETDURATIONREADINGSTATE)
-        await self.controller.start_scan_dt(scan_duration=data.scanDuration)
-        await self.report_detailed_state(DetailedState.READINGBUFFERSTATE)
-        await self.controller.stop_scan()
-        await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
+        try:
+            await self.report_detailed_state(DetailedState.SETDURATIONREADINGSTATE)
+            await self.controller.start_scan_dt(scan_duration=data.scanDuration)
+            await self.report_detailed_state(DetailedState.READINGBUFFERSTATE)
+            await self.controller.stop_scan()
+            await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
+        except Exception:
+            await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
         self.log.info("startScanDt Completed")
 
     async def do_stopScan(self, data):
