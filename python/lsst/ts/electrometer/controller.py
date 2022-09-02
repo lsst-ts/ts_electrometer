@@ -250,6 +250,7 @@ class ElectrometerController:
 
     async def start_scan(self):
         """Start storing values in the Keithley electrometer's buffer."""
+        await self.send_command("TST:TYPE RTC;")
         await self.send_command(f"{self.commands.clear_buffer()}")
         await self.send_command(f"{self.commands.format_trac()}")
         await self.send_command(f"{self.commands.set_buffer_size(50000)}")
@@ -269,6 +270,7 @@ class ElectrometerController:
         scan_duration : `float`
             The amount of time to store values for.
         """
+        await self.send_command("TST:TYPE RTC;")
         await self.send_command(f"{self.commands.clear_buffer()}")
         await self.send_command(f"{self.commands.format_trac()}")
         await self.send_command(f"{self.commands.set_buffer_size(50000)}")
