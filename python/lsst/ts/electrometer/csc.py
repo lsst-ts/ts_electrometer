@@ -1,8 +1,7 @@
 from lsst.ts import salobj, utils
 from lsst.ts.idl.enums.Electrometer import DetailedState
 
-from . import __version__
-from . import controller, mock_server
+from . import __version__, controller, mock_server
 from .config_schema import CONFIG_SCHEMA
 
 

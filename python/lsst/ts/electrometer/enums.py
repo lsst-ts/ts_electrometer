@@ -1,16 +1,16 @@
 import enum
 
 
-class UnitMode(enum.IntEnum):
+class UnitMode(str, enum.Enum):
     """The units for the electrometer."""
 
-    CURR = 1
+    CURR = "CURR"
     """Current"""
-    CHAR = 2
+    CHAR = "CHAR"
     """Charge"""
-    VOLT = 3
+    VOLT = "VOLT"
     """Voltage"""
-    RES = 4
+    RES = "RES"
     """Resolution"""
 
 

@@ -1,18 +1,16 @@
-import unittest
+import logging
 import os
 import pathlib
-import logging
+import unittest
 
 import pytest
-
-from lsst.ts import salobj, electrometer
-
+from lsst.ts import electrometer, salobj
 
 STD_TIMEOUT = 10
 TEST_CONFIG_DIR = pathlib.Path(__file__).parents[1].joinpath("tests", "data", "config")
 
 
-class ElectrometerCscTestCase(unittest.IsolatedAsyncioTestCase, salobj.BaseCscTestCase):
+class ElectrometerCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
         os.environ["LSST_SITE"] = "electrometer"
         self.log = logging.getLogger(type(self).__name__)

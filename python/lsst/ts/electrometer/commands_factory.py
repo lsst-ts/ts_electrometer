@@ -4,10 +4,10 @@ from . import enums
 class ElectrometerCommandFactory:
     """Class that formats commands to control the electrometer via RS-232."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
-    def activate_filter(self, mode, filter_type, active):
+    def activate_filter(self, mode, filter_type, active) -> str:
         """Return activate filter command.
 
         Parameters
@@ -27,7 +27,7 @@ class ElectrometerCommandFactory:
         command = f":sens:{enums.UnitMode(mode).name}:{enums.Filter(filter_type).name}:stat {int(active)};"
         return command
 
-    def get_avg_filter_status(self, mode):
+    def get_avg_filter_status(self, mode) -> str:
         """Return average filter status.
 
         Parameters
@@ -43,7 +43,7 @@ class ElectrometerCommandFactory:
         command = f":sens:{enums.UnitMode(mode).name}:aver:type?;"
         return command
 
-    def get_med_filter_status(self, mode):
+    def get_med_filter_status(self, mode) -> str:
         """Return median filter status.
 
         Parameters
@@ -59,7 +59,7 @@ class ElectrometerCommandFactory:
         command = f":sens:{enums.UnitMode(mode).name}:med:stat?;"
         return command
 
-    def get_filter_status(self, mode, filter_type):
+    def get_filter_status(self, mode, filter_type) -> str:
         """Return filter status.
 
         Parameters
@@ -79,7 +79,7 @@ class ElectrometerCommandFactory:
         )
         return command
 
-    def set_avg_filter_status(self, mode, aver_filter_type):
+    def set_avg_filter_status(self, mode, aver_filter_type) -> str:
         """Return set average filter status.
 
         Parameters
@@ -100,7 +100,7 @@ class ElectrometerCommandFactory:
         )
         return command
 
-    def set_med_filter_status(self, mode, active):
+    def set_med_filter_status(self, mode, active) -> str:
         """Return set median filter status
 
         Parameters
@@ -118,7 +118,7 @@ class ElectrometerCommandFactory:
         command = f":sens:{enums.UnitMode(mode).name}:med:stat {int(active)};"
         return command
 
-    def always_read(self):
+    def always_read(self) -> str:
         """Return always read buffer.
 
         Returns
@@ -379,7 +379,7 @@ class ElectrometerCommandFactory:
         command : `str`
             The generated command string.
         """
-        command = f":sens:func '{enums.UnitMode(mode).name}';"
+        command = f":sens:func '{enums.UnitMode(mode)}';"
         return command
 
     def set_range(self, auto, range_value, mode):
@@ -531,7 +531,7 @@ class ElectrometerCommandFactory:
         command = ":disp:enab ON;" if enable is True else ":disp:enab OFF;"
         return command
 
-    def set_timer(self):
+    def set_timer(self, mode):
         """Return set time command string.
 
         Returns
@@ -539,7 +539,7 @@ class ElectrometerCommandFactory:
         command : `str`
             The generated command string.
         """
-        command = ":sens:curr:nplc 0.01;"
+        command = f":sens:{enums.UnitMode(mode).lower()}:nplc 0.01;"
         return command
 
     def prepare_buffer(self):

@@ -1,6 +1,6 @@
+import asyncio
 import logging
 import re
-import asyncio
 
 from lsst.ts import tcpip
 
