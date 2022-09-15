@@ -263,7 +263,7 @@ class ElectrometerController:
         await self.send_command(self.commands.set_timer(self.mode))
         await self.send_command(self.commands.enable_sync(False))
         await self.send_command(f"{self.commands.clear_buffer()}")
-        await self.send_command(f"{self.commands.format_trac(timestamp=False)}")
+        await self.send_command(f"{self.commands.format_trac()}")
         await self.send_command(f"{self.commands.set_buffer_size(50000)}")
         await self.send_command(
             f"{self.commands.select_source(source=enums.Source.IMM)}"
@@ -285,7 +285,7 @@ class ElectrometerController:
         await self.send_command(self.commands.set_timer(self.mode))
         await self.send_command(self.commands.enable_sync(False))
         await self.send_command(f"{self.commands.clear_buffer()}")
-        await self.send_command(f"{self.commands.format_trac(timestamp=False)}")
+        await self.send_command(f"{self.commands.format_trac()}")
         await self.send_command(f"{self.commands.set_buffer_size(50000)}")
         await self.send_command(
             f"{self.commands.select_source(source=enums.Source.IMM)}"
