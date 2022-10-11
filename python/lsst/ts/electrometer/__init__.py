@@ -24,10 +24,10 @@ try:
 except ImportError:
     __version__ = "?"
 
-from .csc import *
-from .controller import *
+from .cli import *
 from .commands_factory import *
+from .config_schema import *
+from .controller import *
+from .csc import *
 from .enums import *
 from .mock_server import *
-from .config_schema import *
-from .cli import *

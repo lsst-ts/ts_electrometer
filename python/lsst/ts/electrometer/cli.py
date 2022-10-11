@@ -4,12 +4,12 @@ import asyncio
 
 from lsst.ts import salobj
 
-from . import ElectrometerCsc
+from .csc import ElectrometerCsc
 
 
-def execute_csc():
+def execute_csc() -> None:
     asyncio.run(ElectrometerCsc.amain(index=True))
 
 
-def command_csc():
+def command_csc() -> None:
     asyncio.run(salobj.CscCommander.amain(name="Electrometer", index=True))

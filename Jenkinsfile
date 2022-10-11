@@ -22,7 +22,7 @@ pipeline {
     stages {
         stage ('Install Requirements') {
             steps {
-                withEnv(["HOME=${env.WORKSPACE}"]) {
+                withEnv(["WHOME=${env.WORKSPACE}"]) {
                     sh """
                         source /home/saluser/.setup_dev.sh || echo loading env failed. Continuing...
                         cd /home/saluser/repos/ts_xml
@@ -49,10 +49,11 @@ pipeline {
             
         stage ('Unit Tests and Coverage Analysis') {
             steps {
-                withEnv(["HOME=${env.WORKSPACE}"]) {
+                withEnv(["WHOME=${env.WORKSPACE}"]) {
                     sh """
                         source /home/saluser/.setup_dev.sh
                         pip install .[dev]
+                        pre-commit run --all-files --show-diff-on-failure
                         pytest --cov-report html --cov=${env.MODULE_NAME} --junitxml=${env.XML_REPORT}
                     """
                 }
@@ -60,7 +61,7 @@ pipeline {
         }
         stage('Build and Upload Documentation') {
             steps {
-                withEnv(["HOME=${env.WORKSPACE}"]) {
+                withEnv(["WHOME=${env.WORKSPACE}"]) {
                     sh """
                         source /home/saluser/.setup_dev.sh
                         pip install .

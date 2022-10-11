@@ -1,18 +1,16 @@
-import unittest
+import logging
 import os
 import pathlib
-import logging
+import unittest
 
 import pytest
-
-from lsst.ts import salobj, electrometer
-
+from lsst.ts import electrometer, salobj
 
 STD_TIMEOUT = 10
 TEST_CONFIG_DIR = pathlib.Path(__file__).parents[1].joinpath("tests", "data", "config")
 
 
-class ElectrometerCscTestCase(unittest.IsolatedAsyncioTestCase, salobj.BaseCscTestCase):
+class ElectrometerCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
         os.environ["LSST_SITE"] = "electrometer"
         self.log = logging.getLogger(type(self).__name__)
@@ -95,7 +93,6 @@ class ElectrometerCscTestCase(unittest.IsolatedAsyncioTestCase, salobj.BaseCscTe
         ):
             await self.remote.cmd_setMode.set_start(mode=2, timeout=STD_TIMEOUT)
 
-    @pytest.mark.skip("DM-????")
     async def test_set_range(self):
         async with self.make_csc(
             initial_state=salobj.State.ENABLED,
@@ -118,7 +115,7 @@ class ElectrometerCscTestCase(unittest.IsolatedAsyncioTestCase, salobj.BaseCscTe
         ):
             await self.remote.cmd_startScan.set_start(timeout=STD_TIMEOUT)
 
-    @pytest.mark.skip("DM-33990")
+    @pytest.mark.skip()
     async def test_start_scan_dt(self):
         async with self.make_csc(
             initial_state=salobj.State.ENABLED, index=1, simulation_mode=1

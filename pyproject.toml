@@ -45,5 +45,9 @@ max_line_length = 110
 max_doc_line_length = 79
 
 [tool.flakeheaven.plugins]
-pycodestyle = ["+*", "-E133", "-E203", "-E226", "-E228"]
+pycodestyle = ["+*", "-E133", "-E203", "-E226", "-E228", "-W503"]
 pep8-naming = ["+*", "-N802", "-N803", "-N806", "-N812", "-N813", "-N815", "-N816"]
+pyflakes = ["+*"]
+
+[tool.isort]
+profile = "black"

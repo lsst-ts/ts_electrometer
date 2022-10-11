@@ -88,7 +88,15 @@ Setting up these devices for the first time is a bit tricky, follow the steps cl
 .. important::
     Before continuing, make sure to have a reserved IP from IT for the Moxa's MAC address.
 
-#. The operating settings should be in tcp server mode, with the following settings:
+#. The network settings should be in TCP server mode, with the default settings:
+
+   .. figure:: _static/moxa_operating_settings.png
+      :name: Moxa NPort Operating Settings
+      :alt: Moxa Operating settings
+
+      The default mode is not TCP Server, and therefore must be changed on initial setup.
+
+#. The network settings should use DHCP, with the following settings:
 
    .. figure:: _static/moxa_network_settings.png
       :name: Moxa NPort Network Settings

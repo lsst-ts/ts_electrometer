@@ -1,13 +1,13 @@
 import asyncio
+import logging
 import re
 import types
-import logging
 
 import astropy.io.fits as fits
 import numpy as np
-
-from . import commands_factory, enums, commander
 from lsst.ts import utils
+
+from . import commander, commands_factory, enums
 
 
 class ElectrometerController:
@@ -80,12 +80,18 @@ class ElectrometerController:
         self.manual_start_time = None
         self.manual_end_time = None
         self.serial_lock = asyncio.Lock()
+        self.modes = {
+            1: enums.UnitMode.CURR,
+            2: enums.UnitMode.CHAR,
+            3: enums.UnitMode.VOLT,
+            4: enums.UnitMode.RES,
+        }
 
     @property
     def connected(self):
         return self.commander.connected
 
-    def configure(self, config):
+    def configure(self, config: types.SimpleNamespace) -> None:
         """Configure the controller.
 
         Parameters
@@ -93,7 +99,7 @@ class ElectrometerController:
         config : `types.SimpleNamespace`
             The parsed yaml as a dict-like object.
         """
-        self.mode = enums.UnitMode(config.mode)
+        self.mode = enums.UnitMode(self.modes[config.mode])
         self.range = config.range
         self.integration_time = config.integration_time
         self.median_filter_active = config.median_filter_active
@@ -127,7 +133,7 @@ class ElectrometerController:
         config.timeout = 3.3
         return config
 
-    async def send_command(self, command, has_reply=False):
+    async def send_command(self, command: str, has_reply: bool = False):
         """Send a command to the device and return a reply if it has one.
 
         Parameters
@@ -146,7 +152,7 @@ class ElectrometerController:
         async with self.serial_lock:
             return await self.commander.send_command(msg=command, has_reply=has_reply)
 
-    async def connect(self):
+    async def connect(self) -> None:
         """Open connection to the electrometer."""
         await self.commander.connect()
 
@@ -170,11 +176,11 @@ class ElectrometerController:
             activate_med_filter=self.median_filter_active,
         )
 
-    async def disconnect(self):
+    async def disconnect(self) -> None:
         """Close connection to the electrometer."""
         await self.commander.disconnect()
 
-    async def perform_zero_calibration(self):
+    async def perform_zero_calibration(self) -> None:
         """Perform zero calibration."""
         await self.send_command(
             f"{self.commands.perform_zero_calibration(self.mode,self.auto_range,self.range)}"
@@ -182,7 +188,10 @@ class ElectrometerController:
         self.log.debug("Zero Calibration sent to controller")
 
     async def set_digital_filter(
-        self, activate_filter, activate_avg_filter, activate_med_filter
+        self,
+        activate_filter: bool,
+        activate_avg_filter: bool,
+        activate_med_filter: bool,
     ):
         """Set the digital filter(s).
 
@@ -250,10 +259,16 @@ class ElectrometerController:
 
     async def start_scan(self):
         """Start storing values in the Keithley electrometer's buffer."""
+        await self.send_command("TST:TYPE RTC;")
+        await self.send_command(self.commands.set_timer(self.mode))
+        await self.send_command(self.commands.enable_sync(False))
         await self.send_command(f"{self.commands.clear_buffer()}")
         await self.send_command(f"{self.commands.format_trac()}")
         await self.send_command(f"{self.commands.set_buffer_size(50000)}")
-        await self.send_command(f"{self.commands.select_device_timer()}")
+        await self.send_command(
+            f"{self.commands.select_source(source=enums.Source.IMM)}"
+        )
+        await self.send_command(f"{self.commands.enable_display(False)}")
         await self.send_command(f"{self.commands.next_read()}")
         self.manual_start_time = utils.current_tai()
 
@@ -266,10 +281,16 @@ class ElectrometerController:
         scan_duration : `float`
             The amount of time to store values for.
         """
+        await self.send_command("TST:TYPE RTC;")
+        await self.send_command(self.commands.set_timer(self.mode))
+        await self.send_command(self.commands.enable_sync(False))
         await self.send_command(f"{self.commands.clear_buffer()}")
         await self.send_command(f"{self.commands.format_trac()}")
         await self.send_command(f"{self.commands.set_buffer_size(50000)}")
-        await self.send_command(f"{self.commands.select_device_timer()}")
+        await self.send_command(
+            f"{self.commands.select_source(source=enums.Source.IMM)}"
+        )
+        await self.send_command(f"{self.commands.enable_display(False)}")
         await self.send_command(f"{self.commands.next_read()}")
         self.manual_start_time = utils.current_tai()
         dt = 0
@@ -283,6 +304,7 @@ class ElectrometerController:
         """Stop storing values in the Keithley electrometer."""
         self.manual_end_time = utils.current_tai()
         await self.send_command(f"{self.commands.stop_storing_buffer()}")
+        await self.send_command(f"{self.commands.enable_display(True)}")
         self.log.debug("Scanning stopped, Now reading buffer.")
         res = await self.send_command(f"{self.commands.read_buffer()}", has_reply=True)
         intensity, times, temperature, unit = self.parse_buffer(res)
@@ -367,8 +389,10 @@ class ElectrometerController:
         else:
             mode = res
             mode = mode.replace('"', "")
-        self.mode = enums.UnitMode(enums.UnitMode[mode].value)
-        await self.csc.evt_measureType.set_write(mode=self.mode, force_output=True)
+        self.mode = enums.UnitMode(mode)
+        await self.csc.evt_measureType.set_write(
+            mode=list(self.modes.values()).index(self.mode), force_output=True
+        )
 
     async def get_avg_filter_status(self):
         """Get the average filter status."""
