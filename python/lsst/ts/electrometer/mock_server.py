@@ -1,3 +1,24 @@
+# This file is part of ts_electrometer.
+#
+# Developed for the Vera C. Rubin Observatory Telescope and Site System.
+# This product includes software developed by the LSST Project
+# (https://www.lsst.org).
+# See the COPYRIGHT file at the top-level directory of this distribution
+# for details of code ownership.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 import asyncio
 import logging
 import re
@@ -10,9 +31,12 @@ class MockServer(tcpip.OneClientServer):
 
     Attributes
     ----------
-    log
-    device
-    read_loop_task
+    log : `logging.Logger`
+        The log for the server.
+    device : `MockKeithley`
+        The mock device that handles commands that are parsed.
+    read_loop_task : `asyncio.Future`
+        The task that tracks the read loop.
     """
 
     def __init__(self) -> None:
@@ -45,7 +69,8 @@ class MockServer(tcpip.OneClientServer):
 
         Parameters
         ----------
-        server
+        server : `MockServer`
+            The server object.
         """
         self.read_loop_task.cancel()
         if server.connected:
@@ -58,8 +83,10 @@ class MockKeithley:
 
         Attributes
         ----------
-        log
-        commands
+        log : `logging.Logger`
+            The log.
+        commands : `dict`
+            Regular expressions that correspond to a given command.
         """
         self.log = logging.getLogger(__name__)
         self.commands = {
@@ -112,6 +139,14 @@ class MockKeithley:
             re.compile(r"^:trac:feed:cont NEV;$"): self.do_stop_storing_buffer,
             re.compile(r"^:trac:data\?;$"): self.do_read_buffer,
             re.compile(r"^:sens:data\?;$"): self.do_read_sensor,
+            re.compile(r"^TST:TYPE RTC;$"): self.do_rtc_time,
+            re.compile(
+                r"^:sens:curr:nplc (?P<parameter>\d\.\d\d);$"
+            ): self.do_change_nplc,
+            re.compile(
+                r"^:syst:lsyn:stat (?P<parameter>ON|OFF);$"
+            ): self.do_change_nplc,
+            re.compile(r"^:disp:enab (?P<parameter>ON|OFF);$"): self.do_change_nplc,
         }
 
     def parse_message(self, msg):
@@ -221,22 +256,52 @@ class MockKeithley:
 
     def do_read_buffer(self):
         """Read the values in the buffer."""
-        return "1 0 0 c\n0 0 0 c"
+        return "+0.01DC 0.33\n+0.01DC 0.33\n+0.01DC 0.33\n+0.01DC 0.33\n"
 
     def do_read_sensor(self):
+        """Read the sensor."""
         return "0"
 
     def do_get_avg_filter_status(self):
+        """Get the status of the filter in average mode."""
         return "0"
 
     def do_get_med_filter_status(self):
+        """Get the state of the filter in median mode."""
         return "1"
 
     def do_integration_time(self):
+        """Set the integration time setting."""
         return ""
 
     def do_get_integration_time(self):
+        """Get the integration time setting."""
         return "0.01"
 
     def do_get_range(self):
+        """Get the range setting."""
         return "0.1"
+
+    def do_rtc_time(self):
+        """Switch to RTClock mode."""
+        pass
+
+    def do_change_nplc(self, nplc):
+        """Change the number of programmable logic cycles
+
+        Parameters
+        ----------
+        nplc : `int`
+            The number of cycles.
+        ."""
+        pass
+
+    def do_change_sync(self, sync):
+        """Change the line synchronization setting.
+
+        Parameters
+        ----------
+        sync : `bool`
+            Turn on line synchronization.
+        """
+        pass

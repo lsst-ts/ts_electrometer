@@ -1,3 +1,26 @@
+# This file is part of ts_electrometer.
+#
+# Developed for the Vera C. Rubin Observatory Telescope and Site System.
+# This product includes software developed by the LSST Project
+# (https://www.lsst.org).
+# See the COPYRIGHT file at the top-level directory of this distribution
+# for details of code ownership.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+import os
+
 from lsst.ts import salobj, utils
 from lsst.ts.idl.enums.Electrometer import DetailedState
 
@@ -30,6 +53,9 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
     event_loop_task : `asyncio.Task`
         A task for handling the event loop.
         Currently not implemented.
+    default_force_output : `bool`
+        Force the output of an event.
+    bucket : `None` or `salobj.AsyncS3Bucket`
     """
 
     valid_simulation_modes = (0, 1)
@@ -55,14 +81,17 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         self.run_event_loop = False
         self.event_loop_task = utils.make_done_future()
         self.default_force_output = True
+        self.bucket = None
 
     def assert_substate(self, substates, action):
         """Assert the CSC is in the proper substate.
 
         Parameters
         ----------
-        substates
-        action
+        substates : `list` of `Electrometer.DetailedState`
+            The list of accepted substates for a given command.
+        action : `str`
+            The name of the command to assert.
 
         Raises
         ------
@@ -79,11 +108,6 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
     @property
     def detailed_state(self):
         """The current substate of the CSC.
-
-        Parameters
-        ----------
-        new_state : int
-            The number of the new substate.
 
         Returns
         -------
@@ -102,16 +126,41 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
 
         Parameters
         ----------
-        config : types.SimpleNamespace
+        config : `types.SimpleNamespace`
             The parsed yaml object.
         """
         self.controller.configure(config)
 
     async def handle_summary_state(self):
+        """Handle the summary of the CSC.
+
+        If transitioning to the disabled or enabled state
+
+        * Start the simulator if simulation_mode is true.
+        * Create a bucket object for LFA support.
+        * Connect to the server if it is not connected already.
+
+        If leaving the disabled state
+
+        * Disconnect from the server, if connected.
+        * If the simulator is running, stop it.
+        """
+        do_mock = False
+        create = False
         if self.disabled_or_enabled:
             if self.simulation_mode and self.simulator is None:
                 self.simulator = mock_server.MockServer()
                 await self.simulator.start_task
+                do_mock = True
+                create = True
+            if self.bucket is None:
+                self.bucket = salobj.AsyncS3Bucket(
+                    salobj.AsyncS3Bucket.make_bucket_name(
+                        s3instance=os.environ.get("LSST_SITE")
+                    ),
+                    create=create,
+                    domock=do_mock,
+                )
             if not self.controller.connected:
                 await self.controller.connect()
                 await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
@@ -135,10 +184,14 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             substates=[DetailedState.NOTREADINGSTATE],
             action="performZeroCalib",
         )
-        await self.report_detailed_state(DetailedState.CONFIGURINGSTATE)
-        await self.controller.perform_zero_calibration()
-        await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
-        self.log.info("Zero Calibration Completed")
+        try:
+            await self.report_detailed_state(DetailedState.CONFIGURINGSTATE)
+            await self.controller.perform_zero_calibration()
+            await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
+            self.log.info("Zero Calibration Completed")
+        except Exception:
+            self.log.exception("performZeroCalibration failed.")
+            await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
 
     async def do_setDigitalFilter(self, data):
         """Set the digital filter(s).
@@ -154,18 +207,24 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             substates=[DetailedState.NOTREADINGSTATE],
             action="setDigitalFilter",
         )
-        await self.report_detailed_state(DetailedState.CONFIGURINGSTATE)
-        await self.controller.set_digital_filter(
-            activate_filter=data.activateFilter,
-            activate_avg_filter=data.activateAvgFilter,
-            activate_med_filter=data.activateMedFilter,
-        )
-        self.log.debug("setDigitalFilter controller interaction completed")
-        self.log.debug(f"filter_active={self.controller.filter_active}")
-        self.log.debug(f"avg_filter_active={self.controller.avg_filter_active}")
-        self.log.debug(f"median_filter_active={self.controller.median_filter_active}")
-        await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
-        self.log.info("setDigitalFilter Completed")
+        try:
+            await self.report_detailed_state(DetailedState.CONFIGURINGSTATE)
+            await self.controller.set_digital_filter(
+                activate_filter=data.activateFilter,
+                activate_avg_filter=data.activateAvgFilter,
+                activate_med_filter=data.activateMedFilter,
+            )
+            self.log.debug("setDigitalFilter controller interaction completed")
+            self.log.debug(
+                f"filter_active={self.controller.filter_active}"
+                f"avg_filter_active={self.controller.avg_filter_active}"
+                f"median_filter_active={self.controller.median_filter_active}"
+            )
+            await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
+            self.log.info("setDigitalFilter Completed")
+        except Exception:
+            self.log.exception("setDigitalFilter failed.")
+            await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
 
     async def do_setIntegrationTime(self, data):
         """Set the integration time.
@@ -180,9 +239,13 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             substates=[DetailedState.NOTREADINGSTATE],
             action="setIntegrationTime",
         )
-        await self.report_detailed_state(DetailedState.CONFIGURINGSTATE)
-        await self.controller.set_integration_time(int_time=data.intTime)
-        await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
+        try:
+            await self.report_detailed_state(DetailedState.CONFIGURINGSTATE)
+            await self.controller.set_integration_time(int_time=data.intTime)
+            await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
+        except Exception:
+            self.log.exception("setIntegrationTime failed.")
+            await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
 
     async def do_setMode(self, data):
         """Set the mode/unit.
@@ -201,6 +264,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             await self.controller.set_mode(mode=data.mode)
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
         except Exception:
+            self.log.exception("setMode failed.")
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
 
     async def do_setRange(self, data):
@@ -220,6 +284,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             await self.controller.set_range(set_range=data.setRange)
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
         except Exception:
+            self.log.exception("setRange failed.")
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
 
     async def do_startScan(self, data):
@@ -240,6 +305,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             await self.report_detailed_state(DetailedState.MANUALREADINGSTATE)
             self.log.debug("startScan Completed")
         except Exception:
+            self.log.exception("startScan failed.")
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
 
     async def do_startScanDt(self, data):
@@ -262,6 +328,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             await self.controller.stop_scan()
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
         except Exception:
+            self.log.exception("startScanDt failed.")
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
         self.log.info("startScanDt Completed")
 
@@ -288,6 +355,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
             self.log.info("stopScan Completed")
         except Exception:
+            self.log.exception("stopScan failed.")
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
 
     @staticmethod
@@ -302,6 +370,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         return "ts_config_ocs"
 
     async def close_tasks(self):
+        """Close unfinished tasks when CSC is stopped."""
         await super().close_tasks()
         await self.controller.disconnect()
         if self.simulator is not None:

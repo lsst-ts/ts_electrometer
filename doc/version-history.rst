@@ -10,6 +10,13 @@ Version History
 .. No new work should be required in order to complete this section.
 .. Below is an example of a version history format.
 
+v0.5.0
+======
+* Add LFA support
+* Add isort suport
+* Add try-except to connect method
+* Add try-except to revert detailed state if command failed
+
 v0.4.0
 ======
 * Fix not applying configuration to device
