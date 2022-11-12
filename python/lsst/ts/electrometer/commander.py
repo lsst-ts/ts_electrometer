@@ -1,3 +1,24 @@
+# This file is part of ts_electrometer.
+#
+# Developed for the Vera C. Rubin Observatory Telescope and Site System.
+# This product includes software developed by the LSST Project
+# (https://www.lsst.org).
+# See the COPYRIGHT file at the top-level directory of this distribution
+# for details of code ownership.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 import asyncio
 import logging
 
@@ -54,10 +75,17 @@ class Commander:
     async def connect(self) -> None:
         """Connect to the electrometer"""
         async with self.lock:
-            connect_task = asyncio.open_connection(host=self.host, port=int(self.port))
-            self.reader, self.writer = await asyncio.wait_for(
-                connect_task, timeout=self.long_timeout
-            )
+            try:
+                connect_task = asyncio.open_connection(
+                    host=self.host, port=int(self.port)
+                )
+                self.reader, self.writer = await asyncio.wait_for(
+                    connect_task, timeout=self.long_timeout
+                )
+            except Exception as e:
+                raise RuntimeError(
+                    f"Failed to connect. {self.host=} {self.port=}: {e!r}"
+                )
             self.connected = True
 
     async def disconnect(self) -> None:
@@ -79,8 +107,10 @@ class Commander:
 
         Parameters
         ----------
-        msg
-        has_reply
+        msg : `str`
+            The message to send.
+        has_reply : `bool`
+            Does the command expect a reply.
 
         Returns
         -------

@@ -1,9 +1,32 @@
+# This file is part of ts_electrometer.
+#
+# Developed for the Vera C. Rubin Observatory Telescope and Site System.
+# This product includes software developed by the LSST Project
+# (https://www.lsst.org).
+# See the COPYRIGHT file at the top-level directory of this distribution
+# for details of code ownership.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 import asyncio
+import io
 import logging
 import re
 import types
 
 import astropy.io.fits as fits
+import astropy.time
 import numpy as np
 from lsst.ts import utils
 
@@ -15,13 +38,15 @@ class ElectrometerController:
 
     Parameters
     ----------
-    simulation_mode : `int`
-        Is the electrometer in simulation mode?
+    csc : `ElectrometerCSC`
+        A copy of the CSC.
+    log : `None` or `logging.Logger`
+        A logger.f
 
     Attributes
     ----------
-    commander : `serial.Serial`
-        The serial interface for writing and reading from the device.
+    commander : `commander.Commander`
+        The tcpip interface for writing and reading from the device.
     commands : `ElectrometerCommandFactory`
         The interface for providing formatted commands for the commander.
     mode : `UnitMode`
@@ -52,6 +77,8 @@ class ElectrometerController:
         The end TAI time of a scan [s].
     serial_lock : `asyncio.Lock`
         The lock for protecting the synchronous serial communication.
+    modes : `dict`
+        Associate SAL Command number with electrometer UnitMode enum.
 
     """
 
@@ -302,15 +329,16 @@ class ElectrometerController:
 
     async def stop_scan(self):
         """Stop storing values in the Keithley electrometer."""
+        self.log.debug("Stopping scan")
         self.manual_end_time = utils.current_tai()
         await self.send_command(f"{self.commands.stop_storing_buffer()}")
         await self.send_command(f"{self.commands.enable_display(True)}")
         self.log.debug("Scanning stopped, Now reading buffer.")
         res = await self.send_command(f"{self.commands.read_buffer()}", has_reply=True)
         intensity, times, temperature, unit = self.parse_buffer(res)
-        self.write_fits_file(intensity, times, temperature, unit)
+        await self.write_fits_file(intensity, times, temperature, unit)
 
-    def write_fits_file(self, intensity, times, temperature, unit):
+    async def write_fits_file(self, intensity, times, temperature, unit):
         """Write fits file of the intensity, time, and temperature values.
 
         Parameters
@@ -330,12 +358,32 @@ class ElectrometerController:
         hdr["CLMN1"] = ("Time", "Time in seconds")
         hdr["CLMN2"] = "Intensity"
         filename = f"{self.manual_start_time}_{self.manual_end_time}.fits"
-        hdu.writeto(f"{self.file_output_dir}/{filename}")
-        self.log.info(f"Electrometer Scan data file written: {filename}")
-        self.log.info(
-            f"Scan Summary of [Mean, median, std] is: "
-            f"[{np.mean(intensity):0.5e}, {np.median(intensity):0.5e}, {np.std(intensity):0.5e}]"
-        )
+        try:
+            hdu.writeto(f"{self.file_output_dir}/{filename}")
+            self.log.info(
+                f"Electrometer Scan data file written: {filename}"
+                f"Scan Summary of [Mean, median, std] is: "
+                f"[{np.mean(intensity):0.5e}, {np.median(intensity):0.5e}, {np.std(intensity):0.5e}]"
+            )
+        except Exception:
+            self.log.exception("Writing file to local disk failed.")
+        try:
+            file_upload = io.BytesIO()
+            hdu.writeto(file_upload)
+            file_upload.seek(0)
+            key_name = self.csc.bucket.make_key(
+                salname="Electrometer",
+                salindexname=self.csc.salinfo.index,
+                generator="fits",
+                date=astropy.time.Time(self.manual_end_time, format="unix_tai"),
+                suffix=".fits",
+            )
+            await self.csc.bucket.upload(fileobj=file_upload, key=key_name)
+            await self.csc.evt_largeFileObjectAvailable.set_write(
+                url=f"s3://{self.csc.bucket.name}/{key_name}", generator="electrometer"
+            )
+        except Exception:
+            self.log.exception("Uploading file to s3 bucket failed.")
 
     def parse_buffer(self, response):
         """Parse the buffer values.
@@ -360,7 +408,9 @@ class ElectrometerController:
         regex_strings = "(?!E+)[a-zA-Z]+"
         intensity, time, temperature, unit = [], [], [], []
         unsorted_values = list(map(float, re.findall(regex_numbers, response)))
+        self.log.debug(f"parse_buffer: {unsorted_values=}")
         unsorted_str_values = re.findall(regex_strings, response)
+        self.log.debug(f"parse_buffer: {unsorted_str_values=}")
         i = 0
         while i < 50000:
             intensity.append(unsorted_values[i])
