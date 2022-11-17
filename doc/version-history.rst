@@ -16,6 +16,8 @@ v0.5.0
 * Add isort suport
 * Add try-except to connect method
 * Add try-except to revert detailed state if command failed
+* Add voltage source command and event
+* Add auto_range active at logic to set_range command
 
 v0.4.0
 ======

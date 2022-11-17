@@ -194,7 +194,9 @@ class ElectrometerCommandFactory:
         command = ":syst:err?;"
         return command
 
-    def format_trac(self, channel=False, timestamp=True, temperature=False):
+    def format_trac(
+        self, channel=False, timestamp=True, temperature=False, voltage=False
+    ):
         """Return format data stored to the buffer.
 
         Parameters
@@ -212,7 +214,7 @@ class ElectrometerCommandFactory:
             The generated command string.
         """
         isFirst = True
-        if not (timestamp or temperature or channel):
+        if not (timestamp or temperature or channel or voltage):
             command = ":trac:elem NONE"
         else:
             command = ":trac:elem "
@@ -229,6 +231,11 @@ class ElectrometerCommandFactory:
                     command += ", "
                 isFirst = False
                 command += "ETEM"
+            if voltage:
+                if not isFirst:
+                    command += ", "
+                isFirst = False
+                command += "VSO"
         command += ";"
         return command
 
@@ -613,4 +620,36 @@ class ElectrometerCommandFactory:
             The generated command string.
         """
         command = f"{self.enable_sync(False)} :trig:del 0.0;"
+        return command
+
+    def toggle_voltage_source(self, enable):
+        command = ":vsou:oper ON;" if enable else ":vsou:oper OFF;"
+        return command
+
+    def get_voltage_source_status(self):
+        command = ":vsou:oper?;"
+        return command
+
+    def get_voltage_level(self):
+        command = ":sour:volt:lev:imm:ampl?;"
+        return command
+
+    def set_voltage_level(self, amplititude):
+        command = f":sour:volt:lev:imm:ampl {amplititude};"
+        return command
+
+    def get_voltage_range(self):
+        command = ":sour:volt:rang?;"
+        return command
+
+    def set_voltage_range(self, range):
+        command = f":sour:volt:rang {range};"
+        return command
+
+    def get_voltage_limit(self):
+        command = ":sour:volt:lim:stat?;"
+        return command
+
+    def set_voltage_limit(self, limit):
+        command = f":sour:volt:lim:ampl {limit};"
         return command

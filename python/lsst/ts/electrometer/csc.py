@@ -358,6 +358,22 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             self.log.exception("stopScan failed.")
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
 
+    async def do_setVoltageSource(self, data):
+        self.assert_enabled()
+        self.assert_substate(
+            substates=[DetailedState.NOTREADINGSTATE], action="setRange"
+        )
+        try:
+            await self.report_detailed_state(DetailedState.CONFIGURINGSTATE)
+            await self.controller.toggle_voltage_source(data.status)
+            await self.controller.set_voltage_limit(data.voltage_limit)
+            await self.controller.set_voltage_range(data.range)
+            await self.controller.set_voltage_level(data.level)
+            await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
+        except Exception:
+            self.log.exception("SetVoltageSource failed.")
+            await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
+
     @staticmethod
     def get_config_pkg():
         """Get the config package.
