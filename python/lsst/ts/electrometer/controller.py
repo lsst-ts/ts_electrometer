@@ -132,7 +132,7 @@ class ElectrometerController:
         self.median_filter_active = config.median_filter_active
         self.filter_active = config.filter_active
         self.avg_filter_active = config.avg_filter_active
-        self.auto_range = True if self.range <= 0 else False
+        self.auto_range = True if self.range == -1 else False
         self.commander.port = config.tcp_port
         self.commander.host = config.host
         self.commander.timeout = config.timeout
@@ -278,6 +278,10 @@ class ElectrometerController:
         set_range : `float`
             The new range value.
         """
+        if set_range == -1:
+            self.auto_range = True
+        else:
+            self.auto_range = False
         await self.send_command(
             f"{self.commands.set_range(auto=self.auto_range, range_value=set_range, mode=self.mode)}"
         )
@@ -335,10 +339,10 @@ class ElectrometerController:
         await self.send_command(f"{self.commands.enable_display(True)}")
         self.log.debug("Scanning stopped, Now reading buffer.")
         res = await self.send_command(f"{self.commands.read_buffer()}", has_reply=True)
-        intensity, times, temperature, unit = self.parse_buffer(res)
-        await self.write_fits_file(intensity, times, temperature, unit)
+        intensity, times, temperature, unit, voltage = self.parse_buffer(res)
+        await self.write_fits_file(intensity, times, temperature, unit, voltage)
 
-    async def write_fits_file(self, intensity, times, temperature, unit):
+    async def write_fits_file(self, intensity, times, temperature, unit, voltage):
         """Write fits file of the intensity, time, and temperature values.
 
         Parameters
@@ -403,25 +407,28 @@ class ElectrometerController:
             The temperature values.
         unit : `list`
             The unit values.
+        voltage : `list`
+            The voltage values.
         """
         regex_numbers = r"[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?"
         regex_strings = "(?!E+)[a-zA-Z]+"
-        intensity, time, temperature, unit = [], [], [], []
-        unsorted_values = list(map(float, re.findall(regex_numbers, response)))
-        self.log.debug(f"parse_buffer: {unsorted_values=}")
-        unsorted_str_values = re.findall(regex_strings, response)
-        self.log.debug(f"parse_buffer: {unsorted_str_values=}")
+        intensity, time, temperature, unit, voltage = [], [], [], [], []
+        raw_values = list(map(float, re.findall(regex_numbers, response)))
+        self.log.debug(f"parse_buffer: {raw_values=}")
+        raw_str_values = re.findall(regex_strings, response)
+        self.log.debug(f"parse_buffer: {raw_str_values=}")
         i = 0
         while i < 50000:
-            intensity.append(unsorted_values[i])
-            time.append(unsorted_values[i + 1])
+            intensity.append(raw_values[i])
+            time.append(raw_values[i + 1])
+            voltage.append(raw_values[i + 2])
             temperature.append(0)
-            unit.append(unsorted_str_values[i])
+            unit.append(raw_str_values[i])
             i += 3
-            if i >= len(unsorted_values) - 2:
+            if i >= len(raw_values) - 2:
                 break
 
-        return intensity, time, temperature, unit
+        return intensity, time, temperature, unit, voltage
 
     async def check_error(self):
         """Check the error."""
@@ -492,3 +499,43 @@ class ElectrometerController:
         res = res.split(",")
         res = res[0].strip("ZVDCNA")
         self.last_value = float(res)
+
+    async def toggle_voltage_source(self, toggle):
+        await self.send_command(self.commands.toggle_voltage_source(toggle))
+        await self.get_voltage_source_status()
+
+    async def get_voltage_source_status(self):
+        res = await self.send_command(
+            self.commands.get_voltage_source_status(), has_reply=True
+        )
+        self.voltage_source = bool(res)
+        await self.csc.evt_voltageSourceChanged.set_write(status=self.voltage_source)
+
+    async def get_voltage_range(self):
+        res = await self.send_command(self.commands.get_voltage_range(), has_reply=True)
+        self.voltage_range = int(res)
+        await self.csc.evt_voltageSourceChanged.set_write(range=self.voltage_range)
+
+    async def set_voltage_range(self, range):
+        await self.send_command(self.commands.set_voltage_range(range))
+        await self.get_voltage_range()
+
+    async def get_voltage_limit(self):
+        res = await self.send_command(self.commands.get_voltage_limit(), has_reply=True)
+        self.voltage_limit = int(res)
+        await self.csc.evt_voltageSourceChanged.set_write(
+            voltage_limit=self.voltage_limit
+        )
+
+    async def set_voltage_limit(self, limit):
+        await self.send_command(self.commands.set_voltage_limit(limit))
+        await self.get_voltage_limit()
+
+    async def get_voltage_level(self):
+        res = await self.send_command(self.commands.get_voltage_level(), has_reply=True)
+        self.voltage_level = int(res)
+
+    async def set_voltage_level(self, level):
+        await self.send_command(self.commands.set_voltage_level(amplititude=level))
+        await self.get_voltage_level()
+        await self.csc.evt_voltageSourceChanged.set_write(level=self.voltage_level)

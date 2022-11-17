@@ -147,6 +147,16 @@ class MockKeithley:
                 r"^:syst:lsyn:stat (?P<parameter>ON|OFF);$"
             ): self.do_change_nplc,
             re.compile(r"^:disp:enab (?P<parameter>ON|OFF);$"): self.do_change_nplc,
+            re.compile(
+                r"^:vsou:oper (?P<parameter>ON|OFF);$"
+            ): self.do_toggle_voltage_source,
+            re.compile(r"^:vsou:oper\?;$"): self.get_voltage_source_status,
+            re.compile(r"^:sour:volt:lim:ampl 2;$"): self.set_voltage_limit,
+            re.compile(r"^:sour:volt:lim:stat\?;$"): self.get_voltage_limit,
+            re.compile(r"^:sour:volt:rang 1;$"): self.set_voltage_range,
+            re.compile(r"^:sour:volt:rang\?;$"): self.get_voltage_range,
+            re.compile(r"^:sour:volt:lev:imm:ampl 2;$"): self.set_voltage_level,
+            re.compile(r"^:sour:volt:lev:imm:ampl\?;$"): self.get_voltage_level,
         }
 
     def parse_message(self, msg):
@@ -304,4 +314,28 @@ class MockKeithley:
         sync : `bool`
             Turn on line synchronization.
         """
+        pass
+
+    def do_toggle_voltage_source(self, toggle):
+        pass
+
+    def get_voltage_source_status(self):
+        return "ON"
+
+    def set_voltage_limit(self):
+        pass
+
+    def get_voltage_limit(self):
+        return "2"
+
+    def get_voltage_range(self):
+        return "1"
+
+    def set_voltage_range(self):
+        pass
+
+    def get_voltage_level(self):
+        return "2"
+
+    def set_voltage_level(self):
         pass
