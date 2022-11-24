@@ -10,6 +10,10 @@ Version History
 .. No new work should be required in order to complete this section.
 .. Below is an example of a version history format.
 
+v0.6.0
+======
+* Refactor fits files to match Vera C. Rubin Observatory format.
+
 v0.5.0
 ======
 * Add LFA support

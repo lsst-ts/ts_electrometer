@@ -138,14 +138,20 @@ class ElectrometerCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTe
 
     async def test_start_scan_dt(self):
         async with self.make_csc(
-            initial_state=salobj.State.ENABLED, index=1, simulation_mode=1
+            initial_state=salobj.State.ENABLED,
+            index=1,
+            simulation_mode=1,
+            config_dir=TEST_CONFIG_DIR,
         ):
             await self.remote.cmd_startScanDt.set_start(scanDuration=2)
             await self.remote.evt_largeFileObjectAvailable.next(flush=False, timeout=10)
 
     async def test_set_voltage_source(self):
         async with self.make_csc(
-            initial_state=salobj.State.ENABLED, index=1, simulation_mode=1
+            initial_state=salobj.State.ENABLED,
+            index=1,
+            simulation_mode=1,
+            config_dir=TEST_CONFIG_DIR,
         ):
             await self.remote.cmd_setVoltageSource.set_start(
                 status=True, range=1, voltage_limit=2, level=2

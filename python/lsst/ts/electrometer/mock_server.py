@@ -126,7 +126,7 @@ class MockKeithley:
             re.compile(r"^:sens:func\?;$"): self.do_get_mode,
             re.compile(r"^:trac:cle;$"): self.do_clear_buffer,
             re.compile(
-                r"^:trac:elem (?P<parameter>NONE|CHAN|TST|ETEM);$"
+                r"^:trac:elem (?P<parameter>CHAN|TST|ETEM|VSO), (?P<parameter2>CHAN|TST|ETEM|VSO);$"
             ): self.do_format_trac,
             re.compile(r"^:trac:points 50000;$"): self.do_set_buffer_size,
             re.compile(r"^:trig:count 50000;$"): self.do_set_buffer_size,
