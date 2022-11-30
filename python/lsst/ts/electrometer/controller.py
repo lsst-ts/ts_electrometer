@@ -22,12 +22,14 @@
 import asyncio
 import io
 import logging
+import pathlib
 import re
 import types
 
 import astropy.io.fits as fits
 import astropy.time
 import numpy as np
+from astropy import table
 from lsst.ts import utils
 
 from . import commander, commands_factory, enums
@@ -41,7 +43,7 @@ class ElectrometerController:
     csc : `ElectrometerCSC`
         A copy of the CSC.
     log : `None` or `logging.Logger`
-        A logger.f
+        A logger.
 
     Attributes
     ----------
@@ -79,7 +81,12 @@ class ElectrometerController:
         The lock for protecting the synchronous serial communication.
     modes : `dict`
         Associate SAL Command number with electrometer UnitMode enum.
-
+    voltage_status : `bool`
+        Is voltage source enabled.
+    temperature : `float`
+        The temperature (deg_C) returned from the probe.
+    vsource : `float`
+        The voltage (V) source input.
     """
 
     def __init__(self, csc, log=None):
@@ -113,6 +120,9 @@ class ElectrometerController:
             3: enums.UnitMode.VOLT,
             4: enums.UnitMode.RES,
         }
+        self.voltage_status = None
+        self.temperature = None
+        self.vsource = None
 
     @property
     def connected(self):
@@ -137,6 +147,14 @@ class ElectrometerController:
         self.commander.host = config.host
         self.commander.timeout = config.timeout
         self.file_output_dir = config.fits_files_path
+        self.brand = config.brand
+        self.model_id = config.model_id
+        self.location = config.location
+        self.sensor_brand = config.sensor_brand
+        self.sensor_model = config.sensor_model
+        self.sensor_serial = config.sensor_serial
+        self.vsource_attached = config.vsource_attached
+        self.temperature_attached = config.temperature_attached
 
     def generate_development_configure(self):
         """Generate a development config object.
@@ -288,13 +306,22 @@ class ElectrometerController:
         await self.get_range()
         await self.check_error()
 
-    async def start_scan(self):
-        """Start storing values in the Keithley electrometer's buffer."""
+    async def prepare_scan(self):
+        """Prepare the keithley for scanning."""
         await self.send_command("TST:TYPE RTC;")
         await self.send_command(self.commands.set_timer(self.mode))
         await self.send_command(self.commands.enable_sync(False))
         await self.send_command(f"{self.commands.clear_buffer()}")
-        await self.send_command(f"{self.commands.format_trac()}")
+        format_trac_args = {}
+        if self.temperature_attached:
+            format_trac_args["temperature"] = True
+        if self.vsource_attached:
+            format_trac_args["voltage"] = True
+        await self.send_command(self.commands.format_trac(**format_trac_args))
+
+    async def start_scan(self):
+        """Start storing values in the Keithley electrometer's buffer."""
+        await self.prepare_scan()
         await self.send_command(f"{self.commands.set_buffer_size(50000)}")
         await self.send_command(
             f"{self.commands.select_source(source=enums.Source.IMM)}"
@@ -312,11 +339,7 @@ class ElectrometerController:
         scan_duration : `float`
             The amount of time to store values for.
         """
-        await self.send_command("TST:TYPE RTC;")
-        await self.send_command(self.commands.set_timer(self.mode))
-        await self.send_command(self.commands.enable_sync(False))
-        await self.send_command(f"{self.commands.clear_buffer()}")
-        await self.send_command(f"{self.commands.format_trac()}")
+        await self.prepare_scan()
         await self.send_command(f"{self.commands.set_buffer_size(50000)}")
         await self.send_command(
             f"{self.commands.select_source(source=enums.Source.IMM)}"
@@ -333,8 +356,11 @@ class ElectrometerController:
 
     async def stop_scan(self):
         """Stop storing values in the Keithley electrometer."""
+        await self.get_intensity()
+        await self.csc.evt_intensity.set_write(intensity=self.last_value)
         self.log.debug("Stopping scan")
         self.manual_end_time = utils.current_tai()
+        self.scan_duration = self.manual_end_time - self.manual_start_time
         await self.send_command(f"{self.commands.stop_storing_buffer()}")
         await self.send_command(f"{self.commands.enable_display(True)}")
         self.log.debug("Scanning stopped, Now reading buffer.")
@@ -342,38 +368,109 @@ class ElectrometerController:
         intensity, times, temperature, unit, voltage = self.parse_buffer(res)
         await self.write_fits_file(intensity, times, temperature, unit, voltage)
 
-    async def write_fits_file(self, intensity, times, temperature, unit, voltage):
+    def make_primary_header(self):
+        """Make primary header for fits file that follows Rubin Obs. format."""
+        primary_hdu = fits.PrimaryHDU()
+        primary_hdu.header["FORMAT_V"] = ("1", "Header format version")
+        primary_hdu.header["OBSERVAT"] = "Vera C. Rubin Observatory"
+        primary_hdu.header["INSTRUME"] = (
+            f"Electrometer_index_{self.csc.salinfo.index}",
+            "Type of Instrument",
+        )
+        primary_hdu.header["MODEL"] = (self.model_id, "Model of instrument")
+        primary_hdu.header["LOCATN"] = (self.location, "Location of Instrument")
+        primary_hdu.header["ORIGIN"] = (
+            self.csc.salinfo.name,
+            "Name of the program that produced this data.",
+        )
+        primary_hdu.header["DATE-BEG"] = (
+            self.manual_start_time,
+            "When start scan command sent to CSC (TAI)",
+        )
+        primary_hdu.header["DATE-END"] = (
+            self.manual_end_time,
+            "When stop scan command sent to CSC (TAI)",
+        )
+        primary_hdu.header["TIMESYS"] = ("TAI", "Format of timestamps")
+        primary_hdu.header["SCANTIME"] = (self.scan_duration, "Duration of scan [s]")
+        primary_hdu.header["SAMPTIME"] = (
+            self.integration_time,
+            "Duration of each sample [s]",
+        )
+        primary_hdu.header["FILTMED"] = (
+            self.median_filter_active,
+            "Median Filter Active",
+        )
+        primary_hdu.header["FILTAVG"] = (
+            self.avg_filter_active,
+            "Average Filter Active",
+        )
+        primary_hdu.header["IMGTYPE"] = (
+            self.mode,
+            "Options are charge, voltage, current",
+        )
+        primary_hdu.header["SENSBRND"] = (self.sensor_brand, "Sensor brand")
+        primary_hdu.header["SENSMODL"] = (self.sensor_model, "Sensor model")
+        primary_hdu.header["SERIAL"] = (self.sensor_serial, "Sensor serial number")
+        primary_hdu.header["TEMP"] = (
+            self.temperature,
+            "Measurement from probe if attached and declared (Celcius)",
+        )
+        primary_hdu.header["VSOURCE"] = (
+            self.vsource,
+            "Voltage input if active and attached",
+        )
+        return primary_hdu
+
+    async def write_fits_file(self, signal, times, temperature, unit, voltage):
         """Write fits file of the intensity, time, and temperature values.
 
         Parameters
         ----------
-        intensity : `list`
-            The intensity values
-        times : `list`
-            The time of the intensity value
-        temperature : `list`
-            The temperature of the intensity value
-        unit : `list`
-            The unit of the intensity value.
+        signal : `list` of `float`
+            The amount of photons in a given reading, unit depends on mode of
+            electrometer.
+            * Curr: Ampere - Measure current
+            * Volt: V - Measure volts
+            * Char: Coulomb - Measure charge
+        times : `list` of `float`
+            The time (TAI) of the signal data taken.
+        temperature : `list` of `float`
+            A consistent temperature value (deg_C) obtained from the
+            temperature probe over the period of signal acquisition.
+        unit : `list` of `str`
+            The unit of the signal data. (constant)
+        voltage : `list` of `float`
+            The source input in Volts maintained during signal acquisition.
         """
-        data = np.array([times, intensity])
-        hdu = fits.PrimaryHDU(data)
-        hdr = hdu.header
-        hdr["CLMN1"] = ("Time", "Time in seconds")
-        hdr["CLMN2"] = "Intensity"
+        if self.temperature_attached:
+            self.temperature = temperature[0]  # Constant value
+        if self.voltage_status:
+            self.vsource = voltage[0]  # Constant value
+        primary_hdu = self.make_primary_header()
+        data_columns = [signal, times]
+        data_names = ["Elapsed Time", "Signal"]
+        data_metadata = {"name": "Single Electrometer scan readout"}
+
+        data_table = table.QTable(
+            data=data_columns, names=data_names, meta=data_metadata
+        )
+        table_hdu = fits.table_to_hdu(data_table)
+        hdul = fits.HDUList([primary_hdu, table_hdu])
         filename = f"{self.manual_start_time}_{self.manual_end_time}.fits"
         try:
-            hdu.writeto(f"{self.file_output_dir}/{filename}")
+            pathlib.Path(self.file_output_dir).mkdir(parents=True, exist_ok=True)
+            hdul.writeto(f"{self.file_output_dir}/{filename}")
             self.log.info(
                 f"Electrometer Scan data file written: {filename}"
                 f"Scan Summary of [Mean, median, std] is: "
-                f"[{np.mean(intensity):0.5e}, {np.median(intensity):0.5e}, {np.std(intensity):0.5e}]"
+                f"[{np.mean(signal):0.5e}, {np.median(signal):0.5e}, {np.std(signal):0.5e}]"
             )
         except Exception:
             self.log.exception("Writing file to local disk failed.")
         try:
             file_upload = io.BytesIO()
-            hdu.writeto(file_upload)
+            hdul.writeto(file_upload)
             file_upload.seek(0)
             key_name = self.csc.bucket.make_key(
                 salname="Electrometer",
@@ -422,7 +519,7 @@ class ElectrometerController:
             intensity.append(raw_values[i])
             time.append(raw_values[i + 1])
             voltage.append(raw_values[i + 2])
-            temperature.append(0)
+            temperature.append(raw_values[i + 3])
             unit.append(raw_str_values[i])
             i += 3
             if i >= len(raw_values) - 2:
