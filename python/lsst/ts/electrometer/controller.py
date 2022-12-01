@@ -155,6 +155,7 @@ class ElectrometerController:
         self.sensor_serial = config.sensor_serial
         self.vsource_attached = config.vsource_attached
         self.temperature_attached = config.temperature_attached
+        self.image_service_url = config.image_service_url
 
     def generate_development_configure(self):
         """Generate a development config object.
@@ -199,6 +200,9 @@ class ElectrometerController:
 
     async def connect(self) -> None:
         """Open connection to the electrometer."""
+        self.image_service_client = utils.ImageNameServiceClient(
+            self.image_service_url, self.csc.salinfo.index, "EM"
+        )
         await self.commander.connect()
 
         # Send a message and verify the response to ensure connectivity
@@ -223,6 +227,7 @@ class ElectrometerController:
 
     async def disconnect(self) -> None:
         """Close connection to the electrometer."""
+        self.image_service_client = None
         await self.commander.disconnect()
 
     async def perform_zero_calibration(self) -> None:
@@ -457,6 +462,10 @@ class ElectrometerController:
         )
         table_hdu = fits.table_to_hdu(data_table)
         hdul = fits.HDUList([primary_hdu, table_hdu])
+        image_sequence_array, df = await self.image_service_client.get_next_obs_id(
+            num_images=1
+        )
+        hdul[0].header["OBSID"] = image_sequence_array[0]
         filename = f"{self.manual_start_time}_{self.manual_end_time}.fits"
         try:
             pathlib.Path(self.file_output_dir).mkdir(parents=True, exist_ok=True)

@@ -17,8 +17,8 @@ version = { attr = "setuptools_scm.get_version" }
 where = [ "python" ]
 
 [project.scripts]
-run_electrometer = "lsst.ts.electrometer.cli:execute_csc"
-command_electrometer = "lsst.ts.electrometer.cli:command_csc" 
+run_electrometer = "lsst.ts.electrometer.csc:execute_csc"
+command_electrometer = "lsst.ts.electrometer.csc:command_csc" 
 
 [tool.setuptools_scm]
 write_to = "python/lsst/ts/electrometer/version.py"

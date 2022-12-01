@@ -17,3 +17,4 @@ sensor_model: "test_s1234"
 sensor_serial: "123456"
 vsource_attached: true
 temperature_attached: false
+image_service_url: "http://comcam-mcm.tu.lsst.org"

@@ -9,9 +9,9 @@ source:
 build:
     noarch: generic
     entry_points:
-        - run_electrometer = lsst.ts.electrometer.cli:execute_csc
-        - command_electrometer = lsst.ts.electrometer.cli:command_csc
-    script: python -m pip install --no-deps --ignore-installed .
+        - run_electrometer = lsst.ts.electrometer.csc:execute_csc
+        - command_electrometer = lsst.ts.electrometer.csc:command_csc
+    script: {{ PYTHON }} -m pip install --no-deps --ignore-installed .
     script_env:
         - PATH
         - PYTHONPATH
@@ -38,17 +38,21 @@ test:
         - setup.cfg
         - pyproject.toml
     commands:
-        - py.test
+        - pytest
 
 requirements:
     host:
-        - python
+        - python {{ python }}
         - pip
         - setuptools_scm
         - setuptools
-        - pytest-runner
+    build:
+        - python {{ python }}
+        - setuptools_scm
+        - setuptools
+        - ts-conda-build =0.3
     run:
-        - python
+        - python {{ python }}
         - setuptools
         - setuptools_scm
         - ts-salobj

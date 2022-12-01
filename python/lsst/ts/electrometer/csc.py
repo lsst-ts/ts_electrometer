@@ -19,6 +19,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+__all__ = ["execute_csc", "command_csc", "ElectrometerCsc"]
+
+import asyncio
 import os
 
 from lsst.ts import salobj, utils
@@ -26,6 +29,14 @@ from lsst.ts.idl.enums.Electrometer import DetailedState
 
 from . import __version__, controller, mock_server
 from .config_schema import CONFIG_SCHEMA
+
+
+def execute_csc() -> None:
+    asyncio.run(ElectrometerCsc.amain(index=True))
+
+
+def command_csc() -> None:
+    asyncio.run(salobj.CscCommander.amain(name="Electrometer", index=True))
 
 
 class ElectrometerCsc(salobj.ConfigurableCsc):

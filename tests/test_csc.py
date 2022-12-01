@@ -23,6 +23,7 @@ import logging
 import os
 import pathlib
 import unittest
+import unittest.mock
 
 from lsst.ts import electrometer, salobj
 
@@ -32,7 +33,7 @@ TEST_CONFIG_DIR = pathlib.Path(__file__).parents[1].joinpath("tests", "data", "c
 
 class ElectrometerCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
-        os.environ["LSST_SITE"] = "electrometer"
+        os.environ["LSST_SITE"] = "test"
         self.log = logging.getLogger(type(self).__name__)
         return super().setUp()
 
@@ -143,6 +144,9 @@ class ElectrometerCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTe
             simulation_mode=1,
             config_dir=TEST_CONFIG_DIR,
         ):
+            self.csc.controller.image_service_client.get_next_obs_id = (
+                unittest.mock.AsyncMock(return_value=([1], "EM1_O_20221130_000001"))
+            )
             await self.remote.cmd_startScanDt.set_start(scanDuration=2)
             await self.remote.evt_largeFileObjectAvailable.next(flush=False, timeout=10)
 
