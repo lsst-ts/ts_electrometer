@@ -527,8 +527,10 @@ class ElectrometerController:
         while i < 50000:
             intensity.append(raw_values[i])
             time.append(raw_values[i + 1])
-            voltage.append(raw_values[i + 2])
-            temperature.append(raw_values[i + 3])
+            if self.vsource_attached:
+                voltage.append(raw_values[i + 2])
+            if self.temperature_attached:
+                temperature.append(raw_values[i + 3])
             unit.append(raw_str_values[i])
             i += 3
             if i >= len(raw_values) - 2:
