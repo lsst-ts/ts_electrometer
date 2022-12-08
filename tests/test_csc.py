@@ -22,6 +22,7 @@
 import logging
 import os
 import pathlib
+import shutil
 import unittest
 import unittest.mock
 
@@ -32,6 +33,11 @@ TEST_CONFIG_DIR = pathlib.Path(__file__).parents[1].joinpath("tests", "data", "c
 
 
 class ElectrometerCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
+    def tearDown(self) -> None:
+        file_path = "/tmp/electrometerFitsFiles"
+        if os.path.isdir(file_path):
+            shutil.rmtree(file_path)
+
     def setUp(self) -> None:
         os.environ["LSST_SITE"] = "test"
         self.log = logging.getLogger(type(self).__name__)
@@ -135,6 +141,9 @@ class ElectrometerCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTe
             simulation_mode=1,
             config_dir=TEST_CONFIG_DIR,
         ):
+            self.csc.controller.image_service_client.get_next_obs_id = (
+                unittest.mock.AsyncMock(return_value=([1], ["EM1_O_20221130_000001"]))
+            )
             await self.remote.cmd_startScan.set_start(timeout=STD_TIMEOUT)
 
     async def test_start_scan_dt(self):
@@ -145,7 +154,7 @@ class ElectrometerCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTe
             config_dir=TEST_CONFIG_DIR,
         ):
             self.csc.controller.image_service_client.get_next_obs_id = (
-                unittest.mock.AsyncMock(return_value=([1], "EM1_O_20221130_000001"))
+                unittest.mock.AsyncMock(return_value=([2], ["EM1_O_20221130_000002"]))
             )
             await self.remote.cmd_startScanDt.set_start(scanDuration=2)
             await self.remote.evt_largeFileObjectAvailable.next(flush=False, timeout=10)

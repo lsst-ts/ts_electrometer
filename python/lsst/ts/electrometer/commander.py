@@ -21,6 +21,7 @@
 
 import asyncio
 import logging
+import typing
 
 from lsst.ts import tcpip
 
@@ -102,7 +103,9 @@ class Commander:
                 self.reader = None
                 self.connected = False
 
-    async def send_command(self, msg: str, has_reply: bool = False) -> str:
+    async def send_command(
+        self, msg: str, has_reply: bool = False, timeout: typing.Optional[int] = None
+    ) -> str:
         """Send a command to the electrometer and read reply if has one.
 
         Parameters
@@ -116,6 +119,7 @@ class Commander:
         -------
         reply
         """
+
         async with self.lock:
             msg = msg + self.command_terminator
             msg = msg.encode("ascii")
@@ -126,7 +130,7 @@ class Commander:
                 if has_reply:
                     reply = await asyncio.wait_for(
                         self.reader.readuntil(self.reply_terminator),
-                        timeout=self.timeout,
+                        timeout=self.timeout if timeout is None else timeout,
                     )
                     self.log.debug(f"reply={reply}")
                     reply = reply.decode().strip()
