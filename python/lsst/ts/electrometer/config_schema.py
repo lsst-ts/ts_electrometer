@@ -26,7 +26,7 @@ CONFIG_SCHEMA: str = yaml.safe_load(
     """
 $schema: http://json-schema.org/draft-07/schema#
 $id: https://github.com/lsst-ts/ts_electrometer/blob/master/schema/Electrometer.yaml
-title: Electrometer v4
+title: Electrometer v5
 description: Schema for Electrometer configuration files
 type: object
 properties:
@@ -88,6 +88,9 @@ properties:
   temperature_attached:
     description: Is the temperature probe attached?
     type: boolean
+  image_service_url:
+    description: The URL for the image service name host.
+    type: string
 """
 )
 """Configuration schema as a constant."""

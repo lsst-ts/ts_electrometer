@@ -40,6 +40,9 @@ pipeline {
                         cd /home/saluser/repos/ts_idl
                         /home/saluser/.checkout_repo.sh ${work_branches}
                         git pull
+                        cd /home/saluser/repos/ts_utils
+                        /home/saluser/.checkout_repo.sh ${work_branches}
+                        git pull
                         make_idl_files.py Electrometer
                     """
                 }

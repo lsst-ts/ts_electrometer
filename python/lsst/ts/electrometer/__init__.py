@@ -24,7 +24,6 @@ try:
 except ImportError:
     __version__ = "?"
 
-from .cli import *
 from .commands_factory import *
 from .config_schema import *
 from .controller import *
