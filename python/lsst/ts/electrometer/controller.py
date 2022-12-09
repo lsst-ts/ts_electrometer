@@ -201,7 +201,7 @@ class ElectrometerController:
     async def connect(self) -> None:
         """Open connection to the electrometer."""
         self.image_service_client = utils.ImageNameServiceClient(
-            self.image_service_url, self.csc.salinfo.index, "EM"
+            self.image_service_url, self.csc.salinfo.index, "Electrometer"
         )
         await self.commander.connect()
 
