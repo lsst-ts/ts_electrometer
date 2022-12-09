@@ -489,8 +489,12 @@ class ElectrometerController:
                 suffix=".fits",
             )
             await self.csc.bucket.upload(fileobj=file_upload, key=key_name)
+            url = (
+                f"{self.csc.bucket.service_resource.meta.client.meta.endpoint_url}/"
+                f"{self.csc.bucket.name}/{key_name}"
+            )
             await self.csc.evt_largeFileObjectAvailable.set_write(
-                url=f"s3://{self.csc.bucket.name}/{key_name}", generator="electrometer"
+                url=url, generator=f"{self.csc.salinfo.name}:{self.csc.salinfo.index}"
             )
         except Exception:
             self.log.exception("Uploading file to s3 bucket failed.")
