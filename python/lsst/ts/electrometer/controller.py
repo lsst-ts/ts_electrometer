@@ -453,7 +453,7 @@ class ElectrometerController:
         if self.voltage_status:
             self.vsource = voltage[0]  # Constant value
         primary_hdu = self.make_primary_header()
-        data_columns = [signal, times]
+        data_columns = [times, signal]
         data_names = ["Elapsed Time", "Signal"]
         data_metadata = {"name": "Single Electrometer scan readout"}
 
@@ -466,7 +466,7 @@ class ElectrometerController:
             num_images=1
         )
         hdul[0].header["OBSID"] = image_sequence_array[0]
-        filename = f"{self.manual_start_time}_{self.manual_end_time}.fits"
+        filename = f"{image_sequence_array[0]}.fits"
         try:
             pathlib.Path(self.file_output_dir).mkdir(parents=True, exist_ok=True)
             hdul.writeto(f"{self.file_output_dir}/{filename}")
