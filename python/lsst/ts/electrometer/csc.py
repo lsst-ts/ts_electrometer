@@ -22,7 +22,6 @@
 __all__ = ["execute_csc", "command_csc", "ElectrometerCsc"]
 
 import asyncio
-import os
 
 from lsst.ts import salobj, utils
 from lsst.ts.idl.enums.Electrometer import DetailedState
@@ -93,6 +92,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         self.event_loop_task = utils.make_done_future()
         self.default_force_output = True
         self.bucket = None
+        self.s3instance = None
 
     def assert_substate(self, substates, action):
         """Assert the CSC is in the proper substate.
@@ -140,6 +140,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         config : `types.SimpleNamespace`
             The parsed yaml object.
         """
+        self.s3instance = config.s3instance
         self.controller.configure(config)
 
     async def handle_summary_state(self):
@@ -166,9 +167,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
                 create = True
             if self.bucket is None:
                 self.bucket = salobj.AsyncS3Bucket(
-                    salobj.AsyncS3Bucket.make_bucket_name(
-                        s3instance=os.environ.get("LSST_SITE")
-                    ),
+                    salobj.AsyncS3Bucket.make_bucket_name(s3instance=self.s3instance),
                     create=create,
                     domock=do_mock,
                 )
