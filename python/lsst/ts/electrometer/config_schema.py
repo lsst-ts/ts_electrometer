@@ -29,6 +29,7 @@ $id: https://github.com/lsst-ts/ts_electrometer/blob/master/schema/Electrometer.
 title: Electrometer v5
 description: Schema for Electrometer configuration files
 type: object
+additionalProperties: false
 properties:
   fits_files_path:
     description: The path of where the fits file are written to disk.
@@ -91,6 +92,33 @@ properties:
   image_service_url:
     description: The URL for the image service name host.
     type: string
+  s3instance:
+    description: >-
+      Large File Annex S3 instance, for example "tuc" (Tucson Test Stand),
+      "ls" (Base Test Stand), "cp" (summit).
+    type: string
+required:
+- fits_files_path
+- mode
+- range
+- integration_time
+- median_filter_active
+- filter_active
+- avg_filter_active
+- tcp_port
+- host
+- baudrate
+- timeout
+- brand
+- model_id
+- location
+- sensor_brand
+- sensor_model
+- sensor_serial
+- vsource_attached
+- temperature_attached
+- image_service_url
+- s3instance
 """
 )
 """Configuration schema as a constant."""
