@@ -529,8 +529,8 @@ class ElectrometerController:
         self.log.debug(f"parse_buffer: {raw_str_values=}")
         i = 0
         while i < 50000:
-            intensity.append(raw_values[i])
-            time.append(raw_values[i + 1])
+            time.append(raw_values[i])
+            intensity.append(raw_values[i + 1])
             if self.vsource_attached:
                 voltage.append(raw_values[i + 2])
             if self.temperature_attached:
