@@ -1,5 +1,6 @@
 # init configuration
 mode: 1
+baudrate: 57600
 fits_files_path: "~/electrometerFitsFiles"
 range: -0.01
 integration_time: 0.01

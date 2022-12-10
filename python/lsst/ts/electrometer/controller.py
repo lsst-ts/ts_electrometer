@@ -497,7 +497,7 @@ class ElectrometerController:
                 url=url, generator=f"{self.csc.salinfo.name}:{self.csc.salinfo.index}"
             )
         except Exception:
-            self.log.exception("Uploading file to s3 bucket failed.")
+            self.log.exception("File upload to s3 bucket failed.")
 
     def parse_buffer(self, response):
         """Parse the buffer values.
