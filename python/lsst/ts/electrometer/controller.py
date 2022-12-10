@@ -25,6 +25,7 @@ import logging
 import pathlib
 import re
 import types
+import typing
 
 import astropy.io.fits as fits
 import astropy.time
@@ -179,7 +180,12 @@ class ElectrometerController:
         config.timeout = 3.3
         return config
 
-    async def send_command(self, command: str, has_reply: bool = False):
+    async def send_command(
+        self,
+        command: str,
+        has_reply: bool = False,
+        timeout: typing.Optional[int] = None,
+    ):
         """Send a command to the device and return a reply if it has one.
 
         Parameters
@@ -196,7 +202,11 @@ class ElectrometerController:
             If false, then returns None.
         """
         async with self.serial_lock:
-            return await self.commander.send_command(msg=command, has_reply=has_reply)
+            return await self.commander.send_command(
+                msg=command,
+                has_reply=has_reply,
+                timeout=timeout,
+            )
 
     async def connect(self) -> None:
         """Open connection to the electrometer."""
@@ -367,9 +377,20 @@ class ElectrometerController:
         self.manual_end_time = utils.current_tai()
         self.scan_duration = self.manual_end_time - self.manual_start_time
         await self.send_command(f"{self.commands.stop_storing_buffer()}")
+        self.log.debug("Scanning stopped.")
         await self.send_command(f"{self.commands.enable_display(True)}")
-        self.log.debug("Scanning stopped, Now reading buffer.")
-        res = await self.send_command(f"{self.commands.read_buffer()}", has_reply=True)
+        # How long it takes to readout the buffer is dependent upon the
+        # integration time and number of samples
+        # 330 datapoints takes ~4s
+        # Assume 0.1 seconds per sample for now until the bug
+        # affecting the integration time is fixed
+        read_timeout = self.commander.timeout + self.scan_duration * 0.2
+        self.log.debug(f"{self.scan_duration=} so read timeout will be {read_timeout=}")
+        asyncio.sleep(1)
+        self.log.debug("Starting to read buffer")
+        res = await self.send_command(
+            f"{self.commands.read_buffer()}", has_reply=True, timeout=read_timeout
+        )
         intensity, times, temperature, unit, voltage = self.parse_buffer(res)
         await self.write_fits_file(intensity, times, temperature, unit, voltage)
 
@@ -460,23 +481,25 @@ class ElectrometerController:
         data_table = table.QTable(data=data, meta=data_metadata)
         table_hdu = fits.table_to_hdu(data_table)
         hdul = fits.HDUList([primary_hdu, table_hdu])
-        image_sequence_array, df = await self.image_service_client.get_next_obs_id(
+        image_sequence_array, obs_ids = await self.image_service_client.get_next_obs_id(
             num_images=1
         )
-        hdul[0].header["OBSID"] = image_sequence_array[0]
-        filename = f"{image_sequence_array[0]}.fits"
+        hdul[0].header["OBSID"] = obs_ids[0]
+        filename = f"{obs_ids[0]}.fits"
         try:
             pathlib.Path(self.file_output_dir).mkdir(parents=True, exist_ok=True)
             hdul.writeto(f"{self.file_output_dir}/{filename}")
             self.log.info(
-                f"Electrometer Scan data file written: {filename}"
+                f"Electrometer Scan data file written: {filename}\n"
                 f"Scan Summary of Signal [Mean, median, std] is: "
-                f"[{np.mean(signal):0.5e}, {np.median(signal):0.5e}, {np.std(signal):0.5e}]"
+                f"[{np.mean(signal):0.5e}, {np.median(signal):0.5e}, {np.std(signal):0.5e}]\n"
                 f"Scan Summary of Time [Mean, median] is: "
-                f"[{np.mean(signal):0.5e}, {np.median(signal):0.5e}]"
+                f"[{np.mean(times):0.5e}, {np.median(times):0.5e}]"
             )
-        except Exception:
-            self.log.exception("Writing file to local disk failed.")
+        except Exception as e:
+            msg = "Writing file to local disk failed."
+            await self.fault(report=f"{msg}: {repr(e)}")
+            raise RuntimeError(msg)
         try:
             file_upload = io.BytesIO()
             hdul.writeto(file_upload)

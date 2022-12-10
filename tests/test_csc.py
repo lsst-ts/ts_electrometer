@@ -22,6 +22,7 @@
 import logging
 import os
 import pathlib
+import shutil
 import unittest
 import unittest.mock
 
@@ -32,6 +33,11 @@ TEST_CONFIG_DIR = pathlib.Path(__file__).parents[1].joinpath("tests", "data", "c
 
 
 class ElectrometerCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
+    def tearDown(self) -> None:
+        file_path = "/tmp/electrometerFitsFiles"
+        if os.path.isdir(file_path):
+            shutil.rmtree(file_path)
+
     def setUp(self) -> None:
         os.environ["LSST_SITE"] = "test"
         self.log = logging.getLogger(type(self).__name__)
