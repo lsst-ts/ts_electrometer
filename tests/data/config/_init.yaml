@@ -19,3 +19,4 @@ sensor_serial: "123456"
 vsource_attached: true
 temperature_attached: false
 image_service_url: "http://comcam-mcm.tu.lsst.org"
+s3instance: cp
