@@ -453,13 +453,11 @@ class ElectrometerController:
         if self.voltage_status:
             self.vsource = voltage[0]  # Constant value
         primary_hdu = self.make_primary_header()
-        data_columns = [times, signal]
-        data_names = ["Elapsed Time", "Signal"]
         data_metadata = {"name": "Single Electrometer scan readout"}
 
-        data_table = table.QTable(
-            data=data_columns, names=data_names, meta=data_metadata
-        )
+        data = {"Elapsed Time": times, "Signal": signal}
+
+        data_table = table.QTable(data=data, meta=data_metadata)
         table_hdu = fits.table_to_hdu(data_table)
         hdul = fits.HDUList([primary_hdu, table_hdu])
         image_sequence_array, df = await self.image_service_client.get_next_obs_id(
@@ -472,8 +470,10 @@ class ElectrometerController:
             hdul.writeto(f"{self.file_output_dir}/{filename}")
             self.log.info(
                 f"Electrometer Scan data file written: {filename}"
-                f"Scan Summary of [Mean, median, std] is: "
+                f"Scan Summary of Signal [Mean, median, std] is: "
                 f"[{np.mean(signal):0.5e}, {np.median(signal):0.5e}, {np.std(signal):0.5e}]"
+                f"Scan Summary of Time [Mean, median] is: "
+                f"[{np.mean(signal):0.5e}, {np.median(signal):0.5e}]"
             )
         except Exception:
             self.log.exception("Writing file to local disk failed.")
@@ -529,8 +529,8 @@ class ElectrometerController:
         self.log.debug(f"parse_buffer: {raw_str_values=}")
         i = 0
         while i < 50000:
-            time.append(raw_values[i])
-            intensity.append(raw_values[i + 1])
+            intensity.append(raw_values[i])
+            time.append(raw_values[i + 1])
             if self.vsource_attached:
                 voltage.append(raw_values[i + 2])
             if self.temperature_attached:
