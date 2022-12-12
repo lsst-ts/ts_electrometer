@@ -10,6 +10,13 @@ Version History
 .. No new work should be required in order to complete this section.
 .. Below is an example of a version history format.
 
+v0.8.0
+======
+* Make configurations correspond to a particular SAL Index.
+* Remove baud_rate from schema.
+* Correct s3 bucket names.
+* Make fits file name the same as s3 key name when writing to disk.
+
 v0.7.0
 ======
 * Remove cli module and move functions to csc module.
