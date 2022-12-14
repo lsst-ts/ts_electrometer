@@ -22,7 +22,6 @@
 __all__ = ["execute_csc", "command_csc", "ElectrometerCsc"]
 
 import asyncio
-import os
 
 from lsst.ts import salobj, utils
 from lsst.ts.idl.enums.Electrometer import DetailedState
@@ -167,7 +166,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             if self.bucket is None:
                 self.bucket = salobj.AsyncS3Bucket(
                     salobj.AsyncS3Bucket.make_bucket_name(
-                        s3instance=os.environ.get("LSST_SITE")
+                        s3instance=self.controller.s3_instance
                     ),
                     create=create,
                     domock=do_mock,

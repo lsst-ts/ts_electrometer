@@ -136,48 +136,34 @@ class ElectrometerController:
         config : `types.SimpleNamespace`
             The parsed yaml as a dict-like object.
         """
-        self.mode = enums.UnitMode(self.modes[config.mode])
-        self.range = config.range
-        self.integration_time = config.integration_time
-        self.median_filter_active = config.median_filter_active
-        self.filter_active = config.filter_active
-        self.avg_filter_active = config.avg_filter_active
-        self.auto_range = True if self.range == -1 else False
-        self.commander.port = config.tcp_port
-        self.commander.host = config.host
-        self.commander.timeout = config.timeout
-        self.file_output_dir = config.fits_files_path
-        self.brand = config.brand
-        self.model_id = config.model_id
-        self.location = config.location
-        self.sensor_brand = config.sensor_brand
-        self.sensor_model = config.sensor_model
-        self.sensor_serial = config.sensor_serial
-        self.vsource_attached = config.vsource_attached
-        self.temperature_attached = config.temperature_attached
-        self.image_service_url = config.image_service_url
-
-    def generate_development_configure(self):
-        """Generate a development config object.
-
-        Used for development purposes to develop/test controller code.
-
-        Returns
-        -------
-        config : `types.SimpleNamespace`
-            A development configuration object.
-        """
-        config = types.SimpleNamespace()
-        config.mode = 1
-        config.range = -0.01
-        config.integration_time = 0.01
-        config.median_filter_active = False
-        config.filter_active = True
-        config.avg_filter_active = False
-        config.serial_port = "/dev/electrometer"
-        config.baudrate = 57600
-        config.timeout = 3.3
-        return config
+        for index in range(self.csc.salinfo.index):
+            if self.csc.salinfo.index == config.electrometer_config[index]["sal_index"]:
+                instance_config = types.SimpleNamespace(
+                    **config.electrometer_config[index]
+                )
+                self.mode = enums.UnitMode(self.modes[instance_config.mode])
+                self.range = instance_config.range
+                self.integration_time = instance_config.integration_time
+                self.median_filter_active = instance_config.median_filter_active
+                self.filter_active = instance_config.filter_active
+                self.avg_filter_active = instance_config.avg_filter_active
+                self.auto_range = True if self.range == -1 else False
+                self.commander.port = instance_config.tcp_port
+                self.commander.host = instance_config.host
+                self.commander.timeout = instance_config.timeout
+                self.file_output_dir = instance_config.fits_files_path
+                self.brand = instance_config.brand
+                self.model_id = instance_config.model_id
+                self.location = instance_config.location
+                self.sensor_brand = instance_config.sensor_brand
+                self.sensor_model = instance_config.sensor_model
+                self.sensor_serial = instance_config.sensor_serial
+                self.vsource_attached = instance_config.vsource_attached
+                self.temperature_attached = instance_config.temperature_attached
+                self.image_service_url = instance_config.image_service_url
+                self.s3_instance = instance_config.s3_instance
+                return None
+        raise RuntimeError(f"Configuration not found for {self.csc.salinfo.index=}")
 
     async def send_command(self, command: str, has_reply: bool = False):
         """Send a command to the device and return a reply if it has one.
@@ -201,7 +187,7 @@ class ElectrometerController:
     async def connect(self) -> None:
         """Open connection to the electrometer."""
         self.image_service_client = utils.ImageNameServiceClient(
-            self.image_service_url, self.csc.salinfo.index, "EM"
+            self.image_service_url, self.csc.salinfo.index, "Electrometer"
         )
         await self.commander.connect()
 
@@ -466,17 +452,6 @@ class ElectrometerController:
             num_images=1
         )
         hdul[0].header["OBSID"] = image_sequence_array[0]
-        filename = f"{self.manual_start_time}_{self.manual_end_time}.fits"
-        try:
-            pathlib.Path(self.file_output_dir).mkdir(parents=True, exist_ok=True)
-            hdul.writeto(f"{self.file_output_dir}/{filename}")
-            self.log.info(
-                f"Electrometer Scan data file written: {filename}"
-                f"Scan Summary of [Mean, median, std] is: "
-                f"[{np.mean(signal):0.5e}, {np.median(signal):0.5e}, {np.std(signal):0.5e}]"
-            )
-        except Exception:
-            self.log.exception("Writing file to local disk failed.")
         try:
             file_upload = io.BytesIO()
             hdul.writeto(file_upload)
@@ -494,6 +469,17 @@ class ElectrometerController:
             )
         except Exception:
             self.log.exception("Uploading file to s3 bucket failed.")
+        filename = f"{key_name}"  # Just make the filename the same as the key name on s3 bucket.
+        try:
+            pathlib.Path(self.file_output_dir).mkdir(parents=True, exist_ok=True)
+            hdul.writeto(f"{self.file_output_dir}/{filename}")
+            self.log.info(
+                f"Electrometer Scan data file written: {filename}"
+                f"Scan Summary of [Mean, median, std] is: "
+                f"[{np.mean(signal):0.5e}, {np.median(signal):0.5e}, {np.std(signal):0.5e}]"
+            )
+        except Exception:
+            self.log.exception("Writing file to local disk failed.")
 
     def parse_buffer(self, response):
         """Parse the buffer values.
