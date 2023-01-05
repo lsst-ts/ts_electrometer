@@ -78,3 +78,8 @@ class ReadingOption(enum.IntEnum):
 
     NEWREAD = 2
     """Get a new reading"""
+
+
+class Error(enum.IntEnum):
+    FILE_ERROR = 1
+    """File failed to write properly."""

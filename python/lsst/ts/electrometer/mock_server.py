@@ -157,6 +157,7 @@ class MockKeithley:
             re.compile(r"^:sour:volt:rang\?;$"): self.get_voltage_range,
             re.compile(r"^:sour:volt:lev:imm:ampl 2;$"): self.set_voltage_level,
             re.compile(r"^:sour:volt:lev:imm:ampl\?;$"): self.get_voltage_level,
+            re.compile(r"^:sens:CURR:dig 5;$"): self.set_resolution,
         }
 
     def parse_message(self, msg):
@@ -338,4 +339,7 @@ class MockKeithley:
         return "2"
 
     def set_voltage_level(self):
+        pass
+
+    def set_resolution(self):
         pass
