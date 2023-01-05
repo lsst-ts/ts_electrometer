@@ -25,6 +25,7 @@ import logging
 import pathlib
 import re
 import types
+import typing
 
 import astropy.io.fits as fits
 import astropy.time
@@ -165,7 +166,12 @@ class ElectrometerController:
                 return None
         raise RuntimeError(f"Configuration not found for {self.csc.salinfo.index=}")
 
-    async def send_command(self, command: str, has_reply: bool = False):
+    async def send_command(
+        self,
+        command: str,
+        has_reply: bool = False,
+        timeout: typing.Optional[int] = None,
+    ):
         """Send a command to the device and return a reply if it has one.
 
         Parameters
@@ -182,7 +188,11 @@ class ElectrometerController:
             If false, then returns None.
         """
         async with self.serial_lock:
-            return await self.commander.send_command(msg=command, has_reply=has_reply)
+            return await self.commander.send_command(
+                msg=command,
+                has_reply=has_reply,
+                timeout=timeout,
+            )
 
     async def connect(self) -> None:
         """Open connection to the electrometer."""
@@ -353,9 +363,23 @@ class ElectrometerController:
         self.manual_end_time = utils.current_tai()
         self.scan_duration = self.manual_end_time - self.manual_start_time
         await self.send_command(f"{self.commands.stop_storing_buffer()}")
+        self.log.debug("Scanning stopped.")
         await self.send_command(f"{self.commands.enable_display(True)}")
-        self.log.debug("Scanning stopped, Now reading buffer.")
-        res = await self.send_command(f"{self.commands.read_buffer()}", has_reply=True)
+        # FIXME: DM-37459
+        # How long it takes to readout the buffer is dependent upon the
+        # integration time and number of samples.
+        # There is a bug in how the integration time is handled so
+        # assume 0.2 seconds per sample for now until the bug
+        # affecting the integration time is fixed.
+        # Rough tests showed 330 data   points takes ~4s
+        #
+        read_timeout = self.commander.timeout + self.scan_duration * 0.2
+        self.log.debug(f"{self.scan_duration=} so read timeout will be {read_timeout=}")
+        asyncio.sleep(1)
+        self.log.debug("Starting to read buffer")
+        res = await self.send_command(
+            f"{self.commands.read_buffer()}", has_reply=True, timeout=read_timeout
+        )
         intensity, times, temperature, unit, voltage = self.parse_buffer(res)
         await self.write_fits_file(intensity, times, temperature, unit, voltage)
 
@@ -439,19 +463,32 @@ class ElectrometerController:
         if self.voltage_status:
             self.vsource = voltage[0]  # Constant value
         primary_hdu = self.make_primary_header()
-        data_columns = [signal, times]
-        data_names = ["Elapsed Time", "Signal"]
         data_metadata = {"name": "Single Electrometer scan readout"}
 
-        data_table = table.QTable(
-            data=data_columns, names=data_names, meta=data_metadata
-        )
+        data = {"Elapsed Time": times, "Signal": signal}
+
+        data_table = table.QTable(data=data, meta=data_metadata)
         table_hdu = fits.table_to_hdu(data_table)
         hdul = fits.HDUList([primary_hdu, table_hdu])
-        image_sequence_array, df = await self.image_service_client.get_next_obs_id(
+        image_sequence_array, obs_ids = await self.image_service_client.get_next_obs_id(
             num_images=1
         )
-        hdul[0].header["OBSID"] = image_sequence_array[0]
+        hdul[0].header["OBSID"] = obs_ids[0]
+        filename = f"{obs_ids[0]}.fits"
+        try:
+            pathlib.Path(self.file_output_dir).mkdir(parents=True, exist_ok=True)
+            hdul.writeto(f"{self.file_output_dir}/{filename}")
+            self.log.info(
+                f"Electrometer Scan data file written: {filename}\n"
+                f"Scan Summary of Signal [Mean, median, std] is: "
+                f"[{np.mean(signal):0.5e}, {np.median(signal):0.5e}, {np.std(signal):0.5e}]\n"
+                f"Scan Summary of Time [Mean, median] is: "
+                f"[{np.mean(times):0.5e}, {np.median(times):0.5e}]"
+            )
+        except Exception as e:
+            msg = "Writing file to local disk failed."
+            self.log.exception(msg)
+            raise RuntimeError(e)
         try:
             file_upload = io.BytesIO()
             hdul.writeto(file_upload)
@@ -464,22 +501,15 @@ class ElectrometerController:
                 suffix=".fits",
             )
             await self.csc.bucket.upload(fileobj=file_upload, key=key_name)
+            url = (
+                f"{self.csc.bucket.service_resource.meta.client.meta.endpoint_url}/"
+                f"{self.csc.bucket.name}/{key_name}"
+            )
             await self.csc.evt_largeFileObjectAvailable.set_write(
-                url=f"s3://{self.csc.bucket.name}/{key_name}", generator="electrometer"
+                url=url, generator=f"{self.csc.salinfo.name}:{self.csc.salinfo.index}"
             )
         except Exception:
             self.log.exception("Uploading file to s3 bucket failed.")
-        filename = f"{key_name}"  # Just make the filename the same as the key name on s3 bucket.
-        try:
-            pathlib.Path(self.file_output_dir).mkdir(parents=True, exist_ok=True)
-            hdul.writeto(f"{self.file_output_dir}/{filename}")
-            self.log.info(
-                f"Electrometer Scan data file written: {filename}"
-                f"Scan Summary of [Mean, median, std] is: "
-                f"[{np.mean(signal):0.5e}, {np.median(signal):0.5e}, {np.std(signal):0.5e}]"
-            )
-        except Exception:
-            self.log.exception("Writing file to local disk failed.")
 
     def parse_buffer(self, response):
         """Parse the buffer values.
@@ -513,8 +543,10 @@ class ElectrometerController:
         while i < 50000:
             intensity.append(raw_values[i])
             time.append(raw_values[i + 1])
-            voltage.append(raw_values[i + 2])
-            temperature.append(raw_values[i + 3])
+            if self.vsource_attached:
+                voltage.append(raw_values[i + 2])
+            if self.temperature_attached:
+                temperature.append(raw_values[i + 3])
             unit.append(raw_str_values[i])
             i += 3
             if i >= len(raw_values) - 2:
