@@ -35,6 +35,14 @@ from lsst.ts import utils
 
 from . import commander, commands_factory, enums
 
+TIME_PER_LINE = 0.0047
+"""The time per line is calculated based on the result that 200 samples takes
+~4 seconds."""
+OVERHEAD_FACTOR = 1.3
+"""Assume a 30% overhead when gathering data from the buffer."""
+POSITIVE_SATURATION = 9.9e37
+"""The intensity value when saturated in the positive direction."""
+
 
 class ElectrometerController:
     """Class that provides high level control for electrometer.
@@ -297,7 +305,8 @@ class ElectrometerController:
         set_range : `float`
             The new range value.
         """
-        if set_range == -1:
+        self.log.debug(f"{set_range=}")
+        if int(set_range) == -1:
             self.auto_range = True
         else:
             self.auto_range = False
@@ -310,7 +319,7 @@ class ElectrometerController:
     async def prepare_scan(self):
         """Prepare the keithley for scanning."""
         await self.send_command("TST:TYPE RTC;")
-        await self.send_command(self.commands.set_timer(self.mode))
+        await self.send_command(self.commands.set_resolution(mode=self.mode, digit=5))
         await self.send_command(self.commands.enable_sync(False))
         await self.send_command(f"{self.commands.clear_buffer()}")
         format_trac_args = {}
@@ -372,10 +381,15 @@ class ElectrometerController:
         # assume 0.2 seconds per sample for now until the bug
         # affecting the integration time is fixed.
         # Rough tests showed 330 data   points takes ~4s
-        #
-        read_timeout = self.commander.timeout + self.scan_duration * 0.2
+        # Number of lines is approximately scan_duration over integration time
+        num_of_lines = self.scan_duration / self.integration_time
+        # Add extra time to read_timeout using num_of_lines times time per
+        # sample time (assumption with 330 samples take ~4 seconds) with
+        # approximately 30% overhead.
+        read_timeout = self.commander.timeout + (
+            (num_of_lines * TIME_PER_LINE) * OVERHEAD_FACTOR
+        )
         self.log.debug(f"{self.scan_duration=} so read timeout will be {read_timeout=}")
-        asyncio.sleep(1)
         self.log.debug("Starting to read buffer")
         res = await self.send_command(
             f"{self.commands.read_buffer()}", has_reply=True, timeout=read_timeout
@@ -622,7 +636,16 @@ class ElectrometerController:
         res = await self.send_command(f"{self.commands.get_measure(1)}", has_reply=True)
         res = res.split(",")
         res = res[0].strip("ZVDCNA")
-        self.last_value = float(res)
+        # If the range saturates the intensity negatively, the device returns
+        # +9.90000+E37O with an O not zero
+        try:
+            self.last_value = float(res)
+        except ValueError:
+            self.last_value = float("inf")
+        # If the range saturates the intensity positively, the device returns
+        # +9.90000+E37
+        if float(res) == POSITIVE_SATURATION:
+            self.last_value = float("inf")
 
     async def toggle_voltage_source(self, toggle):
         await self.send_command(self.commands.toggle_voltage_source(toggle))

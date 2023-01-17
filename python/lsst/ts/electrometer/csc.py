@@ -26,7 +26,7 @@ import asyncio
 from lsst.ts import salobj, utils
 from lsst.ts.idl.enums.Electrometer import DetailedState
 
-from . import __version__, controller, mock_server
+from . import __version__, controller, enums, mock_server
 from .config_schema import CONFIG_SCHEMA
 
 
@@ -317,7 +317,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         except Exception as e:
             msg = "startScanDt failed."
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
-            await self.fault(code=2, report=f"{msg}: {repr(e)}")
+            await self.fault(code=enums.Error.FILE_ERROR, report=f"{msg}: {repr(e)}")
 
     async def do_startScanDt(self, data):
         """Start the scan with a set duration.
@@ -341,7 +341,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         except Exception as e:
             msg = "startScanDt failed."
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
-            await self.fault(code=2, report=f"{msg}: {repr(e)}")
+            await self.fault(code=enums.Error.FILE_ERROR, report=f"{msg}: {repr(e)}")
 
         self.log.info("startScanDt Completed")
 

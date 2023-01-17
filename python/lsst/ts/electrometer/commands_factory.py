@@ -653,3 +653,7 @@ class ElectrometerCommandFactory:
     def set_voltage_limit(self, limit):
         command = f":sour:volt:lim:ampl {limit};"
         return command
+
+    def set_resolution(self, mode, digit):
+        command = f":sens:{enums.UnitMode(mode)}:dig {digit};"
+        return command

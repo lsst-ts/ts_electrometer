@@ -15,7 +15,11 @@ v0.8.0
 * Make configurations correspond to a particular SAL Index.
 * Remove baud_rate from schema.
 * Correct s3 bucket names.
-* Make fits file name the same as s3 key name when writing to disk.
+* Make fits file name the obsid when writing to disk.
+* Fix parse_buffer assuming that temperature and voltage input will always be there even when temperature and vsource attached are false.
+* Catch ValueError when get_intensity returns a saturated value.
+* Make resolution return 5 values when running a scan.
+* Add Error enum for fault error codes.
 
 v0.7.0
 ======
