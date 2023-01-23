@@ -220,6 +220,9 @@ class ElectrometerController:
                 f"Expected:\n {expected} \n but got: \n{res} \n"
             )
             raise RuntimeError("Communication verification failed.")
+        await self.send_command(f"{self.commands.reset_device()}")
+        await self.send_command(f"{self.commands.get_measure(1)}", has_reply=True)
+        self.log.debug("Reset Device")
         await self.set_mode(self.mode)
         await self.set_range(self.range)
         await self.set_integration_time(self.integration_time)
@@ -318,7 +321,6 @@ class ElectrometerController:
 
     async def prepare_scan(self):
         """Prepare the keithley for scanning."""
-        await self.send_command("TST:TYPE RTC;")
         await self.send_command(self.commands.set_resolution(mode=self.mode, digit=5))
         await self.send_command(self.commands.enable_sync(False))
         await self.send_command(f"{self.commands.clear_buffer()}")
@@ -338,6 +340,7 @@ class ElectrometerController:
         )
         await self.send_command(f"{self.commands.enable_display(False)}")
         await self.send_command(f"{self.commands.next_read()}")
+
         self.manual_start_time = utils.current_tai()
 
     async def start_scan_dt(self, scan_duration):
