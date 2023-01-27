@@ -221,7 +221,9 @@ class ElectrometerController:
             )
             raise RuntimeError("Communication verification failed.")
         await self.send_command(f"{self.commands.reset_device()}")
-        await self.send_command(f"{self.commands.get_measure(1)}", has_reply=True)
+        await self.send_command(
+            f"{self.commands.get_measure(enums.ReadingOption.LATEST)}", has_reply=True
+        )
         self.log.debug("Reset Device")
         await self.set_mode(self.mode)
         await self.set_range(self.range)
@@ -636,7 +638,9 @@ class ElectrometerController:
 
     async def get_intensity(self):
         """Get the intensity."""
-        res = await self.send_command(f"{self.commands.get_measure(1)}", has_reply=True)
+        res = await self.send_command(
+            f"{self.commands.get_measure(enums.ReadingOption.LATEST)}", has_reply=True
+        )
         res = res.split(",")
         res = res[0].strip("ZVDCNA")
         # If the range saturates the intensity negatively, the device returns
