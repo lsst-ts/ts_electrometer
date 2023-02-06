@@ -6,7 +6,7 @@ pipeline {
         docker {
             image 'lsstts/develop-env:develop'
             alwaysPull true
-            args "-u root --entrypoint=''"
+            args "--entrypoint=''"
         }
     }
 
@@ -79,9 +79,6 @@ pipeline {
 
     post {
         always {
-            withEnv(["HOME=${env.WORKSPACE}"]) {
-                sh 'chown -R 1003:1003 ${HOME}/'
-            }
             junit 'jenkinsReport/*.xml'
             publishHTML (target:[
                 allowMissing: false,
