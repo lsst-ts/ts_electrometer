@@ -20,6 +20,8 @@ v0.8.0
 * Catch ValueError when get_intensity returns a saturated value.
 * Make resolution return 5 values when running a scan.
 * Add Error enum for fault error codes.
+* Reset the controller when connecting to it to make integration time work correctly.
+* Return early if ValueError is caught.
 
 v0.7.0
 ======

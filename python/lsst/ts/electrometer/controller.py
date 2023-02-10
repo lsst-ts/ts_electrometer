@@ -649,6 +649,7 @@ class ElectrometerController:
             self.last_value = float(res)
         except ValueError:
             self.last_value = float("inf")
+            return  # return early
         # If the range saturates the intensity positively, the device returns
         # +9.90000+E37
         if float(res) == POSITIVE_SATURATION:

@@ -64,7 +64,7 @@ class MockServer(tcpip.OneClientServer):
                 self.writer.write(reply)
                 await self.writer.drain()
 
-    def connect_callback(self, server):
+    async def connect_callback(self, server):
         """Start the command loop when client is connected.
 
         Parameters
