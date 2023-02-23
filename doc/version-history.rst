@@ -10,6 +10,10 @@ Version History
 .. No new work should be required in order to complete this section.
 .. Below is an example of a version history format.
 
+v0.8.1
+======
+* Update pre-commit to black 23, isort 5.12 & check-yaml 4.4.
+
 v0.8.0
 ======
 * Make configurations correspond to a particular SAL Index.
