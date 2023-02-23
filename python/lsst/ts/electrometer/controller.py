@@ -99,7 +99,6 @@ class ElectrometerController:
     """
 
     def __init__(self, csc, log=None):
-
         # Create a logger if none were passed during the instantiation of
         # the class
         if log is None:
