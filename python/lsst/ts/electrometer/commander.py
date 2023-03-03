@@ -78,7 +78,7 @@ class Commander:
         async with self.lock:
             try:
                 connect_task = asyncio.open_connection(
-                    host=self.host, port=int(self.port)
+                    host=self.host, port=int(self.port), limit=1024 * 1024
                 )
                 self.reader, self.writer = await asyncio.wait_for(
                     connect_task, timeout=self.long_timeout

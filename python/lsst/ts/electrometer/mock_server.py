@@ -147,9 +147,9 @@ class MockKeithley:
             ): self.do_change_nplc,
             re.compile(r"^:disp:enab (?P<parameter>ON|OFF);$"): self.do_change_nplc,
             re.compile(
-                r"^:vsou:oper (?P<parameter>ON|OFF);$"
+                r"^:sens:res:man:vso:oper (?P<parameter>ON|OFF);$"
             ): self.do_toggle_voltage_source,
-            re.compile(r"^:vsou:oper\?;$"): self.get_voltage_source_status,
+            re.compile(r"^:sens:res:man:vso:oper\?;$"): self.get_voltage_source_status,
             re.compile(r"^:sour:volt:lim:ampl 2;$"): self.set_voltage_limit,
             re.compile(r"^:sour:volt:lim:stat\?;$"): self.get_voltage_limit,
             re.compile(r"^:sour:volt:rang 1;$"): self.set_voltage_range,

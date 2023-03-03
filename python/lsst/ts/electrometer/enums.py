@@ -35,7 +35,7 @@ class UnitMode(str, enum.Enum):
     """Voltage"""
 
     RES = "RES"
-    """Resolution"""
+    """Resistance"""
 
 
 class Filter(enum.IntEnum):
