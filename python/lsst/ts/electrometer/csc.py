@@ -159,7 +159,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         create = False
         if self.disabled_or_enabled:
             if self.simulation_mode and self.simulator is None:
-                self.simulator = mock_server.MockServer()
+                self.simulator = mock_server.MockServer(self.controller.brand)
                 await self.simulator.start_task
                 do_mock = True
                 create = True
@@ -199,8 +199,9 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             await self.controller.perform_zero_calibration()
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
             self.log.info("Zero Calibration Completed")
-        except Exception:
+        except Exception as e:
             self.log.exception("performZeroCalibration failed.")
+            self.log.debug(f"Exception is {e}")
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
 
     async def do_setDigitalFilter(self, data):
@@ -364,7 +365,9 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         )
         try:
             await self.report_detailed_state(DetailedState.READINGBUFFERSTATE)
+            self.log.debug("detailed state reported")
             await self.controller.stop_scan()
+            self.log.debug("controller stopped scan")
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
             self.log.info("stopScan Completed")
         except Exception as e:

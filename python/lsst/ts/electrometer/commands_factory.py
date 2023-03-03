@@ -26,7 +26,13 @@ class ElectrometerCommandFactory:
     """Class that formats commands to control the electrometer via RS-232."""
 
     def __init__(self) -> None:
+        self.brand = None
         pass
+
+    def set_brand(self, brand):
+        """Define the brand of the electrometer"""
+
+        self.brand = brand
 
     def activate_filter(self, mode, filter_type, active) -> str:
         """Return activate filter command.
@@ -45,7 +51,12 @@ class ElectrometerCommandFactory:
         command : `str`
             The generated command string.
         """
-        command = f":sens:{enums.UnitMode(mode).name}:{enums.Filter(filter_type).name}:stat {int(active)};"
+        unit_ = enums.UnitMode(mode).name
+        filter_ = enums.Filter(filter_type).name
+        if enums.Filter(filter_type).name == "AVER" and self.brand == "Keysight":
+            command = f":sens:{unit_}:{filter_}:mov:stat {int(active)};"
+        else:
+            command = f":sens:{unit_}:{filter_}:stat {int(active)};"
         return command
 
     def get_avg_filter_status(self, mode) -> str:
@@ -61,7 +72,10 @@ class ElectrometerCommandFactory:
         command : `str`
             The generated command string.
         """
-        command = f":sens:{enums.UnitMode(mode).name}:aver:type?;"
+        if self.brand == "Keysight":
+            command = f":sens:{enums.UnitMode(mode).name}:aver:mov:stat?;"
+        else:
+            command = f":sens:{enums.UnitMode(mode).name}:aver:type?;"
         return command
 
     def get_med_filter_status(self, mode) -> str:
@@ -95,9 +109,10 @@ class ElectrometerCommandFactory:
         command : `str`
             The generated command string.
         """
-        command = (
-            f":sens:{enums.UnitMode(mode).name}:{enums.Filter(filter_type).name}:stat?;"
-        )
+        if self.brand == "Keysight" and enums.Filter(filter_type).name == "AVER":
+            command = f"sens:{enums.UnitMode(mode).name}:{enums.Filter(filter_type).name}:mov:stat?;"
+        else:
+            command = f":sens:{enums.UnitMode(mode).name}:{enums.Filter(filter_type).name}:stat?;"
         return command
 
     def set_avg_filter_status(self, mode, aver_filter_type) -> str:
@@ -136,7 +151,10 @@ class ElectrometerCommandFactory:
         command : `str`
             The generated command string.
         """
-        command = f":sens:{enums.UnitMode(mode).name}:med:stat {int(active)};"
+        if self.brand == "Keysight":
+            command = f":sens:{enums.UnitMode(mode).name}:DC:med:stat {int(active)};"
+        else:
+            command = f":sens:{enums.UnitMode(mode).name}:med:stat {int(active)};"
         return command
 
     def always_read(self) -> str:
@@ -145,20 +163,40 @@ class ElectrometerCommandFactory:
         Returns
         -------
         commmand : `str`
-            The generated command string.
+            The generated command string. An array of all data in the buffer.
         """
-        command = f":trac:feed:cont alw;{self.init_buffer()}"
+        if self.brand == "Keysight":
+            command = ":trac:data?"
+        else:
+            command = f":trac:feed:cont alw;{self.init_buffer()}"
         return command
 
     def next_read(self):
-        """Return next read buffer.
+        """Return the latest measurement data from buffer
 
         Returns
         -------
         command : `str`
             The generated command string.
         """
-        command = f":trac:feed:cont next;{self.init_buffer()}"
+        if self.brand == "Keysight":
+            command = ":meas:data?"
+        else:
+            command = f":trac:feed:cont NEXT;{self.init_buffer()}"
+        return command
+
+    def acquire_data(self):
+        """Returns the command to start acquiring data
+
+        Returns
+        -------
+        command : `str`
+            The generated command string
+        """
+        if self.brand == "Keysight":
+            command = ":init:acq"
+        else:
+            command = f":trac:feed:cont NEXT;{self.init_buffer()}"
         return command
 
     def clear_buffer(self):
@@ -191,11 +229,20 @@ class ElectrometerCommandFactory:
         command : `str`
             The generated command string.
         """
-        command = ":syst:err?;"
+        if self.brand == "Keysight":
+            command = ":syst:err:next?;"
+        else:
+            command = ":syst:err?;"
         return command
 
     def format_trac(
-        self, channel=False, timestamp=True, temperature=False, voltage=False
+        self,
+        timestamp=True,
+        temperature=False,
+        voltage=False,
+        set_mode=False,
+        mode="VOLT",
+        channel=False,
     ):
         """Return format data stored to the buffer.
 
@@ -214,29 +261,69 @@ class ElectrometerCommandFactory:
             The generated command string.
         """
         isFirst = True
-        if not (timestamp or temperature or channel or voltage):
-            command = ":trac:elem NONE"
+        self.data_columns = 1
+        if not (timestamp or temperature or voltage or set_mode):
+            if self.brand == "Keysight":
+                command = ":form:elem:sens NONE"
+            else:
+                command = ":trac:elem NONE"
         else:
-            command = ":trac:elem "
+            if self.brand == "Keysight":
+                command = ":form:elem:sens "
+            else:
+                command = ":trac:elem "
             if channel:
                 isFirst = False
                 command += "CHAN"
+                self.data_columns += 1
             if timestamp:
                 if not isFirst:
                     command += ", "
                 isFirst = False
-                command += "TST"
+                if self.brand == "Keysight":
+                    command += "TIME"
+                else:
+                    command += "TST"
+                self.data_columns += 1
             if temperature:
                 if not isFirst:
                     command += ", "
                 isFirst = False
-                command += "ETEM"
+                if self.brand == "Keysight":
+                    command += "TEMP"
+                else:
+                    command += "ETEM"
+                self.data_columns += 1
             if voltage:
                 if not isFirst:
                     command += ", "
                 isFirst = False
-                command += "VSO"
+                if self.brand == "Keysight":
+                    command += "SOUR"
+                else:
+                    command += "VSO"
+                self.data_columns += 1
+            if set_mode:
+                if not isFirst:
+                    command += ", "
+                isFirst = False
+                command += f"{mode}"
+                self.data_columns += 1
         command += ";"
+        return command
+
+    def get_trace_format(self):
+        """Returns the format of the trace.
+
+        Returns
+        -------
+        command : `str`
+            The generated command string.
+        """
+        if self.brand == "Keysight":
+            command = ":form:elem:sens?"
+        else:
+            command = ":trac:elem?"
         return command
 
     def get_buffer_quantity(self):
@@ -261,6 +348,56 @@ class ElectrometerCommandFactory:
         command = "*idn?"
         return command
 
+    def set_autodischarge(self, autodischarge_state):
+        """Sets the autodischarge state.
+
+        Returns
+        -------
+        command : `str`
+            The generated command string.
+        """
+        command = f"sens:char:adis:stat {autodischarge_state}"
+        return command
+
+    def discharge_capacitor(self):
+        """Discharges the capacitor.
+
+        Returns
+        -------
+        command : `str`
+            The generated command string.
+        """
+        if self.brand == "Keysight":
+            command = "SENS:CHAR:DISC"
+        else:
+            command = "SYST:ZCH OFF"
+        return command
+
+    # def set_zch(self, zch_state): THIS IS ENABLE ZERO CHECK
+    #     """Turns zcheck on or off for Keithley.
+
+    #     Returns
+    #     -------
+    #     command : `str`
+    #         The generated command string.
+    #     """
+    #     command = f"syst:zch {zch_state}"
+    #     return command
+
+    def stop_taking_data(self):
+        """Stops taking measurements
+
+        Returns
+        -------
+        command : `str`
+            The generated command string.
+        """
+        if self.brand == "Keysight":
+            command = "ABOR:ACQ;"
+        else:
+            command = "ABOR"
+        return command
+
     def get_measure(self, read_option):
         """Return get measure.
 
@@ -275,9 +412,12 @@ class ElectrometerCommandFactory:
             The generated command string.
         """
         if enums.ReadingOption(read_option) == enums.ReadingOption.LATEST:
-            command = ":sens:data?;"
+            if self.brand == "Keysight":
+                command = ":sens:data:latest?;"
+            else:
+                command = ":sens:data?;"
         else:
-            command = ":sens:data:fres?;"
+            command = ":sens:data?;"
         return command
 
     def get_mode(self):
@@ -305,9 +445,15 @@ class ElectrometerCommandFactory:
             The generated command string.
         """
         if enable:
-            command = ":syst:tsc ON;"
+            if self.brand == "Keysight":
+                command = ":syst:temp ON;"
+            else:
+                command = ":syst:tsc ON;"
         else:
-            command = ":syst:tsc OFF;"
+            if self.brand == "Keysight":
+                command = ":syst:temp OFF;"
+            else:
+                command = ":syst:tsc OFF;"
         return command
 
     def read_buffer(self):
@@ -318,7 +464,10 @@ class ElectrometerCommandFactory:
         command : `str`
             The generated command string.
         """
-        command = ":trac:data?;"
+        if self.brand == "Keysight":
+            command = ":sens:data?;"
+        else:
+            command = ":trac:data?;"
         return command
 
     def output_trigger_line(self, output_trigger_input):
@@ -329,9 +478,10 @@ class ElectrometerCommandFactory:
         command : `str`
             The generated command string.
         """
-        command = (
-            f"TRIG:TCON:ASYN:OLIN {output_trigger_input:d};TRIG:TCON:ASYN:OUTP SENS;"
-        )
+        if self.brand == "Keysight":
+            command = ":TRIG:ACQ:TOUT ON;:TRIG:ACQ:TOUT:SIGN TOUT"
+        else:
+            command = f":SENS:TOUT:SIGN {output_trigger_input:d};:SENS:TOUT:STAT ON;"
         return command
 
     def reset_device(self):
@@ -346,7 +496,10 @@ class ElectrometerCommandFactory:
         return command
 
     def select_source(self, source=enums.Source.TIM):
-        command = f":trig:sour {enums.Source(source).value};"
+        if self.brand == "Keysight":
+            command = f":trig:sour {enums.Source(source).name};"
+        else:
+            command = f":trig:sour {enums.Source(source).name};"
         return command
 
     def select_device_timer(self, timer=0.001):
@@ -378,6 +531,17 @@ class ElectrometerCommandFactory:
         command = f"{self.clear_buffer()}:trac:points {str(buffer_size)};:trig:count {str(buffer_size)};"
         return command
 
+    def set_infinite_triggers(self):
+        """Return take infinite measurements
+
+        Returns
+        -------
+        command : `str`
+            The generated command string.
+        """
+        command = ":trig:coun INF;"
+        return command
+
     def init_buffer(self):
         """Return start storing readings into the buffer.
 
@@ -386,7 +550,10 @@ class ElectrometerCommandFactory:
         command : `str`
             The generated command string.
         """
-        command = ":init;"
+        if self.brand == "Keysight":
+            command = ":init:acq;"
+        else:
+            command = ":init;"
         return command
 
     def integration_time(self, mode, time=0.001):
@@ -420,7 +587,11 @@ class ElectrometerCommandFactory:
         command : `str`
             The generated command string.
         """
-        command = f":sens:func '{enums.UnitMode(mode).value}';"
+
+        if self.brand == "Keysight":
+            command = f":sens:func:on '{enums.UnitMode(mode).name}';:inp on;"
+        else:
+            command = f":sens:func '{enums.UnitMode(mode).name}';"
         return command
 
     def set_range(self, auto, range_value, mode):
@@ -481,6 +652,17 @@ class ElectrometerCommandFactory:
         command = ":trac:feed:cont NEV;"
         return command
 
+    def start_storing_buffer(self):
+        """Return start storing buffer.
+
+        Returns
+        -------
+        command : `str`
+            The generated command string.
+        """
+        command = ":trac:feed:cont NEXT;"
+        return command
+
     def enable_all_instrument_errors(self):
         """Return enable all instrument errors.
 
@@ -521,7 +703,10 @@ class ElectrometerCommandFactory:
         command : `str`
             The generated command string.
         """
-        command = ":syst:zcor ON;" if enable else ":syst:zcor OFF;"
+        if self.brand == "Keysight":
+            command = ":inp:zcor ON;" if enable else ":inp:zcor OFF;"
+        else:
+            command = ":syst:zcor ON;" if enable else ":syst:zcor OFF;"
         return command
 
     def get_range(self, mode):
@@ -598,7 +783,7 @@ class ElectrometerCommandFactory:
         )
         return command
 
-    def perform_zero_calibration(self, mode, auto, range_value):
+    def perform_zero_calibration(self, mode, auto, range_value, int_time):
         """Return combo of commands for perform zero calibration command.
         Required when setting mode to Volts/Amps to cancel any internal
         offsets. See page 4-10 in User's manual for sequence
@@ -617,13 +802,20 @@ class ElectrometerCommandFactory:
         command : `str`
             The generated command string
         """
-        command = (
-            f"{self.set_mode(mode)}"
-            f"{self.enable_zero_check(True)}"
-            f"{self.set_range(auto=auto, range_value=range_value, mode=mode)}"
-            f"{self.enable_zero_correction(enable=True)}"
-            f"{self.enable_zero_check(False)}"
-        )
+
+        if self.brand == "Keysight":
+            command = (
+                f"{self.set_mode(mode)}"
+                f"{self.set_range(auto=auto, range_value=range_value, mode=mode)}"
+                f"{self.integration_time(mode,int_time)}"
+                f"{self.enable_zero_correction(enable=True)}"
+            )
+        else:
+            command = (
+                f"{self.enable_zero_check(True)} "
+                f"{self.set_mode(mode)} "
+                f"{self.set_range(auto=auto, range_value=range_value, mode=mode)} "
+            )
         return command
 
     def disable_all(self):
@@ -638,13 +830,21 @@ class ElectrometerCommandFactory:
         return command
 
     def toggle_voltage_source(self, enable):
-        command = (
-            ":sens:res:man:vso:oper ON;" if enable else ":sens:res:man:vso:oper OFF;"
-        )
+        if self.brand == "Keysight":
+            command = (
+                ":sens:res:man:vso:oper ON;"
+                if enable
+                else ":sens:res:man:vso:oper OFF;"
+            )
+        else:
+            command = ":vsou:oper ON;" if enable else ":vsou:oper OFF;"
         return command
 
     def get_voltage_source_status(self):
-        command = ":sens:res:man:vso:oper?;"
+        if self.brand == "Keysight":
+            command = ":sens:res:man:vso:oper?;"
+        else:
+            command = ":vsou:oper?;"
         return command
 
     def get_voltage_level(self):
