@@ -12,7 +12,7 @@ Version History
 
 v0.8.2
 ======
-* Use StrEnum instead of str, Enum.
+* Add value call to enums that inherit from str.
 * Remove scons files.
 * Implement DevelopPipeline.
 * Implement ts_precommit_conf.

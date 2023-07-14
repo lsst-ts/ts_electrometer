@@ -22,7 +22,7 @@
 import enum
 
 
-class UnitMode(enum.StrEnum):
+class UnitMode(str, enum.Enum):
     """The units for the electrometer."""
 
     CURR = "CURR"
@@ -47,7 +47,7 @@ class Filter(enum.IntEnum):
     """Average filter"""
 
 
-class Source(enum.StrEnum):
+class Source(str, enum.Enum):
     """Controls the source setting for triggering data to the buffer."""
 
     IMM = "imm"
