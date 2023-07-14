@@ -137,3 +137,7 @@ dmypy.json
 .tests
 .sconsign.dblite
 version.py
+.pre-commit-config.yaml
+.flake8
+.isort.cfg
+.mypy.ini

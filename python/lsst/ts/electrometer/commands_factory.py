@@ -333,7 +333,7 @@ class ElectrometerCommandFactory:
         return command
 
     def select_source(self, source=enums.Source.TIM):
-        command = f":trig:sour {enums.Source(source)};"
+        command = f":trig:sour {enums.Source(source).value};"
         return command
 
     def select_device_timer(self, timer=0.001):
@@ -407,7 +407,7 @@ class ElectrometerCommandFactory:
         command : `str`
             The generated command string.
         """
-        command = f":sens:func '{enums.UnitMode(mode)}';"
+        command = f":sens:func '{enums.UnitMode(mode).value}';"
         return command
 
     def set_range(self, auto, range_value, mode):
@@ -655,5 +655,5 @@ class ElectrometerCommandFactory:
         return command
 
     def set_resolution(self, mode, digit):
-        command = f":sens:{enums.UnitMode(mode)}:dig {digit};"
+        command = f":sens:{enums.UnitMode(mode).value}:dig {digit};"
         return command
