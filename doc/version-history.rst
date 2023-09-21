@@ -10,6 +10,11 @@ Version History
 .. No new work should be required in order to complete this section.
 .. Below is an example of a version history format.
 
+v0.8.3
+======
+
+* Support tpcip 2.0 by removing reader and writer attribute calls.
+
 v0.8.2
 ======
 * Add value call to enums that inherit from str.
