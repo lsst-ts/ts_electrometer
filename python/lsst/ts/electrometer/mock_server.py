@@ -54,15 +54,14 @@ class MockServer(tcpip.OneClientServer):
     async def cmd_loop(self):
         """Implement the command loop for the electrometer"""
         while self.connected:
-            line = await self.reader.readuntil(b"\r")
+            line = await self.readuntil(b"\r")
             reply = self.device.parse_message(line)
             self.log.debug(f"reply={reply}")
             if reply is not None:
                 reply = reply + "\r"
                 reply = reply.encode("ascii")
                 self.log.debug(f"writing reply={reply}")
-                self.writer.write(reply)
-                await self.writer.drain()
+                await self.write(reply)
 
     async def connect_callback(self, server):
         """Start the command loop when client is connected.
