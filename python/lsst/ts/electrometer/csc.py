@@ -311,8 +311,8 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             substates=[DetailedState.NOTREADINGSTATE], action="startScan"
         )
         try:
-            await self.controller.start_scan()
             await self.report_detailed_state(DetailedState.MANUALREADINGSTATE)
+            await self.controller.start_scan()
             self.log.debug("startScan Completed")
         except Exception as e:
             msg = "startScanDt failed."
@@ -367,9 +367,11 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             await self.controller.stop_scan()
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
             self.log.info("stopScan Completed")
-        except Exception:
+        except Exception as e:
+            msg = "stopScan failed."
             self.log.exception("stopScan failed.")
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
+            await self.fault(code=enums.Error.FILE_ERROR, report=f"{msg}: {repr(e)}")
 
     async def do_setVoltageSource(self, data):
         self.assert_enabled()

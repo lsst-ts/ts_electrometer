@@ -321,6 +321,19 @@ class ElectrometerCommandFactory:
         command = ":trac:data?;"
         return command
 
+    def output_trigger_line(self, output_trigger_input):
+        """Sets output trigger line
+
+        Returns
+        -------
+        command : `str`
+            The generated command string.
+        """
+        command = (
+            f"TRIG:TCON:ASYN:OLIN {output_trigger_input:d};TRIG:TCON:ASYN:OUTP SENS;"
+        )
+        return command
+
     def reset_device(self):
         """Return reset device.
 
@@ -580,13 +593,15 @@ class ElectrometerCommandFactory:
         """
         command = (
             f"{self.clear_buffer()} "
-            f" {self.format_trac(channel=False, timestamp=True, temperature=False)} "
+            f"{self.format_trac()} "
             f"{self.set_buffer_size(50000)}"
         )
         return command
 
     def perform_zero_calibration(self, mode, auto, range_value):
         """Return combo of commands for perform zero calibration command.
+        Required when setting mode to Volts/Amps to cancel any internal
+        offsets. See page 4-10 in User's manual for sequence
 
         Parameters
         ----------
@@ -603,10 +618,10 @@ class ElectrometerCommandFactory:
             The generated command string
         """
         command = (
-            f"{self.enable_zero_check(True)} "
-            f"{self.set_mode(mode)} "
-            f" {self.set_range(auto=auto, range_value=range_value, mode=mode)} "
-            f" {self.enable_zero_correction(enable=True)} "
+            f"{self.set_mode(mode)}"
+            f"{self.enable_zero_check(True)}"
+            f"{self.set_range(auto=auto, range_value=range_value, mode=mode)}"
+            f"{self.enable_zero_correction(enable=True)}"
             f"{self.enable_zero_check(False)}"
         )
         return command
@@ -623,11 +638,13 @@ class ElectrometerCommandFactory:
         return command
 
     def toggle_voltage_source(self, enable):
-        command = ":vsou:oper ON;" if enable else ":vsou:oper OFF;"
+        command = (
+            ":sens:res:man:vso:oper ON;" if enable else ":sens:res:man:vso:oper OFF;"
+        )
         return command
 
     def get_voltage_source_status(self):
-        command = ":vsou:oper?;"
+        command = ":sens:res:man:vso:oper?;"
         return command
 
     def get_voltage_level(self):

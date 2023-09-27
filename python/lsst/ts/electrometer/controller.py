@@ -223,10 +223,11 @@ class ElectrometerController:
         await self.send_command(
             f"{self.commands.get_measure(enums.ReadingOption.LATEST)}", has_reply=True
         )
+
         self.log.debug("Reset Device")
-        await self.set_mode(self.mode)
-        await self.set_range(self.range)
         await self.set_integration_time(self.integration_time)
+        await self.perform_zero_calibration()
+
         await self.set_digital_filter(
             activate_filter=self.filter_active,
             activate_avg_filter=self.avg_filter_active,
@@ -238,11 +239,14 @@ class ElectrometerController:
         self.image_service_client = None
         await self.commander.disconnect()
 
-    async def perform_zero_calibration(self) -> None:
+    async def perform_zero_calibration(self):
         """Perform zero calibration."""
         await self.send_command(
-            f"{self.commands.perform_zero_calibration(self.mode,self.auto_range,self.range)}"
+            f"{self.commands.perform_zero_calibration(self.mode, self.auto_range, self.range)}"
         )
+        await self.get_mode()
+        await self.get_range()
+        await self.check_error()
         self.log.debug("Zero Calibration sent to controller")
 
     async def set_digital_filter(
@@ -283,8 +287,9 @@ class ElectrometerController:
         int_time : `float`
             The integration time.
         """
+        self.integration_time = int_time
         await self.send_command(
-            f"{self.commands.integration_time(mode=self.mode, time=int_time)}"
+            f"{self.commands.integration_time(mode=self.mode, time=self.integration_time)}"
         )
         await self.get_integration_time()
         await self.check_error()
@@ -297,9 +302,9 @@ class ElectrometerController:
         mode : `int`
             The mode of the electrometer.
         """
-        await self.send_command(f"{self.commands.set_mode(mode=mode)}")
-        await self.get_mode()
-        await self.check_error()
+        self.mode = enums.UnitMode(self.modes[mode])
+        self.log.debug(f"Set mode {self.mode}")
+        await self.perform_zero_calibration()
 
     async def set_range(self, set_range):
         """Set the range.
@@ -309,21 +314,19 @@ class ElectrometerController:
         set_range : `float`
             The new range value.
         """
+        self.range = set_range
         self.log.debug(f"{set_range=}")
         if int(set_range) == -1:
             self.auto_range = True
         else:
             self.auto_range = False
-        await self.send_command(
-            f"{self.commands.set_range(auto=self.auto_range, range_value=set_range, mode=self.mode)}"
-        )
-        await self.get_range()
-        await self.check_error()
+        await self.perform_zero_calibration()
 
     async def prepare_scan(self):
         """Prepare the keithley for scanning."""
         await self.send_command(self.commands.set_resolution(mode=self.mode, digit=5))
         await self.send_command(self.commands.enable_sync(False))
+        await self.send_command(f"{self.commands.prepare_buffer()}")
         await self.send_command(f"{self.commands.clear_buffer()}")
         format_trac_args = {}
         if self.temperature_attached:
@@ -386,10 +389,13 @@ class ElectrometerController:
         # affecting the integration time is fixed.
         # Rough tests showed 330 data   points takes ~4s
         # Number of lines is approximately scan_duration over integration time
-        num_of_lines = self.scan_duration / self.integration_time
+        # PF: based on test
+        num_of_lines = self.scan_duration / ((self.integration_time * 3.07) + 0.00254)
+        self.log.debug(f"approximate number of lines: {num_of_lines}")
         # Add extra time to read_timeout using num_of_lines times time per
         # sample time (assumption with 330 samples take ~4 seconds) with
         # approximately 30% overhead.
+        # This is an overestimation, but that's a good thing
         read_timeout = self.commander.timeout + (
             (num_of_lines * TIME_PER_LINE) * OVERHEAD_FACTOR
         )
@@ -405,16 +411,16 @@ class ElectrometerController:
         """Make primary header for fits file that follows Rubin Obs. format."""
         primary_hdu = fits.PrimaryHDU()
         primary_hdu.header["FORMAT_V"] = ("1", "Header format version")
-        primary_hdu.header["OBSERVAT"] = "Vera C. Rubin Observatory"
+        primary_hdu.header["ORIGIN"] = "Vera C. Rubin Observatory"
         primary_hdu.header["INSTRUME"] = (
             f"Electrometer_index_{self.csc.salinfo.index}",
             "Type of Instrument",
         )
         primary_hdu.header["MODEL"] = (self.model_id, "Model of instrument")
         primary_hdu.header["LOCATN"] = (self.location, "Location of Instrument")
-        primary_hdu.header["ORIGIN"] = (
+        primary_hdu.header["CSCNAME"] = (
             self.csc.salinfo.name,
-            "Name of the program that produced this data.",
+            "Name of the CSC that produced this data.",
         )
         primary_hdu.header["DATE-BEG"] = (
             self.manual_start_time,
@@ -582,15 +588,18 @@ class ElectrometerController:
     async def get_mode(self):
         """Get the mode/unit."""
         res = await self.send_command(f"{self.commands.get_mode()}", has_reply=True)
+        self.log.debug(f"Mode returns {res}")
         if res not in ['"CHAR"', '"RES"']:
             mode, unit = res.split(":")
             mode = mode.replace('"', "")
         else:
             mode = res
             mode = mode.replace('"', "")
+
         self.mode = enums.UnitMode(mode)
         await self.csc.evt_measureType.set_write(
-            mode=list(self.modes.values()).index(self.mode), force_output=True
+            mode=int([num for num, mode in self.modes.items() if self.mode == mode][0]),
+            force_output=True,
         )
 
     async def get_avg_filter_status(self):
