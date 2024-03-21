@@ -201,7 +201,6 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             self.log.info("Zero Calibration Completed")
         except Exception as e:
             self.log.exception("performZeroCalibration failed.")
-            self.log.debug(f"Exception is {e}")
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
 
     async def do_setDigitalFilter(self, data):

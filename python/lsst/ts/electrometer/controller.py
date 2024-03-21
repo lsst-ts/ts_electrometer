@@ -607,7 +607,6 @@ class ElectrometerController:
         except Exception as e:
             msg = "Writing file to local disk failed."
             self.log.exception(msg)
-            self.log.debug(f"exception is {e}")
             raise RuntimeError(e)
         try:
             file_upload = io.BytesIO()
