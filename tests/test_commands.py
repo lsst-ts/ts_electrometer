@@ -61,7 +61,7 @@ class TestElectrometerCommandFactory(unittest.TestCase):
 
     def test_next_read(self):
         reply = self.commands.next_read()
-        self.assertEqual(reply, ":trac:feed:cont next;:init;")
+        self.assertEqual(reply, ":trac:feed:cont NEXT;:init;")
 
     def test_clear_buffer(self):
         reply = self.commands.clear_buffer()

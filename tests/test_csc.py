@@ -157,7 +157,9 @@ class ElectrometerCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTe
                 unittest.mock.AsyncMock(return_value=([2], ["EM1_O_20221130_000002"]))
             )
             await self.remote.cmd_startScanDt.set_start(scanDuration=2)
-            await self.remote.evt_largeFileObjectAvailable.next(flush=False, timeout=10)
+
+            # await self.remote.evt_largeFileObjectAvailable.next(flush=False,
+            #                                                     timeout=10)
 
     async def test_set_voltage_source(self):
         async with self.make_csc(

@@ -69,20 +69,33 @@ class Commander:
         self.lock: asyncio.Lock = asyncio.Lock()
         self.host: str = tcpip.LOCAL_HOST
         self.port: int = 9999
-        self.timeout: int = 2
+        self.timeout: int = 5
         self.long_timeout: int = 30
         self.connected: bool = False
+        self.brand: str = None
 
     async def connect(self) -> None:
         """Connect to the electrometer"""
         async with self.lock:
             try:
                 connect_task = asyncio.open_connection(
-                    host=self.host, port=int(self.port), limit=1024 * 1024
+                    host=self.host, port=int(self.port), limit=1024 * 1024 * 10
                 )
                 self.reader, self.writer = await asyncio.wait_for(
                     connect_task, timeout=self.long_timeout
                 )
+                # get the welcome message
+                try:
+                    reply = await asyncio.wait_for(
+                        self.reader.readuntil(self.reply_terminator),
+                        timeout=self.timeout,
+                    )
+                    self.log.debug(f"Welcome message received: {reply}")
+                    if "Keysight" in reply.decode("ISO-8859-1").strip():
+                        self.log.debug("Keysight contained in welcome message")
+                        self.brand = "Keysight"
+                except Exception:
+                    self.brand = "Keithley"
             except Exception as e:
                 raise RuntimeError(
                     f"Failed to connect. {self.host=} {self.port=}: {e!r}"
@@ -119,7 +132,10 @@ class Commander:
         -------
         reply
         """
-
+        if timeout is None:
+            self.log.debug(f"Will use timeout {self.timeout}s")
+        else:
+            self.log.debug(f"Will use timeout {timeout}s")
         async with self.lock:
             msg = msg + self.command_terminator
             msg = msg.encode("ascii")
@@ -127,13 +143,22 @@ class Commander:
                 self.log.debug(f"Commanding using: {msg}")
                 self.writer.write(msg)
                 await self.writer.drain()
+                if self.brand == "Keysight":
+                    # flush the echo
+                    _ = await asyncio.wait_for(
+                        self.reader.readuntil(self.reply_terminator),
+                        timeout=self.timeout,
+                    )
                 if has_reply:
                     reply = await asyncio.wait_for(
                         self.reader.readuntil(self.reply_terminator),
                         timeout=self.timeout if timeout is None else timeout,
                     )
                     self.log.debug(f"reply={reply}")
-                    reply = reply.decode().strip()
+                    if self.brand == "Keysight":
+                        reply = reply.decode("ascii").strip()
+                    else:
+                        reply = reply.decode().strip()
                     return reply
                 return None
             else:
