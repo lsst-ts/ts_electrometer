@@ -86,7 +86,10 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             initial_state=initial_state,
             simulation_mode=simulation_mode,
         )
-        self.controller = controller.ElectrometerController(csc=self, log=self.log)
+        if self.sensor_brand == "Keithley":
+            self.controller = controller.KeithleyElectrometerController(csc=self, log=self.log)
+        elif self.sensor_brand == "Keysight":
+            self.controller = controller.KeysightElectrometerController(csc=self, log=self.log)
         self.simulator = None
         self.run_event_loop = False
         self.event_loop_task = utils.make_done_future()

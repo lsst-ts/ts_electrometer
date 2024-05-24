@@ -85,17 +85,11 @@ class Commander:
                     connect_task, timeout=self.long_timeout
                 )
                 # get the welcome message
-                try:
-                    reply = await asyncio.wait_for(
-                        self.reader.readuntil(self.reply_terminator),
-                        timeout=self.timeout,
+                reply = await asyncio.wait_for(
+                    self.reader.readuntil(self.reply_terminator),
+                    timeout=self.timeout,
                     )
-                    self.log.debug(f"Welcome message received: {reply}")
-                    if "Keysight" in reply.decode("ISO-8859-1").strip():
-                        self.log.debug("Keysight contained in welcome message")
-                        self.brand = "Keysight"
-                except Exception:
-                    self.brand = "Keithley"
+                self.log.debug(f"Welcome message received: {reply}")
             except Exception as e:
                 raise RuntimeError(
                     f"Failed to connect. {self.host=} {self.port=}: {e!r}"
@@ -116,6 +110,12 @@ class Commander:
                 self.reader = None
                 self.connected = False
 
+class KeithleyCommander(Commander):
+    """Implement communication with the Keithley electrometer.
+    """
+    def __init__(self, log: None | logging.Logger = None):
+        super().__init__(log = log)
+        
     async def send_command(
         self, msg: str, has_reply: bool = False, timeout: typing.Optional[int] = None
     ) -> str:
@@ -143,22 +143,63 @@ class Commander:
                 self.log.debug(f"Commanding using: {msg}")
                 self.writer.write(msg)
                 await self.writer.drain()
-                if self.brand == "Keysight":
-                    # flush the echo
-                    _ = await asyncio.wait_for(
-                        self.reader.readuntil(self.reply_terminator),
-                        timeout=self.timeout,
-                    )
                 if has_reply:
                     reply = await asyncio.wait_for(
                         self.reader.readuntil(self.reply_terminator),
                         timeout=self.timeout if timeout is None else timeout,
                     )
                     self.log.debug(f"reply={reply}")
-                    if self.brand == "Keysight":
-                        reply = reply.decode("ascii").strip()
-                    else:
-                        reply = reply.decode().strip()
+                    reply = reply.decode().strip()
+                    return reply
+                return None
+            else:
+                raise RuntimeError("CSC not connected.")
+        
+class KeysightCommander(Commander):
+    """Implement communication with the Keysight electrometer.
+    """
+    def __init__(self, log=None):
+        super().__init__(log=log)
+        
+    async def send_command(
+        self, msg: str, has_reply: bool = False, timeout: typing.Optional[int] = None
+    ) -> str:
+        """Send a command to the electrometer and read reply if has one.
+
+        Parameters
+        ----------
+        msg : `str`
+            The message to send.
+        has_reply : `bool`
+            Does the command expect a reply.
+
+        Returns
+        -------
+        reply
+        """
+        if timeout is None:
+            self.log.debug(f"Will use timeout {self.timeout}s")
+        else:
+            self.log.debug(f"Will use timeout {timeout}s")
+        async with self.lock:
+            msg = msg + self.command_terminator
+            msg = msg.encode("ascii")
+            if self.writer is not None:
+                self.log.debug(f"Commanding using: {msg}")
+                self.writer.write(msg)
+                await self.writer.drain()
+                # flush the echo
+                _ = await asyncio.wait_for(
+                    self.reader.readuntil(self.reply_terminator),
+                    timeout=self.timeout,
+                )
+                if has_reply:
+                    reply = await asyncio.wait_for(
+                        self.reader.readuntil(self.reply_terminator),
+                        timeout=self.timeout if timeout is None else timeout,
+                    )
+                    self.log.debug(f"reply={reply}")
+                    reply = reply.decode("ascii").strip()
                     return reply
                 return None
             else:
