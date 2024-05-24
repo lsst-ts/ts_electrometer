@@ -88,7 +88,7 @@ class Commander:
                 reply = await asyncio.wait_for(
                     self.reader.readuntil(self.reply_terminator),
                     timeout=self.timeout,
-                    )
+                )
                 self.log.debug(f"Welcome message received: {reply}")
             except Exception as e:
                 raise RuntimeError(
@@ -110,12 +110,14 @@ class Commander:
                 self.reader = None
                 self.connected = False
 
+
 class KeithleyCommander(Commander):
     """Implement communication with the Keithley electrometer.
     """
+
     def __init__(self, log: None | logging.Logger = None):
-        super().__init__(log = log)
-        
+        super().__init__(log=log)
+
     async def send_command(
         self, msg: str, has_reply: bool = False, timeout: typing.Optional[int] = None
     ) -> str:
@@ -154,13 +156,15 @@ class KeithleyCommander(Commander):
                 return None
             else:
                 raise RuntimeError("CSC not connected.")
-        
+
+
 class KeysightCommander(Commander):
     """Implement communication with the Keysight electrometer.
     """
+
     def __init__(self, log=None):
         super().__init__(log=log)
-        
+
     async def send_command(
         self, msg: str, has_reply: bool = False, timeout: typing.Optional[int] = None
     ) -> str:

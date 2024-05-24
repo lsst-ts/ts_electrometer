@@ -722,7 +722,7 @@ class KeithleyElectrometerCommandFactory:
             f"{self.enable_zero_check(True)} "
             f"{self.set_mode(mode)} "
             f"{self.set_range(auto=auto, range_value=range_value, mode=mode)} "
-            )
+        )
         return command
 
     def disable_all(self):
@@ -772,12 +772,13 @@ class KeithleyElectrometerCommandFactory:
         command = f":sens:{enums.UnitMode(mode).value}:dig {digit};"
         return command
 
+
 class KeysightElectrometerCommandFactory:
     """Class that formats commands to control the electrometer via RS-232."""
 
     def __init__(self) -> None:
         pass
-        
+
     def activate_filter(self, mode, filter_type, active) -> str:
         """Return activate filter command.
 
@@ -1477,11 +1478,11 @@ class KeysightElectrometerCommandFactory:
             The generated command string
         """
         command = (
-                f"{self.set_mode(mode)}"
-                f"{self.set_range(auto=auto, range_value=range_value, mode=mode)}"
-                f"{self.integration_time(mode,int_time)}"
-                f"{self.enable_zero_correction(enable=True)}"
-                  )
+            f"{self.set_mode(mode)}"
+            f"{self.set_range(auto=auto, range_value=range_value, mode=mode)}"
+            f"{self.integration_time(mode,int_time)}"
+            f"{self.enable_zero_correction(enable=True)}"
+        )
         return command
 
     def disable_all(self):
@@ -1500,7 +1501,7 @@ class KeysightElectrometerCommandFactory:
             ":sens:res:man:vso:oper ON;"
             if enable
             else ":sens:res:man:vso:oper OFF;"
-                )
+        )
         return command
 
     def get_voltage_source_status(self):
