@@ -45,7 +45,7 @@ POSITIVE_SATURATION = 9.91e37  # for Keysight
 """The intensity value when saturated in the positive direction."""
 
 
-class ElectrometerController:
+class KeithleyElectrometerController:
     """Class that provides high level control for electrometer.
 
     Parameters
@@ -806,3 +806,4 @@ class ElectrometerController:
         await self.send_command(self.commands.set_voltage_level(amplititude=level))
         await self.get_voltage_level()
         await self.csc.evt_voltageSourceChanged.set_write(level=self.voltage_level)
+
