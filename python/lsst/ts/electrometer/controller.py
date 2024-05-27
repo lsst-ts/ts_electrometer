@@ -220,8 +220,7 @@ class KeithleyElectrometerController(ElectrometerController):
                 self.image_service_url = instance_config.image_service_url
                 self.s3_instance = instance_config.s3_instance
                 return None
-        raise RuntimeError(
-            f"Configuration not found for {self.csc.salinfo.index=}")
+        raise RuntimeError(f"Configuration not found for {self.csc.salinfo.index=}")
 
     async def send_command(
         self,
@@ -328,9 +327,7 @@ class KeithleyElectrometerController(ElectrometerController):
 
     async def prepare_scan(self):
         """Prepare the keithley for scanning."""
-        await self.send_command(
-            self.commands.set_resolution(mode=self.mode, digit=7)
-        )
+        await self.send_command(self.commands.set_resolution(mode=self.mode, digit=7))
         await self.send_command(self.commands.enable_sync(False))
 
         await self.perform_zero_calibration(
@@ -417,8 +414,7 @@ class KeithleyElectrometerController(ElectrometerController):
         # Rough tests showed 330 data   points takes ~4s
         # Number of lines is approximately scan_duration over integration time
         # PF: based on test
-        num_of_lines = self.scan_duration / \
-            ((self.integration_time * 3.07) + 0.00254)
+        num_of_lines = self.scan_duration / ((self.integration_time * 3.07) + 0.00254)
         self.log.debug(f"approximate number of lines: {num_of_lines}")
         # Add extra time to read_timeout using num_of_lines times time per
         # sample time (assumption with 330 samples take ~4 seconds) with
@@ -429,8 +425,7 @@ class KeithleyElectrometerController(ElectrometerController):
             + ((num_of_lines * TIME_PER_LINE) * OVERHEAD_FACTOR * 2)
         )
         read_timeout = max(read_timeout, 10)
-        self.log.debug(
-            f"{self.scan_duration=} so read timeout will be {read_timeout=}")
+        self.log.debug(f"{self.scan_duration=} so read timeout will be {read_timeout=}")
         self.log.debug("Starting to read buffer")
         res = await self.send_command(
             f"{self.commands.read_buffer()}", has_reply=True, timeout=read_timeout
@@ -466,8 +461,7 @@ class KeithleyElectrometerController(ElectrometerController):
 
         self.mode = enums.UnitMode(mode)
         await self.csc.evt_measureType.set_write(
-            mode=int([num for num, mode in self.modes.items()
-                     if self.mode == mode][0]),
+            mode=int([num for num, mode in self.modes.items() if self.mode == mode][0]),
             force_output=True,
         )
 
@@ -577,8 +571,7 @@ class KeithleyElectrometerController(ElectrometerController):
             "Type of Instrument",
         )
         primary_hdu.header["MODEL"] = (self.model_id, "Model of instrument")
-        primary_hdu.header["LOCATN"] = (
-            self.location, "Location of Instrument")
+        primary_hdu.header["LOCATN"] = (self.location, "Location of Instrument")
         primary_hdu.header["CSCNAME"] = (
             self.csc.salinfo.name,
             "Name of the CSC that produced this data.",
@@ -592,8 +585,7 @@ class KeithleyElectrometerController(ElectrometerController):
             "When stop scan command sent to CSC (TAI)",
         )
         primary_hdu.header["TIMESYS"] = ("TAI", "Format of timestamps")
-        primary_hdu.header["SCANTIME"] = (
-            self.scan_duration, "Duration of scan [s]")
+        primary_hdu.header["SCANTIME"] = (self.scan_duration, "Duration of scan [s]")
         primary_hdu.header["SAMPTIME"] = (
             self.integration_time,
             "Duration of each sample [s]",
@@ -612,8 +604,7 @@ class KeithleyElectrometerController(ElectrometerController):
         )
         primary_hdu.header["SENSBRND"] = (self.sensor_brand, "Sensor brand")
         primary_hdu.header["SENSMODL"] = (self.sensor_model, "Sensor model")
-        primary_hdu.header["SERIAL"] = (
-            self.sensor_serial, "Sensor serial number")
+        primary_hdu.header["SERIAL"] = (self.sensor_serial, "Sensor serial number")
         primary_hdu.header["TEMP"] = (
             self.temperature,
             "Measurement from probe if attached and declared (Celcius)",
@@ -657,8 +648,7 @@ class KeithleyElectrometerController(ElectrometerController):
         ]
 
         data_format = [
-            "Signal" if (item in ["CURR", "CHAR", "VOLT",
-                         "RES", "READ"]) else item
+            "Signal" if (item in ["CURR", "CHAR", "VOLT", "RES", "READ"]) else item
             for item in data_format
         ]
         data_format = [
@@ -679,8 +669,7 @@ class KeithleyElectrometerController(ElectrometerController):
         hdul[0].header["OBSID"] = obs_ids[0]
         filename = f"{obs_ids[0]}.fits"
         try:
-            pathlib.Path(self.file_output_dir).mkdir(
-                parents=True, exist_ok=True)
+            pathlib.Path(self.file_output_dir).mkdir(parents=True, exist_ok=True)
             hdul.writeto(f"{self.file_output_dir}/{filename}")
             signal = data["Signal"]
             self.log.info(
@@ -702,8 +691,7 @@ class KeithleyElectrometerController(ElectrometerController):
                 salname="Electrometer",
                 salindexname=self.csc.salinfo.index,
                 generator="fits",
-                date=astropy.time.Time(
-                    self.manual_end_time, format="unix_tai"),
+                date=astropy.time.Time(self.manual_end_time, format="unix_tai"),
                 suffix=".fits",
             )
             await self.csc.bucket.upload(fileobj=file_upload, key=key_name)
@@ -859,8 +847,7 @@ class KeysightElectrometerController(ElectrometerController):
                 self.image_service_url = instance_config.image_service_url
                 self.s3_instance = instance_config.s3_instance
                 return None
-        raise RuntimeError(
-            f"Configuration not found for {self.csc.salinfo.index=}")
+        raise RuntimeError(f"Configuration not found for {self.csc.salinfo.index=}")
 
     async def send_command(
         self,
@@ -1043,8 +1030,7 @@ class KeysightElectrometerController(ElectrometerController):
         # Rough tests showed 330 data   points takes ~4s
         # Number of lines is approximately scan_duration over integration time
         # PF: based on test
-        num_of_lines = self.scan_duration / \
-            ((self.integration_time * 3.07) + 0.00254)
+        num_of_lines = self.scan_duration / ((self.integration_time * 3.07) + 0.00254)
         self.log.debug(f"approximate number of lines: {num_of_lines}")
         # Add extra time to read_timeout using num_of_lines times time per
         # sample time (assumption with 330 samples take ~4 seconds) with
@@ -1055,8 +1041,7 @@ class KeysightElectrometerController(ElectrometerController):
             + ((num_of_lines * TIME_PER_LINE) * OVERHEAD_FACTOR * 2)
         )
         read_timeout = max(read_timeout, 10)
-        self.log.debug(
-            f"{self.scan_duration=} so read timeout will be {read_timeout=}")
+        self.log.debug(f"{self.scan_duration=} so read timeout will be {read_timeout=}")
         self.log.debug("Starting to read buffer")
         res = await self.send_command(
             f"{self.commands.read_buffer()}", has_reply=True, timeout=read_timeout
@@ -1081,7 +1066,7 @@ class KeysightElectrometerController(ElectrometerController):
         """Get the mode/unit."""
         res = await self.send_command(f"{self.commands.get_mode()}", has_reply=True)
         self.log.debug(f"Mode returns {res}")
-        if (res not in ['"CHAR"', '"RES"', '"VOLT"', '"CURR"']):
+        if res not in ['"CHAR"', '"RES"', '"VOLT"', '"CURR"']:
             mode = re.split(",|:", res)[-1]
             mode = mode.replace('"', "")
         else:
@@ -1092,8 +1077,7 @@ class KeysightElectrometerController(ElectrometerController):
 
         self.mode = enums.UnitMode(mode)
         await self.csc.evt_measureType.set_write(
-            mode=int([num for num, mode in self.modes.items()
-                     if self.mode == mode][0]),
+            mode=int([num for num, mode in self.modes.items() if self.mode == mode][0]),
             force_output=True,
         )
 
@@ -1203,8 +1187,7 @@ class KeysightElectrometerController(ElectrometerController):
             "Type of Instrument",
         )
         primary_hdu.header["MODEL"] = (self.model_id, "Model of instrument")
-        primary_hdu.header["LOCATN"] = (
-            self.location, "Location of Instrument")
+        primary_hdu.header["LOCATN"] = (self.location, "Location of Instrument")
         primary_hdu.header["CSCNAME"] = (
             self.csc.salinfo.name,
             "Name of the CSC that produced this data.",
@@ -1218,8 +1201,7 @@ class KeysightElectrometerController(ElectrometerController):
             "When stop scan command sent to CSC (TAI)",
         )
         primary_hdu.header["TIMESYS"] = ("TAI", "Format of timestamps")
-        primary_hdu.header["SCANTIME"] = (
-            self.scan_duration, "Duration of scan [s]")
+        primary_hdu.header["SCANTIME"] = (self.scan_duration, "Duration of scan [s]")
         primary_hdu.header["SAMPTIME"] = (
             self.integration_time,
             "Duration of each sample [s]",
@@ -1238,8 +1220,7 @@ class KeysightElectrometerController(ElectrometerController):
         )
         primary_hdu.header["SENSBRND"] = (self.sensor_brand, "Sensor brand")
         primary_hdu.header["SENSMODL"] = (self.sensor_model, "Sensor model")
-        primary_hdu.header["SERIAL"] = (
-            self.sensor_serial, "Sensor serial number")
+        primary_hdu.header["SERIAL"] = (self.sensor_serial, "Sensor serial number")
         primary_hdu.header["TEMP"] = (
             self.temperature,
             "Measurement from probe if attached and declared (Celcius)",
@@ -1283,8 +1264,7 @@ class KeysightElectrometerController(ElectrometerController):
         ]
 
         data_format = [
-            "Signal" if (item in ["CURR", "CHAR", "VOLT",
-                         "RES", "READ"]) else item
+            "Signal" if (item in ["CURR", "CHAR", "VOLT", "RES", "READ"]) else item
             for item in data_format
         ]
         data_format = [
@@ -1305,8 +1285,7 @@ class KeysightElectrometerController(ElectrometerController):
         hdul[0].header["OBSID"] = obs_ids[0]
         filename = f"{obs_ids[0]}.fits"
         try:
-            pathlib.Path(self.file_output_dir).mkdir(
-                parents=True, exist_ok=True)
+            pathlib.Path(self.file_output_dir).mkdir(parents=True, exist_ok=True)
             hdul.writeto(f"{self.file_output_dir}/{filename}")
             signal = data["Signal"]
             self.log.info(
@@ -1328,8 +1307,7 @@ class KeysightElectrometerController(ElectrometerController):
                 salname="Electrometer",
                 salindexname=self.csc.salinfo.index,
                 generator="fits",
-                date=astropy.time.Time(
-                    self.manual_end_time, format="unix_tai"),
+                date=astropy.time.Time(self.manual_end_time, format="unix_tai"),
                 suffix=".fits",
             )
             await self.csc.bucket.upload(fileobj=file_upload, key=key_name)

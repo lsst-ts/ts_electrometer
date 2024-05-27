@@ -112,8 +112,7 @@ class Commander:
 
 
 class KeithleyCommander(Commander):
-    """Implement communication with the Keithley electrometer.
-    """
+    """Implement communication with the Keithley electrometer."""
 
     def __init__(self, log: None | logging.Logger = None):
         super().__init__(log=log)
@@ -159,8 +158,7 @@ class KeithleyCommander(Commander):
 
 
 class KeysightCommander(Commander):
-    """Implement communication with the Keysight electrometer.
-    """
+    """Implement communication with the Keysight electrometer."""
 
     def __init__(self, log=None):
         super().__init__(log=log)

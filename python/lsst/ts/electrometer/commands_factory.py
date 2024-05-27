@@ -97,7 +97,9 @@ class KeithleyElectrometerCommandFactory:
         command : `str`
             The generated command string.
         """
-        command = f":sens:{enums.UnitMode(mode).name}:{enums.Filter(filter_type).name}:stat?;"
+        command = (
+            f":sens:{enums.UnitMode(mode).name}:{enums.Filter(filter_type).name}:stat?;"
+        )
         return command
 
     def set_avg_filter_status(self, mode, aver_filter_type) -> str:
@@ -1498,9 +1500,7 @@ class KeysightElectrometerCommandFactory:
 
     def toggle_voltage_source(self, enable):
         command = (
-            ":sens:res:man:vso:oper ON;"
-            if enable
-            else ":sens:res:man:vso:oper OFF;"
+            ":sens:res:man:vso:oper ON;" if enable else ":sens:res:man:vso:oper OFF;"
         )
         return command
 
