@@ -151,11 +151,15 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
                     self.controller = controller.KeithleyElectrometerController(
                         csc=self, log=self.log
                     )
+                    await self.controller.configure(config)
+                    return None
                 elif instance_config.brand == "Keysight":
                     self.controller = controller.KeysightElectrometerController(
                         csc=self, log=self.log
                     )
-                await self.controller.configure(config)
+                    await self.controller.configure(config)
+                    return None
+        raise RuntimeError(f"Configuration not found for {self.salinfo.index=}")
 
     async def handle_summary_state(self):
         """Handle the summary of the CSC.
