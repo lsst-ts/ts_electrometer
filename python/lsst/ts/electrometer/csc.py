@@ -88,7 +88,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             simulation_mode=simulation_mode,
         )
         
-        self.controller = controller.ElectrometerController
+        self.controller = controller.ElectrometerController(csc=self, log=self.log)
         self.simulator = None
         self.run_event_loop = False
         self.event_loop_task = utils.make_done_future()
