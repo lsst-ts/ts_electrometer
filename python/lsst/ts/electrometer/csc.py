@@ -142,8 +142,8 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         """
         self.log.debug(f"config={config}")
         self.log.debug(f"Connecting to electrometer {config.brand}")
-        for index in range(self.csc.salinfo.index + 1):
-            if self.csc.salinfo.index == config.electrometer_config[index]["sal_index"]:
+        for index in range(self.salinfo.index + 1):
+            if self.salinfo.index == config.electrometer_config[index]["sal_index"]:
                 instance_config = types.SimpleNamespace(
                     **config.electrometer_config[index]
                 )
@@ -151,7 +151,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
                     self.controller = controller.KeithleyElectrometerController(
                         csc=self, log=self.log
                     )
-                elif config.brand == "Keysight":
+                elif instance_config.brand == "Keysight":
                     self.controller = controller.KeysightElectrometerController(
                         csc=self, log=self.log
                     )
