@@ -22,12 +22,12 @@
 import unittest
 
 from lsst.ts.electrometer import enums
-from lsst.ts.electrometer.commands_factory import ElectrometerCommandFactory
+from lsst.ts.electrometer.commands_factory import KeithleyElectrometerCommandFactory, KeysightElectrometerCommandFactory
 
 
 class TestElectrometerCommandFactory(unittest.TestCase):
     def setUp(self):
-        self.commands = ElectrometerCommandFactory()
+        self.commands = KeithleyElectrometerCommandFactory()
 
     def test_activate_filter(self):
         reply = self.commands.activate_filter(
