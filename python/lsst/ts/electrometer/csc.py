@@ -87,6 +87,8 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             initial_state=initial_state,
             simulation_mode=simulation_mode,
         )
+        
+        self.controller = controller.ElectrometerController
         self.simulator = None
         self.run_event_loop = False
         self.event_loop_task = utils.make_done_future()
@@ -141,25 +143,10 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             The parsed yaml object.
         """
         self.log.debug(f"config={config}")
-        self.log.debug(f"Connecting to electrometer {config.brand}")
-        for index in range(self.salinfo.index + 1):
-            if self.salinfo.index == config.electrometer_config[index]["sal_index"]:
-                instance_config = types.SimpleNamespace(
-                    **config.electrometer_config[index]
-                )
-                if instance_config.brand == "Keithley":
-                    self.controller = controller.KeithleyElectrometerController(
-                        csc=self, log=self.log
-                    )
-                    await self.controller.configure(config)
-                    return None
-                elif instance_config.brand == "Keysight":
-                    self.controller = controller.KeysightElectrometerController(
-                        csc=self, log=self.log
-                    )
-                    await self.controller.configure(config)
-                    return None
-        raise RuntimeError(f"Configuration not found for {self.salinfo.index=}")
+        #first turn this into a Keysight or Keithley controller                    
+        self.controller = self.controller.configure(config)
+        #now configure the real controller
+        self.controller.configure(config)
 
     async def handle_summary_state(self):
         """Handle the summary of the CSC.
