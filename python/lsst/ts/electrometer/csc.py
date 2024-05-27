@@ -91,6 +91,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         self.event_loop_task = utils.make_done_future()
         self.default_force_output = True
         self.bucket = None
+        self.log.debug('finished initializing')
 
     def assert_substate(self, substates, action):
         """Assert the CSC is in the proper substate.
@@ -138,15 +139,17 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         config : `types.SimpleNamespace`
             The parsed yaml object.
         """
-        if config["sensor_brand"] == "Keithley":
+        self.log.debug(f"config={config}")
+        self.log.debug(f"Connecting to electrometer {config.brand}")
+        if config.brand == "Keithley":
             self.controller = controller.KeithleyElectrometerController(
                 csc=self, log=self.log
             )
-        elif config["sensor_brand"] == "Keysight":
+        elif config.brand == "Keysight":
             self.controller = controller.KeysightElectrometerController(
                 csc=self, log=self.log
             )
-        self.controller.configure(config)
+        await self.controller.configure(config)
 
     async def handle_summary_state(self):
         """Handle the summary of the CSC.
