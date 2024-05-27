@@ -22,6 +22,7 @@
 __all__ = ["execute_csc", "command_csc", "ElectrometerCsc"]
 
 import asyncio
+import types
 
 from lsst.ts import salobj, utils
 from lsst.ts.idl.enums.Electrometer import DetailedState
@@ -141,15 +142,20 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         """
         self.log.debug(f"config={config}")
         self.log.debug(f"Connecting to electrometer {config.brand}")
-        if config.brand == "Keithley":
-            self.controller = controller.KeithleyElectrometerController(
-                csc=self, log=self.log
-            )
-        elif config.brand == "Keysight":
-            self.controller = controller.KeysightElectrometerController(
-                csc=self, log=self.log
-            )
-        await self.controller.configure(config)
+        for index in range(self.csc.salinfo.index + 1):
+            if self.csc.salinfo.index == config.electrometer_config[index]["sal_index"]:
+                instance_config = types.SimpleNamespace(
+                    **config.electrometer_config[index]
+                )
+                if instance_config.brand == "Keithley":
+                    self.controller = controller.KeithleyElectrometerController(
+                        csc=self, log=self.log
+                    )
+                elif config.brand == "Keysight":
+                    self.controller = controller.KeysightElectrometerController(
+                        csc=self, log=self.log
+                    )
+                await self.controller.configure(config)
 
     async def handle_summary_state(self):
         """Handle the summary of the CSC.
