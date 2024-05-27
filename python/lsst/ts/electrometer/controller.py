@@ -126,31 +126,6 @@ class ElectrometerController:
         self.temperature = None
         self.vsource = None
         
-    def configure(self, config: types.SimpleNamespace) -> None:
-        """Configure the controller.
-
-        Parameters
-        ----------
-        config : `types.SimpleNamespace`
-            The parsed yaml as a dict-like object.
-        """
-        for index in range(self.csc.salinfo.index + 1):
-            if self.csc.salinfo.index == config.electrometer_config[index]["sal_index"]:
-                instance_config = types.SimpleNamespace(
-                    **config.electrometer_config[index]
-                )
-                self.brand = instance_config.brand
-                if self.brand == "Keithley":
-                    return KeithleyElectrometerController(
-                        csc=self.csc, log=self.log
-                    )
-                elif self.brand == "Keysight":
-                    return KeysightElectrometerController(
-                        csc=self.csc, log=self.log
-                    )
-        raise RuntimeError(f"Configuration not found for {self.csc.salinfo.index=}")
-
-
     def parse_buffer(self, response, num_categories=2):
         """Parse the buffer values.
 

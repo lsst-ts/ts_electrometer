@@ -87,8 +87,6 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             initial_state=initial_state,
             simulation_mode=simulation_mode,
         )
-        
-        self.controller = controller.ElectrometerController(csc=self, log=self.log)
         self.simulator = None
         self.run_event_loop = False
         self.event_loop_task = utils.make_done_future()
@@ -143,9 +141,12 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             The parsed yaml object.
         """
         self.log.debug(f"config={config}")
-        #first turn this into a Keysight or Keithley controller                    
-        self.controller = self.controller.configure(config)
-        #now configure the real controller
+        instance_config = types.SimpleNamespace(
+                    **config.electrometer_config[self.salinfo.index]
+                )
+        electrometer_type = instance_config.brand
+        electrometer = getattr(controller, f'{electrometer_type}ElectrometerController')
+        self.controller = electrometer(csc=self, log=self.log)
         self.controller.configure(config)
 
     async def handle_summary_state(self):
