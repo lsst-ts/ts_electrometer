@@ -126,7 +126,8 @@ class ElectrometerController:
         self.temperature = None
         self.vsource = None
         self.commander = commander.Commander(log=self.log)
-
+        self.log.debug('Controller initialized')
+       
     @property
     def connected(self):
         return self.commander.connected
@@ -221,6 +222,7 @@ class KeithleyElectrometerController(ElectrometerController):
                 self.image_service_url = instance_config.image_service_url
                 self.s3_instance = instance_config.s3_instance
                 return None
+        self.log.debug('Controller configured')
         raise RuntimeError(f"Configuration not found for {self.csc.salinfo.index=}")
 
     async def send_command(

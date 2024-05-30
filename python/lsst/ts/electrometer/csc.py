@@ -142,15 +142,18 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             The parsed yaml object.
         """
         self.log.debug(f"config={config}")
-        instance_config = types.SimpleNamespace(
-            **config.electrometer_config[self.salinfo.index]
-        )
+        for item in config.electrometer_config:
+            if item['sal_index'] == self.salinfo.index:
+                instance_config = types.SimpleNamespace(
+                    **config.electrometer_config[self.salinfo.index]
+                )
         electrometer_type = instance_config.brand
         controller_class = getattr(
             controller, f"{electrometer_type}ElectrometerController"
         )
         self.controller = controller_class(csc=self, log=self.log)
         self.controller.configure(config)
+        self.log.debug(f"brand={electrometer_type}")
 
     async def handle_summary_state(self):
         """Handle the summary of the CSC.
