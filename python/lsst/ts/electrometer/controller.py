@@ -125,7 +125,12 @@ class ElectrometerController:
         self.voltage_status = None
         self.temperature = None
         self.vsource = None
-        
+        self.commander = commander.Commander(log=self.log)
+
+    @property
+    def connected(self):
+        return self.commander.connected
+
     def parse_buffer(self, response, num_categories=2):
         """Parse the buffer values.
 
@@ -174,17 +179,12 @@ class KeithleyElectrometerController(ElectrometerController):
     def __init__(self, csc, log=None):
         super().__init__(csc, log=log)
         self.commands = commands_factory.KeithleyElectrometerCommandFactory()
-        self.commander = commander.KeithleyCommander(log=self.log)
         self.median_filter_active = False
         self.filter_active = False
         self.avg_filter_active = False
         # Intensity value when saturated in the positive direction.
         self.positive_saturation = 9.9e37
 
-    @property
-    def connected(self):
-        return self.commander.connected
-    
     def configure(self, config: types.SimpleNamespace) -> None:
         """Configure the controller.
 
@@ -193,7 +193,7 @@ class KeithleyElectrometerController(ElectrometerController):
         config : `types.SimpleNamespace`
             The parsed yaml as a dict-like object.
         """
-        for index in range(self.csc.salinfo.index + 1):
+        for index in range(self.csc.salinfo.index):
             if self.csc.salinfo.index == config.electrometer_config[index]["sal_index"]:
                 instance_config = types.SimpleNamespace(
                     **config.electrometer_config[index]
@@ -210,6 +210,7 @@ class KeithleyElectrometerController(ElectrometerController):
                 self.commander.timeout = instance_config.timeout
                 self.file_output_dir = instance_config.fits_files_path
                 self.brand = instance_config.brand
+                self.commander.brand = instance_config.brand
                 self.model_id = instance_config.model_id
                 self.location = instance_config.location
                 self.sensor_brand = instance_config.sensor_brand
@@ -221,7 +222,6 @@ class KeithleyElectrometerController(ElectrometerController):
                 self.s3_instance = instance_config.s3_instance
                 return None
         raise RuntimeError(f"Configuration not found for {self.csc.salinfo.index=}")
-
 
     async def send_command(
         self,
@@ -244,12 +244,11 @@ class KeithleyElectrometerController(ElectrometerController):
             If has_reply is True then returns string reply.
             If false, then returns None.
         """
-        async with self.serial_lock:
-            return await self.commander.send_command(
-                msg=command,
-                has_reply=has_reply,
-                timeout=timeout,
-            )
+        return await self.commander.send_command(
+            msg=command,
+            has_reply=has_reply,
+            timeout=timeout,
+        )
 
     async def connect(self) -> None:
         """Open connection to the electrometer."""
@@ -805,7 +804,6 @@ class KeysightElectrometerController(ElectrometerController):
     def __init__(self, csc, log=None):
         super().__init__(csc, log=log)
         self.commands = commands_factory.KeysightElectrometerCommandFactory()
-        self.commander = commander.KeysightCommander(log=self.log)
         # Intensity value when saturated in the positive direction.
         self.positive_saturation = 9.91e37
 
@@ -821,8 +819,9 @@ class KeysightElectrometerController(ElectrometerController):
         config : `types.SimpleNamespace`
             The parsed yaml as a dict-like object.
         """
-        for index in range(self.csc.salinfo.index + 1):
-            if self.csc.salinfo.index == config.electrometer_config[index]["sal_index"]:
+        for instance in config.electrometer_config:
+            if instance["sal_index"] == self.csc.salinfo.index:
+                index = instance["sal_index"]
                 instance_config = types.SimpleNamespace(
                     **config.electrometer_config[index]
                 )
@@ -838,6 +837,7 @@ class KeysightElectrometerController(ElectrometerController):
                 self.commander.timeout = instance_config.timeout
                 self.file_output_dir = instance_config.fits_files_path
                 self.brand = instance_config.brand
+                self.commander.brand = instance_config.brand
                 self.model_id = instance_config.model_id
                 self.location = instance_config.location
                 self.sensor_brand = instance_config.sensor_brand
@@ -871,12 +871,11 @@ class KeysightElectrometerController(ElectrometerController):
             If has_reply is True then returns string reply.
             If false, then returns None.
         """
-        async with self.serial_lock:
-            return await self.commander.send_command(
-                msg=command,
-                has_reply=has_reply,
-                timeout=timeout,
-            )
+        return await self.commander.send_command(
+            msg=command,
+            has_reply=has_reply,
+            timeout=timeout,
+        )
 
     async def connect(self) -> None:
         """Open connection to the electrometer."""

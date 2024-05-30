@@ -1,7 +1,7 @@
 # init configuration
 # not all values are used in code
 electrometer_config:
-  - sal_index: 1
+  - sal_index: 2
     mode: 1
     fits_files_path: "/tmp/electrometerFitsFiles"
     range: -0.01
@@ -13,6 +13,27 @@ electrometer_config:
     host: 127.0.0.1
     timeout: 2
     brand: "Keithley"
+    model_id: "s123"
+    location: "Simulation"
+    sensor_brand: "test_hamamatsu"
+    sensor_model: "test_s1234"
+    sensor_serial: "123456"
+    vsource_attached: true
+    temperature_attached: false
+    image_service_url: "http://comcam-mcm.tu.lsst.org"
+    s3_instance: cp
+  - sal_index: 1
+    mode: 1
+    fits_files_path: "/tmp/electrometerFitsFiles"
+    range: -0.01
+    integration_time: 0.01
+    median_filter_active: false
+    filter_active: true
+    avg_filter_active: false
+    tcp_port: 9999
+    host: 127.0.0.1
+    timeout: 2
+    brand: "Keysight"
     model_id: "s123"
     location: "Simulation"
     sensor_brand: "test_hamamatsu"

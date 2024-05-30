@@ -48,7 +48,7 @@ class MockServer(tcpip.OneClientServer):
             self.device = MockKeysight()
         self.read_loop_task = asyncio.Future()
         super().__init__(
-            name="Electrometer Mock Server",
+            name=f"Electrometer {self.brand} Mock Server",
             host=tcpip.LOCAL_HOST,
             port=9999,
             connect_callback=self.connect_callback,

@@ -62,59 +62,50 @@ class Commander:
         else:
             self.log = log.getChild(type(self).__name__)
 
-        self.reader: None = None
-        self.writer: None = None
-        self.reply_terminator: bytes = b"\r"
-        self.command_terminator: str = "\r"
         self.lock: asyncio.Lock = asyncio.Lock()
         self.host: str = tcpip.LOCAL_HOST
         self.port: int = 9999
         self.timeout: int = 5
         self.long_timeout: int = 30
-        self.connected: bool = False
         self.brand: str = None
+        self.client = tcpip.Client(host=None, port=None, log=log)
+
+    @property
+    def connected(self):
+        return self.client.connected
 
     async def connect(self) -> None:
         """Connect to the electrometer"""
-        async with self.lock:
-            try:
-                connect_task = asyncio.open_connection(
-                    host=self.host, port=int(self.port), limit=1024 * 1024 * 10
-                )
-                self.reader, self.writer = await asyncio.wait_for(
-                    connect_task, timeout=self.long_timeout
-                )
-                # get the welcome message
-                reply = await asyncio.wait_for(
-                    self.reader.readuntil(self.reply_terminator),
-                    timeout=self.timeout,
-                )
-                self.log.debug(f"Welcome message received: {reply}")
-            except Exception as e:
-                raise RuntimeError(
-                    f"Failed to connect. {self.host=} {self.port=}: {e!r}"
-                )
-            self.connected = True
+        self.client = tcpip.Client(
+            host=self.host,
+            port=self.port,
+            terminator=b"\r",
+            name=f"{self.brand} Client",
+            log=self.log,
+        )
+        await self.client.start_task
 
     async def disconnect(self) -> None:
         """Disconnect from the electrometer."""
+        await self.client.close()
+        self.client = tcpip.Client(host=None, port=None, log=self.log)
+
+    async def send_command(self, msg, has_reply, timeout):
         async with self.lock:
-            if self.writer is None:
-                return
-            try:
-                await tcpip.close_stream_writer(self.writer)
-            except Exception:
-                self.log.exception("Disconnect failed, continuing")
-            finally:
-                self.writer = None
-                self.reader = None
-                self.connected = False
+            await self.client.write_str(msg)
+            if self.brand == "Keysight":
+                async with asyncio.timeout(timeout):
+                    await self.client.read_str()
+            if has_reply:
+                async with asyncio.timeout(timeout):
+                    reply = await self.client.read_str()
+                return reply
 
 
 class KeithleyCommander(Commander):
     """Implement communication with the Keithley electrometer."""
 
-    def __init__(self, log: None | logging.Logger = None):
+    def __init__(self, log):
         super().__init__(log=log)
 
     async def send_command(

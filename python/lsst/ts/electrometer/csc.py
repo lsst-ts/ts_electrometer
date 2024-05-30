@@ -92,7 +92,8 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         self.event_loop_task = utils.make_done_future()
         self.default_force_output = True
         self.bucket = None
-        self.log.debug('finished initializing')
+        self.controller = None
+        self.log.debug("finished initializing")
 
     def assert_substate(self, substates, action):
         """Assert the CSC is in the proper substate.
@@ -142,11 +143,13 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         """
         self.log.debug(f"config={config}")
         instance_config = types.SimpleNamespace(
-                    **config.electrometer_config[self.salinfo.index]
-                )
+            **config.electrometer_config[self.salinfo.index]
+        )
         electrometer_type = instance_config.brand
-        electrometer = getattr(controller, f'{electrometer_type}ElectrometerController')
-        self.controller = electrometer(csc=self, log=self.log)
+        controller_class = getattr(
+            controller, f"{electrometer_type}ElectrometerController"
+        )
+        self.controller = controller_class(csc=self, log=self.log)
         self.controller.configure(config)
 
     async def handle_summary_state(self):
@@ -183,8 +186,9 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
                 await self.controller.connect()
                 await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
         else:
-            if self.controller.connected:
-                await self.controller.disconnect()
+            if self.controller is not None:
+                if self.controller.connected:
+                    await self.controller.disconnect()
             if self.simulator is not None:
                 await self.simulator.close()
                 self.simulator = None
@@ -207,7 +211,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             await self.controller.perform_zero_calibration()
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
             self.log.info("Zero Calibration Completed")
-        except Exception as e:
+        except Exception:
             self.log.exception("performZeroCalibration failed.")
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
 
@@ -413,7 +417,8 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
     async def close_tasks(self):
         """Close unfinished tasks when CSC is stopped."""
         await super().close_tasks()
-        await self.controller.disconnect()
+        if self.controller is not None:
+            await self.controller.disconnect()
         if self.simulator is not None:
             await self.simulator.close()
             self.simulator = None
