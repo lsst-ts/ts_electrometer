@@ -25,7 +25,7 @@ import asyncio
 import types
 
 from lsst.ts import salobj, utils
-from lsst.ts.idl.enums.Electrometer import DetailedState
+from lsst.ts.xml.enums.Electrometer import DetailedState
 
 from . import __version__, controller, enums, mock_server
 from .config_schema import CONFIG_SCHEMA
@@ -123,7 +123,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
 
         Returns
         -------
-        detailed_state : `lsst.ts.idl.enums.Electrometer.DetailedState`
+        detailed_state : `lsst.ts.xml.enums.Electrometer.DetailedState`
             The sub state of the CSC.
         """
         return self.evt_detailedState.data.detailedState
@@ -141,18 +141,21 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         config : `types.SimpleNamespace`
             The parsed yaml object.
         """
-        self.log.debug(f"config={config}")
-        for item in config.electrometer_config:
-            if item['sal_index'] == self.salinfo.index:
-                instance_config = types.SimpleNamespace(
-                    **config.electrometer_config[self.salinfo.index]
-                )
-        electrometer_type = instance_config.brand
+        for instance in config.instances:
+            if instance["sal_index"] == self.salinfo.index:
+                break
+        if instance["sal_index"] != self.salinfo.index:
+            raise RuntimeError(f"No configuration found for {self.salinfo.index=}")
+        electrometer_type = instance["electrometer_type"]
         controller_class = getattr(
             controller, f"{electrometer_type}ElectrometerController"
         )
+        self.validator = salobj.DefaultingValidator(
+            controller_class.get_config_schema()
+        )
+        self.validator.validate(instance["electrometer_config"])
         self.controller = controller_class(csc=self, log=self.log)
-        self.controller.configure(config)
+        self.controller.configure(types.SimpleNamespace(**instance))
         self.log.debug(f"brand={electrometer_type}")
 
     async def handle_summary_state(self):
@@ -173,7 +176,9 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         create = False
         if self.disabled_or_enabled:
             if self.simulation_mode and self.simulator is None:
-                self.simulator = mock_server.MockServer(self.controller.brand)
+                self.simulator = mock_server.MockServer(
+                    self.controller.electrometer_type
+                )
                 await self.simulator.start_task
                 do_mock = True
                 create = True

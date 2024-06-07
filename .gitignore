@@ -145,3 +145,5 @@ version.py
 .ruff.toml
 towncrier.toml
 
+.flake8
+.isort.cfg

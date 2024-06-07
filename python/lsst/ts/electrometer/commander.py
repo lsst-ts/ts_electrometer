@@ -19,6 +19,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+__all__ = ["Commander"]
+
 import asyncio
 import logging
 import typing
@@ -53,7 +55,9 @@ class Commander:
         Whether the electrometer is connected or not.
     """
 
-    def __init__(self, log: None | logging.Logger = None) -> None:
+    def __init__(
+        self, log: None | logging.Logger = None, brand: str | None = None
+    ) -> None:
         # Create a logger if none were passed during the instantiation of
         # the class
         self.log: None | logging.Logger = None
@@ -63,21 +67,21 @@ class Commander:
             self.log = log.getChild(type(self).__name__)
 
         self.lock: asyncio.Lock = asyncio.Lock()
-        self.host: str = tcpip.LOCAL_HOST
+        self.hostname: str = tcpip.LOCAL_HOST
         self.port: int = 9999
         self.timeout: int = 5
         self.long_timeout: int = 30
-        self.brand: str = None
-        self.client = tcpip.Client(host=None, port=None, log=log)
+        self.brand: str | None = brand
+        self.client: tcpip.Client = tcpip.Client(host="", port=None, log=log)
 
     @property
-    def connected(self):
+    def connected(self) -> bool:
         return self.client.connected
 
     async def connect(self) -> None:
         """Connect to the electrometer"""
         self.client = tcpip.Client(
-            host=self.host,
+            host=self.hostname,
             port=self.port,
             terminator=b"\r",
             name=f"{self.brand} Client",
@@ -88,9 +92,9 @@ class Commander:
     async def disconnect(self) -> None:
         """Disconnect from the electrometer."""
         await self.client.close()
-        self.client = tcpip.Client(host=None, port=None, log=self.log)
+        self.client = tcpip.Client(host="", port=None, log=self.log)
 
-    async def send_command(self, msg, has_reply, timeout):
+    async def send_command(self, msg, has_reply, timeout) -> None | str:
         async with self.lock:
             await self.client.write_str(msg)
             if self.brand == "Keysight":
@@ -100,6 +104,11 @@ class Commander:
                 async with asyncio.timeout(timeout):
                     reply = await self.client.read_str()
                 return reply
+
+    def configure(self, config):
+        self.hostname = config.hostname
+        self.port = config.port
+        self.timeout = config.timeout
 
 
 class KeithleyCommander(Commander):

@@ -19,6 +19,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+__all__ = ["MockServer", "MockKeysight", "MockKeithley"]
+
 import asyncio
 import logging
 import re
@@ -26,7 +28,7 @@ import re
 from lsst.ts import tcpip
 
 
-class MockServer(tcpip.OneClientServer):
+class MockServer(tcpip.OneClientReadLoopServer):
     """Implements a mock server for the electrometer.
 
     Attributes
@@ -46,14 +48,22 @@ class MockServer(tcpip.OneClientServer):
             self.device = MockKeithley()
         elif self.brand == "Keysight":
             self.device = MockKeysight()
-        self.read_loop_task = asyncio.Future()
         super().__init__(
             name=f"Electrometer {self.brand} Mock Server",
             host=tcpip.LOCAL_HOST,
             port=9999,
-            connect_callback=self.connect_callback,
             log=self.log,
+            terminator=b"\r",
+            encoding="ascii",
         )
+
+    async def read_and_dispatch(self) -> None:
+        command = await self.read_str()
+        reply = self.device.parse_message(command)
+        if self.brand == "Keysight":
+            await self.write_str("")
+        if reply is not None:
+            await self.write_str(reply)
 
     async def cmd_loop(self):
         """Implement the command loop for the electrometer"""
@@ -104,7 +114,7 @@ class MockKeysight:
                 r"^:syst:zch (?P<parameter>ON|OFF);$"
             ): self.do_enable_zero_check,
             re.compile(
-                r"^:sens:func (?P<parameter>'CURR'|'CHAR'|'VOLT'|'RES');$"
+                r"^:sens:func:on (?P<parameter>'CURR'|'CHAR'|'VOLT'|'RES');$"
             ): self.do_set_mode,
             re.compile(
                 r"^:sens:(CURR|CHAR|VOLT|RES):rang:auto (0|1);$"
@@ -117,7 +127,7 @@ class MockKeysight:
                 r"^:sens:(CURR|CHAR|VOLT|RES):(MED|AVER):stat (0|1);$"
             ): self.do_activate_filter,
             re.compile(
-                r"^:sens:(CURR|CHAR|VOLT|RES):AVER:move:stat\?;$"
+                r"^:sens:(CURR|CHAR|VOLT|RES):AVER:mov:stat\?;$"
             ): self.do_get_avg_filter_status,
             re.compile(
                 r"^:sens:(CURR|CHAR|VOLT|RES):AVER:stat\?;$"
@@ -140,7 +150,8 @@ class MockKeysight:
             re.compile(
                 r"^:trig:tim (?P<parameter>\d\.\d\d\d);$"
             ): self.do_select_device_timer,
-            re.compile(r"^:send:data:last\?;$"): self.do_next_read,
+            re.compile(r"^:sens:data:latest\?;$"): self.get_intensity,
+            re.compile(r"^:trac:feed:cont NEXT;$"): self.do_next_read,
             re.compile(r"^:init:acq;$"): self.do_init_buffer,
             re.compile(r"^:trac:feed:cont NEV;$"): self.do_stop_storing_buffer,
             re.compile(r"^:sens:data\?;$"): self.do_read_buffer,
@@ -166,6 +177,11 @@ class MockKeysight:
             re.compile(r"^:sens:CURR:dig 7;$"): self.set_resolution,
             re.compile(r"\*RST;$"): self.do_reset_device,
             re.compile(r"^:SENS:TOUT:SIGN 3;$"): self.do_output_trigger_line,
+            re.compile(r"^:TRIG:ACQ:TOUT ON;$"): self.do_output_trigger_line,
+            re.compile(r"^ABOR:ACQ;$"): self.do_stop_storing_buffer,
+            re.compile(r"^:sens:CURR:AVER:mov:stat 1;$"): self.do_nothing,
+            re.compile(r"^:form:elem:sens\?;$"): self.do_get_trace_format,
+            re.compile(r"^:trac:elem TST, ETEM, VSO, CURR;$"): self.do_nothing,
         }
 
     def parse_message(self, msg):
@@ -187,9 +203,9 @@ class MockKeysight:
             Raised when command is not implemented.
         """
         try:
-            msgs = msg.decode().split(";")
+            msgs = msg.split(";")
             for msg in msgs:
-                msg = msg.rstrip("\r\n") + ";"
+                msg = msg + ";"
                 self.log.info(repr(msg))
                 for command, func in self.commands.items():
                     self.log.info(command)
@@ -209,13 +225,21 @@ class MockKeysight:
                                 return reply
                             return None
                 raise NotImplementedError(msg)
-        except Exception as e:
-            self.log.exception(e)
-            raise e
+        except Exception:
+            self.log.exception("Parsing message failed.")
+
+    def do_get_trace_format(self):
+        return "TST, ETEM, VSO, CURR"
+
+    def get_intensity(self):
+        return "0.001"
+
+    def do_nothing(self):
+        return ""
 
     def do_get_hardware_info(self):
         """Return hardware information."""
-        return "KEITHLEY INSTRUMENTS INC.,MODEL 6517B,4096271,A13/700X"
+        return "Keysight INSTRUMENTS INC.,MODEL 6517B,4096271,A13/700X"
 
     def do_enable_zero_check(self, *args):
         """Enable zero check."""
@@ -358,6 +382,13 @@ class MockKeysight:
     def do_output_trigger_line(self):
         pass
 
+    def do_acquire_data(self):
+        self.temperature = "+1"
+        self.intensity = "+0.01DC"
+        self.voltage = "0.33E"
+        self.time = "0.33"
+        return self.time + self.intensity + self.voltage + self.temperature
+
 
 class MockKeithley:
     def __init__(self):
@@ -441,6 +472,7 @@ class MockKeithley:
             re.compile(r"^:sens:CURR:dig 7;$"): self.set_resolution,
             re.compile(r"\*RST;$"): self.do_reset_device,
             re.compile(r"^:SENS:TOUT:SIGN 3;$"): self.do_output_trigger_line,
+            re.compile(r"^:TRIG:ACQ:TOUT ON;$"): self.do_output_trigger_line,
         }
 
     def parse_message(self, msg):
@@ -462,9 +494,9 @@ class MockKeithley:
             Raised when command is not implemented.
         """
         try:
-            msgs = msg.decode().split(";")
+            msgs = msg.split(";")
             for msg in msgs:
-                msg = msg.rstrip("\r\n") + ";"
+                msg = msg + ";"
                 self.log.info(repr(msg))
                 for command, func in self.commands.items():
                     self.log.info(command)
@@ -487,6 +519,9 @@ class MockKeithley:
         except Exception as e:
             self.log.exception(e)
             raise e
+
+    def do_acquire_data(self):
+        return "+0.01DC 0.33\n+0.01DC 0.33\n+0.01DC 0.33\n+0.01DC 0.33\n"
 
     def do_get_hardware_info(self):
         """Return hardware information."""

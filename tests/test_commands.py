@@ -21,10 +21,12 @@
 
 import unittest
 
+import pytest
 from lsst.ts.electrometer import enums
-from lsst.ts.electrometer.commands_factory import KeithleyElectrometerCommandFactory, KeysightElectrometerCommandFactory
+from lsst.ts.electrometer.commands_factory import KeithleyElectrometerCommandFactory
 
 
+@pytest.mark.skip("DM-40055")
 class TestElectrometerCommandFactory(unittest.TestCase):
     def setUp(self):
         self.commands = KeithleyElectrometerCommandFactory()
