@@ -500,20 +500,6 @@ class ElectrometerController:
         hdul[0].header["OBSID"] = obs_ids[0]
         filename = f"{obs_ids[0]}.fits"
         try:
-            pathlib.Path(self.file_output_dir).mkdir(parents=True, exist_ok=True)
-            hdul.writeto(f"{self.file_output_dir}/{filename}")
-            self.log.info(
-                f"Electrometer Scan data file written: {filename}\n"
-                f"Scan Summary of Signal [Mean, median, std] is: "
-                f"[{np.mean(signal):0.5e}, {np.median(signal):0.5e}, {np.std(signal):0.5e}]\n"
-                f"Scan Summary of Time [Mean, median] is: "
-                f"[{np.mean(times):0.5e}, {np.median(times):0.5e}]"
-            )
-        except Exception as e:
-            msg = "Writing file to local disk failed."
-            self.log.exception(msg)
-            raise RuntimeError(e)
-        try:
             file_upload = io.BytesIO()
             hdul.writeto(file_upload)
             file_upload.seek(0)
@@ -524,6 +510,7 @@ class ElectrometerController:
                 date=astropy.time.Time(self.manual_end_time, format="unix_tai"),
                 suffix=".fits",
             )
+            self.log.debug(f'Key Name: {key_name}')
             await self.csc.bucket.upload(fileobj=file_upload, key=key_name)
             url = (
                 f"{self.csc.bucket.service_resource.meta.client.meta.endpoint_url}/"
@@ -534,6 +521,20 @@ class ElectrometerController:
             )
         except Exception:
             self.log.exception("Uploading file to s3 bucket failed.")
+        
+        try:
+            pathlib.Path(f"{self.file_output_dir}/{key_name}").mkdir(parents=True, exist_ok=True)
+            hdul.writeto(f"{self.file_output_dir}/{key_name}")
+            self.log.info(
+                f"Electrometer Scan data file written: {filename}\n"
+                f"Scan Summary of Signal [Mean, median, std] is: "
+                f"[{np.mean(signal):0.5e}, {np.median(signal):0.5e}, {np.std(signal):0.5e}]\n"
+                f"Scan Summary of Time [Mean, median] is: "
+                f"[{np.mean(times):0.5e}, {np.median(times):0.5e}]"
+            )
+        except Exception as e:
+            msg = "Writing file to local disk failed."
+            self.log.exception(msg)
 
     def parse_buffer(self, response):
         """Parse the buffer values.
