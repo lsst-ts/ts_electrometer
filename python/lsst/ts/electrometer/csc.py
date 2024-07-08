@@ -386,7 +386,9 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         )
         try:
             await self.report_detailed_state(DetailedState.READINGBUFFERSTATE)
+            self.log.debug("detailed state reported")
             await self.controller.stop_scan()
+            self.log.debug("controller stopped scan")
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
             self.log.info("stopScan Completed")
         except Exception as e:
