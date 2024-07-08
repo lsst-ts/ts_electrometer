@@ -22,6 +22,7 @@
 __all__ = ["execute_csc", "command_csc", "ElectrometerCsc"]
 
 import asyncio
+import types
 
 from lsst.ts import salobj, utils
 from lsst.ts.idl.enums.Electrometer import DetailedState
@@ -86,12 +87,13 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             initial_state=initial_state,
             simulation_mode=simulation_mode,
         )
-        self.controller = controller.ElectrometerController(csc=self, log=self.log)
         self.simulator = None
         self.run_event_loop = False
         self.event_loop_task = utils.make_done_future()
         self.default_force_output = True
         self.bucket = None
+        self.controller = None
+        self.log.debug("finished initializing")
 
     def assert_substate(self, substates, action):
         """Assert the CSC is in the proper substate.
@@ -139,7 +141,24 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         config : `types.SimpleNamespace`
             The parsed yaml object.
         """
-        self.controller.configure(config)
+        for instance in config.electrometer_config:
+            if instance["sal_index"] == self.salinfo.index:
+                break
+        if instance["sal_index"] != self.salinfo.index:
+            raise RuntimeError(f"No configuration found for {self.salinfo.index=}")
+        self.log.debug(f"instance is {instance}")
+        self.log.debug(f'electrometer type is {instance["electrometer_type"]}')
+        electrometer_type = instance["electrometer_type"]
+        controller_class = getattr(
+            controller, f"{electrometer_type}ElectrometerController"
+        )
+        self.validator = salobj.DefaultingValidator(
+            controller_class.get_config_schema()
+        )
+        # self.validator.validate(instance)
+        self.controller = controller_class(csc=self, log=self.log)
+        self.controller.configure(types.SimpleNamespace(**instance))
+        self.log.debug(f"brand={electrometer_type}")
 
     async def handle_summary_state(self):
         """Handle the summary of the CSC.
