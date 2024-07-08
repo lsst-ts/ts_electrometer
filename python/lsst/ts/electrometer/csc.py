@@ -25,7 +25,7 @@ import asyncio
 import types
 
 from lsst.ts import salobj, utils
-from lsst.ts.idl.enums.Electrometer import DetailedState
+from lsst.ts.xml.enums.Electrometer import DetailedState
 
 from . import __version__, controller, enums, mock_server
 from .config_schema import CONFIG_SCHEMA
@@ -123,7 +123,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
 
         Returns
         -------
-        detailed_state : `lsst.ts.idl.enums.Electrometer.DetailedState`
+        detailed_state : `lsst.ts.xml.enums.Electrometer.DetailedState`
             The sub state of the CSC.
         """
         return self.evt_detailedState.data.detailedState
