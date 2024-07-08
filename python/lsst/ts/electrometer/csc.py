@@ -178,7 +178,9 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         create = False
         if self.disabled_or_enabled:
             if self.simulation_mode and self.simulator is None:
-                self.simulator = mock_server.MockServer()
+                self.simulator = mock_server.MockServer(
+                    self.controller.electrometer_type
+                )
                 await self.simulator.start_task
                 do_mock = True
                 create = True
