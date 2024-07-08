@@ -19,6 +19,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+__all__ = ["Commander"]
+
 import asyncio
 import logging
 import typing
@@ -53,7 +55,9 @@ class Commander:
         Whether the electrometer is connected or not.
     """
 
-    def __init__(self, log: None | logging.Logger = None) -> None:
+    def __init__(
+        self, log: None | logging.Logger = None, brand: str | None = None
+    ) -> None:
         # Create a logger if none were passed during the instantiation of
         # the class
         self.log: None | logging.Logger = None
@@ -62,46 +66,56 @@ class Commander:
         else:
             self.log = log.getChild(type(self).__name__)
 
-        self.reader: None = None
-        self.writer: None = None
-        self.reply_terminator: bytes = b"\r"
-        self.command_terminator: str = "\r"
         self.lock: asyncio.Lock = asyncio.Lock()
-        self.host: str = tcpip.LOCAL_HOST
+        self.hostname: str = tcpip.LOCAL_HOST
         self.port: int = 9999
-        self.timeout: int = 2
+        self.timeout: int = 5
         self.long_timeout: int = 30
-        self.connected: bool = False
+        self.brand: str | None = brand
+        self.client: tcpip.Client = tcpip.Client(host="", port=None, log=log)
+
+    @property
+    def connected(self) -> bool:
+        return self.client.connected
 
     async def connect(self) -> None:
         """Connect to the electrometer"""
-        async with self.lock:
-            try:
-                connect_task = asyncio.open_connection(
-                    host=self.host, port=int(self.port), limit=1024 * 1024
-                )
-                self.reader, self.writer = await asyncio.wait_for(
-                    connect_task, timeout=self.long_timeout
-                )
-            except Exception as e:
-                raise RuntimeError(
-                    f"Failed to connect. {self.host=} {self.port=}: {e!r}"
-                )
-            self.connected = True
+        self.client = tcpip.Client(
+            host=self.hostname,
+            port=self.port,
+            terminator=b"\r",
+            name=f"{self.brand} Client",
+            log=self.log,
+        )
+        await self.client.start_task
 
     async def disconnect(self) -> None:
         """Disconnect from the electrometer."""
+        await self.client.close()
+        self.client = tcpip.Client(host="", port=None, log=self.log)
+
+    async def send_command(self, msg, has_reply, timeout) -> None | str:
         async with self.lock:
-            if self.writer is None:
-                return
-            try:
-                await tcpip.close_stream_writer(self.writer)
-            except Exception:
-                self.log.exception("Disconnect failed, continuing")
-            finally:
-                self.writer = None
-                self.reader = None
-                self.connected = False
+            await self.client.write_str(msg)
+            if self.brand == "Keysight":
+                async with asyncio.timeout(timeout):
+                    await self.client.read_str()
+            if has_reply:
+                async with asyncio.timeout(timeout):
+                    reply = await self.client.read_str()
+                return reply
+
+    def configure(self, config):
+        self.hostname = config.hostname
+        self.port = config.port
+        self.timeout = config.timeout
+
+
+class KeithleyCommander(Commander):
+    """Implement communication with the Keithley electrometer."""
+
+    def __init__(self, log):
+        super().__init__(log=log)
 
     async def send_command(
         self, msg: str, has_reply: bool = False, timeout: typing.Optional[int] = None
@@ -119,7 +133,10 @@ class Commander:
         -------
         reply
         """
-
+        if timeout is None:
+            self.log.debug(f"Will use timeout {self.timeout}s")
+        else:
+            self.log.debug(f"Will use timeout {timeout}s")
         async with self.lock:
             msg = msg + self.command_terminator
             msg = msg.encode("ascii")
