@@ -1,24 +1,53 @@
 # init configuration
 # not all values are used in code
-electrometer_config:
+instances:
   - sal_index: 1
-    mode: 1
-    fits_files_path: "/tmp/electrometerFitsFiles"
+    mode: CURR
     range: -0.01
-    integration_time: 0.01
-    median_filter_active: false
-    filter_active: true
-    avg_filter_active: false
-    tcp_port: 9999
-    host: 127.0.0.1
-    timeout: 2
-    brand: "Keithley"
-    model_id: "s123"
-    location: "Simulation"
-    sensor_brand: "test_hamamatsu"
-    sensor_model: "test_s1234"
-    sensor_serial: "123456"
-    vsource_attached: true
-    temperature_attached: false
-    image_service_url: "http://comcam-mcm.tu.lsst.org"
+    tcpip:
+      hostname: 127.0.0.1
+      port: 9999
+      timeout: 5
+    filters:
+      median: true
+      average: true
+      general: true
+    sensor:
+      brand: test_hamamatsu
+      model: s123
+      serial_number: "123456"
+    accessories:
+      vsource: true
+      temperature: true
+    location: simulation
     s3_instance: cp
+    fits_file_path: /tmp/electrometerFitsFiles
+    image_name_service: "http://comcam-mcm.tu.lsst.org"
+    integration_time: 0.01
+    electrometer_type: Keithley
+    electrometer_config: {}
+  - sal_index: 2
+    mode: CURR
+    range: -0.01
+    tcpip:
+      hostname: 127.0.0.1
+      port: 9999
+      timeout: 5
+    filters:
+      median: true
+      average: true
+      general: true
+    sensor:
+      brand: test
+      model: s123
+      serial_number: "123456"
+    accessories:
+      vsource: true
+      temperature: true
+    location: simulation
+    s3_instance: tuc
+    fits_file_path: /tmp/electrometerFitsFiles
+    image_name_service: http://comcam-mcm.tu.lsst.org
+    integration_time: 0.01
+    electrometer_type: Keysight
+    electrometer_config: {}
