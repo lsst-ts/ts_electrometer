@@ -196,8 +196,9 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
                 await self.controller.connect()
                 await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
         else:
-            if self.controller.connected:
-                await self.controller.disconnect()
+            if self.controller is not None:
+                if self.controller.connected:
+                    await self.controller.disconnect()
             if self.simulator is not None:
                 await self.simulator.close()
                 self.simulator = None
@@ -424,7 +425,8 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
     async def close_tasks(self):
         """Close unfinished tasks when CSC is stopped."""
         await super().close_tasks()
-        await self.controller.disconnect()
+        if self.controller is not None:
+            await self.controller.disconnect()
         if self.simulator is not None:
             await self.simulator.close()
             self.simulator = None
