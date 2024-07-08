@@ -19,125 +19,28 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+__all__ = [
+    "ElectrometerCommandFactory",
+    "KeithleyElectrometerCommandFactory",
+    "KeysightElectrometerCommandFactory",
+]
+
 from . import enums
 
 
 class ElectrometerCommandFactory:
-    """Class that formats commands to control the electrometer via RS-232."""
-
-    def __init__(self) -> None:
+    def __init__(self):
         pass
 
-    def activate_filter(self, mode, filter_type, active) -> str:
-        """Return activate filter command.
+    def activate_filter(self, mode, filter_type, active):
+        unit = enums.UnitMode(mode).name
+        filter = enums.Filter(filter_type).name
+        return f":sens:{unit}:{filter}:stat {int(active)}"
 
-        Parameters
-        ----------
-        mode : `UnitMode`
-            The unit of the filter to activate.
-        filter_type : `Filter`
-            The filter type to activate
-        active : `int`
-            Whether to activate or not.
-
-        Returns
-        -------
-        command : `str`
-            The generated command string.
-        """
-        command = f":sens:{enums.UnitMode(mode).name}:{enums.Filter(filter_type).name}:stat {int(active)};"
-        return command
-
-    def get_avg_filter_status(self, mode) -> str:
-        """Return average filter status.
-
-        Parameters
-        ----------
-        mode : `UnitMode`
-            The unit of the filter to check.
-
-        Returns
-        -------
-        command : `str`
-            The generated command string.
-        """
-        command = f":sens:{enums.UnitMode(mode).name}:aver:type?;"
-        return command
-
-    def get_med_filter_status(self, mode) -> str:
-        """Return median filter status.
-
-        Parameters
-        ----------
-        mode : `UnitMode`
-            The unit of the filter to check.
-
-        Returns
-        -------
-        command : `str`
-            The generated command string.
-        """
-        command = f":sens:{enums.UnitMode(mode).name}:med:stat?;"
-        return command
-
-    def get_filter_status(self, mode, filter_type) -> str:
-        """Return filter status.
-
-        Parameters
-        ----------
-        mode : `UnitMode`
-            The unit of the filter to check
-        filter_type : `Filter`
-            The type of the filter to check.
-
-        Returns
-        -------
-        command : `str`
-            The generated command string.
-        """
-        command = (
-            f":sens:{enums.UnitMode(mode).name}:{enums.Filter(filter_type).name}:stat?;"
-        )
-        return command
-
-    def set_avg_filter_status(self, mode, aver_filter_type) -> str:
-        """Return set average filter status.
-
-        Parameters
-        ----------
-        mode : `UnitMode`
-            The unit of the filter to set.
-        aver_filter_type : `AverFilterType`
-            The type of the average filter to set.
-
-        Returns
-        -------
-        command : `str`
-            The generated command string.
-        """
-        command = (
-            f":sens:{enums.UnitMode(mode).name}:aver:type "
-            f"{enums.AverFilterType(aver_filter_type).name};"
-        )
-        return command
-
-    def set_med_filter_status(self, mode, active) -> str:
-        """Return set median filter status
-
-        Parameters
-        ----------
-        mode : `UnitMode`
-            The unit of the filter to set.
-        active : `int`
-            Whether to activate.
-
-        Returns
-        -------
-        command : `str`
-            The generated command string.
-        """
-        command = f":sens:{enums.UnitMode(mode).name}:med:stat {int(active)};"
-        return command
+    def get_filter_status(self, mode, filter_type):
+        unit = enums.UnitMode(mode).name
+        filter = enums.Filter(filter_type).name
+        return f":sens:{unit}:{filter}:stat?;"
 
     def always_read(self) -> str:
         """Return always read buffer.
@@ -145,21 +48,29 @@ class ElectrometerCommandFactory:
         Returns
         -------
         commmand : `str`
-            The generated command string.
+            The generated command string. An array of all data in the buffer.
         """
-        command = f":trac:feed:cont alw;{self.init_buffer()}"
-        return command
+        return f":trac:feed:cont alw;{self.init_buffer()}"
 
     def next_read(self):
-        """Return next read buffer.
+        """Return the latest measurement data from buffer
 
         Returns
         -------
         command : `str`
             The generated command string.
         """
-        command = f":trac:feed:cont next;{self.init_buffer()}"
-        return command
+        return f":trac:feed:cont NEXT;{self.init_buffer()}"
+
+    def acquire_data(self):
+        """Returns the command to start acquiring data
+
+        Returns
+        -------
+        command : `str`
+            The generated command string
+        """
+        return f":trac:feed:cont NEXT;{self.init_buffer()}"
 
     def clear_buffer(self):
         """Return clear buffer.
@@ -195,7 +106,13 @@ class ElectrometerCommandFactory:
         return command
 
     def format_trac(
-        self, channel=False, timestamp=True, temperature=False, voltage=False
+        self,
+        timestamp=True,
+        temperature=False,
+        voltage=False,
+        set_mode=False,
+        mode="VOLT",
+        channel=False,
     ):
         """Return format data stored to the buffer.
 
@@ -214,29 +131,51 @@ class ElectrometerCommandFactory:
             The generated command string.
         """
         isFirst = True
-        if not (timestamp or temperature or channel or voltage):
+        self.data_columns = 1
+        if not (timestamp or temperature or voltage or set_mode):
             command = ":trac:elem NONE"
         else:
             command = ":trac:elem "
             if channel:
                 isFirst = False
                 command += "CHAN"
+                self.data_columns += 1
             if timestamp:
                 if not isFirst:
                     command += ", "
                 isFirst = False
                 command += "TST"
+                self.data_columns += 1
             if temperature:
                 if not isFirst:
                     command += ", "
                 isFirst = False
                 command += "ETEM"
+                self.data_columns += 1
             if voltage:
                 if not isFirst:
                     command += ", "
                 isFirst = False
                 command += "VSO"
+                self.data_columns += 1
+            if set_mode:
+                if not isFirst:
+                    command += ", "
+                isFirst = False
+                command += f"{mode}"
+                self.data_columns += 1
         command += ";"
+        return command
+
+    def get_trace_format(self):
+        """Returns the format of the trace.
+
+        Returns
+        -------
+        command : `str`
+            The generated command string.
+        """
+        command = ":trac:elem?"
         return command
 
     def get_buffer_quantity(self):
@@ -261,6 +200,39 @@ class ElectrometerCommandFactory:
         command = "*idn?"
         return command
 
+    def set_autodischarge(self, autodischarge_state):
+        """Sets the autodischarge state.
+
+        Returns
+        -------
+        command : `str`
+            The generated command string.
+        """
+        command = f"sens:char:adis:stat {autodischarge_state}"
+        return command
+
+    def discharge_capacitor(self):
+        """Discharges the capacitor.
+
+        Returns
+        -------
+        command : `str`
+            The generated command string.
+        """
+        command = "SYST:ZCH OFF"
+        return command
+
+    def stop_taking_data(self):
+        """Stops taking measurements
+
+        Returns
+        -------
+        command : `str`
+            The generated command string.
+        """
+        command = "ABOR"
+        return command
+
     def get_measure(self, read_option):
         """Return get measure.
 
@@ -274,10 +246,10 @@ class ElectrometerCommandFactory:
         command : `str`
             The generated command string.
         """
-        if enums.ReadingOption(read_option) == enums.ReadingOption.LATEST:
-            command = ":sens:data?;"
+        if read_option == enums.ReadingOption.LATEST:
+            command = ":sens:data:latest?;"
         else:
-            command = ":sens:data:fres?;"
+            command = ":sens:data?;"
         return command
 
     def get_mode(self):
@@ -329,9 +301,7 @@ class ElectrometerCommandFactory:
         command : `str`
             The generated command string.
         """
-        command = (
-            f"TRIG:TCON:ASYN:OLIN {output_trigger_input:d};TRIG:TCON:ASYN:OUTP SENS;"
-        )
+        command = f":SENS:TOUT:SIGN {output_trigger_input:d};:SENS:TOUT:STAT ON;"
         return command
 
     def reset_device(self):
@@ -346,7 +316,7 @@ class ElectrometerCommandFactory:
         return command
 
     def select_source(self, source=enums.Source.TIM):
-        command = f":trig:sour {enums.Source(source).value};"
+        command = f":trig:sour {enums.Source(source).name};"
         return command
 
     def select_device_timer(self, timer=0.001):
@@ -378,6 +348,17 @@ class ElectrometerCommandFactory:
         command = f"{self.clear_buffer()}:trac:points {str(buffer_size)};:trig:count {str(buffer_size)};"
         return command
 
+    def set_infinite_triggers(self):
+        """Return take infinite measurements
+
+        Returns
+        -------
+        command : `str`
+            The generated command string.
+        """
+        command = ":trig:coun INF;"
+        return command
+
     def init_buffer(self):
         """Return start storing readings into the buffer.
 
@@ -404,7 +385,8 @@ class ElectrometerCommandFactory:
         command : `str`
             The generated command string.
         """
-        command = f":sens:{enums.UnitMode(mode).name}:aper {time:f};"
+        unit = enums.UnitMode(mode).name
+        command = f":sens:{unit}:aper {time:f};"
         return command
 
     def set_mode(self, mode):
@@ -420,6 +402,7 @@ class ElectrometerCommandFactory:
         command : `str`
             The generated command string.
         """
+
         command = f":sens:func '{enums.UnitMode(mode).value}';"
         return command
 
@@ -479,6 +462,17 @@ class ElectrometerCommandFactory:
             The generated command string.
         """
         command = ":trac:feed:cont NEV;"
+        return command
+
+    def start_storing_buffer(self):
+        """Return start storing buffer.
+
+        Returns
+        -------
+        command : `str`
+            The generated command string.
+        """
+        command = ":trac:feed:cont NEXT;"
         return command
 
     def enable_all_instrument_errors(self):
@@ -598,7 +592,7 @@ class ElectrometerCommandFactory:
         )
         return command
 
-    def perform_zero_calibration(self, mode, auto, range_value):
+    def perform_zero_calibration(self, mode, auto, range_value, int_time):
         """Return combo of commands for perform zero calibration command.
         Required when setting mode to Volts/Amps to cancel any internal
         offsets. See page 4-10 in User's manual for sequence
@@ -618,11 +612,9 @@ class ElectrometerCommandFactory:
             The generated command string
         """
         command = (
-            f"{self.set_mode(mode)}"
-            f"{self.enable_zero_check(True)}"
-            f"{self.set_range(auto=auto, range_value=range_value, mode=mode)}"
-            f"{self.enable_zero_correction(enable=True)}"
-            f"{self.enable_zero_check(False)}"
+            f"{self.enable_zero_check(enable=True)} "
+            f"{self.set_mode(mode=mode)} "
+            f"{self.set_range(auto=auto, range_value=range_value, mode=mode)} "
         )
         return command
 
@@ -638,13 +630,11 @@ class ElectrometerCommandFactory:
         return command
 
     def toggle_voltage_source(self, enable):
-        command = (
-            ":sens:res:man:vso:oper ON;" if enable else ":sens:res:man:vso:oper OFF;"
-        )
+        command = ":vsou:oper ON;" if enable else ":vsou:oper OFF;"
         return command
 
     def get_voltage_source_status(self):
-        command = ":sens:res:man:vso:oper?;"
+        command = ":vsou:oper?;"
         return command
 
     def get_voltage_level(self):
@@ -673,4 +663,326 @@ class ElectrometerCommandFactory:
 
     def set_resolution(self, mode, digit):
         command = f":sens:{enums.UnitMode(mode).value}:dig {digit};"
+        return command
+
+
+class KeithleyElectrometerCommandFactory(ElectrometerCommandFactory):
+    """Class that formats commands to control the electrometer via RS-232."""
+
+    def __init__(self) -> None:
+        super().__init__()
+
+
+class KeysightElectrometerCommandFactory(ElectrometerCommandFactory):
+    """Class that formats commands to control the electrometer via RS-232."""
+
+    def __init__(self) -> None:
+        super().__init__()
+
+    def activate_filter(self, mode, filter_type, active) -> str:
+        """Return activate filter command.
+
+        Parameters
+        ----------
+        mode : `UnitMode`
+            The unit of the filter to activate.
+        filter_type : `Filter`
+            The filter type to activate
+        active : `int`
+            Whether to activate or not.
+
+        Returns
+        -------
+        command : `str`
+            The generated command string.
+        """
+        unit_ = enums.UnitMode(mode).name
+        filter_name = enums.Filter(filter_type).name
+        if filter_name == "AVER":
+            command = f":sens:{unit_}:{filter_name}:mov:stat {int(active)};"
+        else:
+            command = f":sens:{unit_}:{filter_name}:stat {int(active)};"
+        return command
+
+    def get_filter_status(self, mode, filter_type) -> str:
+        """Return filter status.
+
+        Parameters
+        ----------
+        mode : `UnitMode`
+            The unit of the filter to check
+        filter_type : `Filter`
+            The type of the filter to check.
+
+        Returns
+        -------
+        command : `str`
+            The generated command string.
+        """
+        filter_name = enums.Filter(filter_type).name
+        unit = enums.UnitMode(mode).name
+        if enums.Filter(filter_type).name == "AVER":
+            command = f":sens:{unit}:{filter_name}:mov:stat?;"
+        else:
+            command = f":sens:{unit}:{filter_name}:stat?;"
+        return command
+
+    def always_read(self) -> str:
+        """Return always read buffer.
+
+        Returns
+        -------
+        commmand : `str`
+            The generated command string. An array of all data in the buffer.
+        """
+        command = ":trac:data?"
+        return command
+
+    def next_read(self):
+        """Return the latest measurement data from buffer
+
+        Returns
+        -------
+        command : `str`
+            The generated command string.
+        """
+        command = ":meas:data?"
+        return command
+
+    def acquire_data(self):
+        """Returns the command to start acquiring data
+
+        Returns
+        -------
+        command : `str`
+            The generated command string
+        """
+        command = ":init:acq"
+        return command
+
+    def get_last_error(self):
+        """Return get last error.
+
+        Returns
+        -------
+        command : `str`
+            The generated command string.
+        """
+        command = ":syst:err:next?;"
+        return command
+
+    def format_trac(
+        self,
+        timestamp=True,
+        temperature=False,
+        voltage=False,
+        set_mode=False,
+        mode="VOLT",
+        channel=False,
+    ):
+        """Return format data stored to the buffer.
+
+        Parameters
+        ----------
+        channel : `bool`
+            Whether to store channel data.
+        timestamp : `bool`
+            Whether to store timestamp data.
+        temperature : `bool`
+            Whether to store temperature data.
+
+        Returns
+        -------
+        command : `str`
+            The generated command string.
+        """
+        isFirst = True
+        self.data_columns = 1
+        if not (timestamp or temperature or voltage or set_mode):
+            command = ":form:elem:sens NONE"
+        else:
+            command = ":form:elem:sens "
+            if channel:
+                isFirst = False
+                command += "CHAN"
+                self.data_columns += 1
+            if timestamp:
+                if not isFirst:
+                    command += ", "
+                isFirst = False
+                command += "TIME"
+                self.data_columns += 1
+            if temperature:
+                if not isFirst:
+                    command += ", "
+                isFirst = False
+                command += "TEMP"
+                self.data_columns += 1
+            if voltage:
+                if not isFirst:
+                    command += ", "
+                isFirst = False
+                command += "SOUR"
+                self.data_columns += 1
+            if set_mode:
+                if not isFirst:
+                    command += ", "
+                isFirst = False
+                command += f"{mode}"
+                self.data_columns += 1
+        command += ";"
+        return command
+
+    def get_trace_format(self):
+        """Returns the format of the trace.
+
+        Returns
+        -------
+        command : `str`
+            The generated command string.
+        """
+        command = ":form:elem:sens?"
+        return command
+
+    def discharge_capacitor(self):
+        """Discharges the capacitor.
+
+        Returns
+        -------
+        command : `str`
+            The generated command string.
+        """
+        command = "SENS:CHAR:DISC"
+        return command
+
+    def stop_taking_data(self):
+        """Stops taking measurements
+
+        Returns
+        -------
+        command : `str`
+            The generated command string.
+        """
+        command = "ABOR:ACQ;"
+        return command
+
+    def enable_temperature_reading(self, enable):
+        """Return enable temperature reading.
+
+        Parameters
+        ----------
+        enable : `bool`
+            Whether to enable temperature reading.
+
+        Returns
+        -------
+        command : `str`
+            The generated command string.
+        """
+        if enable:
+            command = ":syst:temp ON;"
+        else:
+            command = ":syst:temp OFF;"
+        return command
+
+    def read_buffer(self):
+        """Return read buffer.
+
+        Returns
+        -------
+        command : `str`
+            The generated command string.
+        """
+        command = ":sens:data?;"
+        return command
+
+    def output_trigger_line(self):
+        """Sets output trigger line
+
+        Returns
+        -------
+        command : `str`
+            The generated command string.
+        """
+        command = ":TRIG:ACQ:TOUT ON;:TRIG:ACQ:TOUT:SIGN TOUT"
+        return command
+
+    def init_buffer(self):
+        """Return start storing readings into the buffer.
+
+        Returns
+        -------
+        command : `str`
+            The generated command string.
+        """
+        command = ":init:acq;"
+        return command
+
+    def set_mode(self, mode):
+        """Return set mode.
+
+        Parameters
+        ----------
+        mode : `UnitMode`
+            The unit to switch to.
+
+        Returns
+        -------
+        command : `str`
+            The generated command string.
+        """
+        command = f":sens:func:on '{enums.UnitMode(mode).name}';:inp on;"
+        return command
+
+    def enable_zero_correction(self, enable):
+        """Return enable zero correction.
+
+        Parameters
+        ----------
+        enable : `bool`
+            Whether to enable zero correction.
+
+        Returns
+        -------
+        command : `str`
+            The generated command string.
+        """
+        command = ":inp:zcor ON;" if enable else ":inp:zcor OFF;"
+        return command
+
+    def perform_zero_calibration(self, mode, auto, range_value, int_time):
+        """Return combo of commands for perform zero calibration command.
+        Required when setting mode to Volts/Amps to cancel any internal
+        offsets. See page 4-10 in User's manual for sequence
+
+        Parameters
+        ----------
+        mode : `UnitMode`
+            The unit of the device
+        auto : `bool`
+            Whether auto range is activated.
+        range_value : `float`
+            The range of the values.
+
+        Returns
+        -------
+        command : `str`
+            The generated command string
+        """
+        command = (
+            f"{self.set_mode(mode)}"
+            f"{self.set_range(auto=auto, range_value=range_value, mode=mode)}"
+            f"{self.integration_time(mode,int_time)}"
+            f"{self.enable_zero_correction(enable=True)}"
+        )
+        return command
+
+    def toggle_voltage_source(self, enable):
+        command = (
+            ":sens:res:man:vso:oper ON;" if enable else ":sens:res:man:vso:oper OFF;"
+        )
+        return command
+
+    def get_voltage_source_status(self):
+        command = ":sens:res:man:vso:oper?;"
         return command
