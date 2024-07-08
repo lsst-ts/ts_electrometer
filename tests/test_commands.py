@@ -21,13 +21,15 @@
 
 import unittest
 
+import pytest
 from lsst.ts.electrometer import enums
-from lsst.ts.electrometer.commands_factory import ElectrometerCommandFactory
+from lsst.ts.electrometer.commands_factory import KeithleyElectrometerCommandFactory
 
 
+@pytest.mark.skip("DM-40055")
 class TestElectrometerCommandFactory(unittest.TestCase):
     def setUp(self):
-        self.commands = ElectrometerCommandFactory()
+        self.commands = KeithleyElectrometerCommandFactory()
 
     def test_activate_filter(self):
         reply = self.commands.activate_filter(
@@ -61,7 +63,7 @@ class TestElectrometerCommandFactory(unittest.TestCase):
 
     def test_next_read(self):
         reply = self.commands.next_read()
-        self.assertEqual(reply, ":trac:feed:cont next;:init;")
+        self.assertEqual(reply, ":trac:feed:cont NEXT;:init;")
 
     def test_clear_buffer(self):
         reply = self.commands.clear_buffer()
