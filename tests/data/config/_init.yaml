@@ -25,6 +25,7 @@ instances:
     image_name_service: "http://comcam-mcm.tu.lsst.org"
     integration_time: 0.01
     electrometer_type: Keithley
+    electrometer_model: 6517B
     electrometer_config: {}
   - sal_index: 2
     mode: CURR
@@ -50,4 +51,5 @@ instances:
     image_name_service: http://comcam-mcm.tu.lsst.org
     integration_time: 0.01
     electrometer_type: Keysight
+    electrometer_model: B2980B
     electrometer_config: {}

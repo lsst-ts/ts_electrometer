@@ -186,7 +186,7 @@ class ElectrometerController(abc.ABC):
             filters=types.SimpleNamespace(**config.filters),
             integration_time=config.integration_time,
         )
-        self.mode = enums.UnitMode(self.modes[config.mode])
+        self.mode = enums.UnitMode(config.mode)
         self.range = config.range
         tcpip = types.SimpleNamespace(**config.tcpip)
         self.commander = commander.Commander(
@@ -194,7 +194,7 @@ class ElectrometerController(abc.ABC):
         )
         self.commander.configure(tcpip)
         self.s3_instance = config.s3_instance
-        self.fits_file_path = config.fits_files_path
+        self.fits_file_path = config.fits_file_path
         self.image_name_service = config.image_name_service
         self.sensor = types.SimpleNamespace(**config.sensor)
         self.sensor_brand = self.sensor.brand
@@ -249,7 +249,7 @@ class ElectrometerController(abc.ABC):
                 await self.send_command(command=self.commands.output_trigger_line())
         self.log.debug("Device reset.")
         await self.perform_zero_calibration(
-            mode=enums.UnitMode(self.modes[self.default.mode]),
+            mode=enums.UnitMode(self.default.mode),
             auto=self.auto_range,
             set_range=self.default.range,
             integration_time=self.default.integration_time,
@@ -466,6 +466,8 @@ class ElectrometerController(abc.ABC):
             mode=int([num for num, mode in self.modes.items() if self.mode == mode][0]),
             force_output=True,
         )
+        # TO-DO: Change XML so that evt_measureType write mode as a str
+        # DM-45177
 
     async def get_intensity(self):
         """Get the intensity."""
@@ -537,7 +539,7 @@ class ElectrometerController(abc.ABC):
         mode : `int`
             The mode of the electrometer.
         """
-        self.mode = enums.UnitMode(self.modes[mode])
+        self.mode = enums.UnitMode(mode)
         self.log.debug(f"Set mode {self.mode}")
 
         await self.perform_zero_calibration(
@@ -951,6 +953,8 @@ class KeysightElectrometerController(ElectrometerController):
             mode=int([num for num, mode in self.modes.items() if self.mode == mode][0]),
             force_output=True,
         )
+        # TO-DO: Change XML so that evt_measureType write mode as a str
+        # DM-45177
 
     async def set_digital_filter(
         self,

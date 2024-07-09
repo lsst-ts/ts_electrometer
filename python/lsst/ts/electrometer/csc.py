@@ -141,7 +141,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         config : `types.SimpleNamespace`
             The parsed yaml object.
         """
-        for instance in config.electrometer_config:
+        for instance in config.instances:
             if instance["sal_index"] == self.salinfo.index:
                 break
         if instance["sal_index"] != self.salinfo.index:
