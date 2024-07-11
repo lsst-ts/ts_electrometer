@@ -493,29 +493,6 @@ class ElectrometerController(abc.ABC):
             self.last_value = float("inf")
         self.log.debug(f"last value is {self.last_value}")
 
-    # async def perform_zero_calibration(
-    #     self, mode=None, auto=None, set_range=None, integration_time=None
-    # ):
-    #     """Perform zero calibration."""
-    #     if mode is None:
-    #         mode = self.mode
-    #     if auto is None:
-    #         auto = self.auto_range
-    #     if set_range is None:
-    #         set_range = self.range
-    #     if integration_time is None:
-    #         integration_time = self.integration_time
-    #     await self.send_command(
-    # noqa        f"{self.commands.perform_zero_calibration(mode, auto, set_range, integration_time)}"
-    #     )
-    #     self.log.debug("Zero calibration command sent")
-    #     await asyncio.sleep(3)
-    #     await self.get_mode()
-    #     await self.get_range()
-    #     await self.get_integration_time()
-    #     await self.check_error()
-    #     self.log.debug("Zero Calibration sent to controller")
-
     async def set_integration_time(self, int_time):
         """Set the integration time.
 

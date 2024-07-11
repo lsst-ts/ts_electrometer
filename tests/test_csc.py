@@ -26,14 +26,12 @@ import shutil
 import unittest
 import unittest.mock
 
-import pytest
 from lsst.ts import electrometer, salobj
 
 STD_TIMEOUT = 20
 TEST_CONFIG_DIR = pathlib.Path(__file__).parents[1].joinpath("tests", "data", "config")
 
 
-@pytest.mark.skip("DM-40055")
 class KeysightTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
     def tearDown(self) -> None:
         file_path = "/tmp/electrometerFitsFiles"
@@ -234,7 +232,6 @@ class ElectrometerCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTe
             index=index,
         )
 
-    @pytest.mark.skip("DM-40055")
     async def test_bin_script(self):
         await self.check_bin_script(
             name="Electrometer", index=1, exe_name="run_electrometer"

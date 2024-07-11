@@ -23,7 +23,6 @@ __all__ = ["Commander"]
 
 import asyncio
 import logging
-import typing
 
 from lsst.ts import tcpip
 
@@ -109,100 +108,3 @@ class Commander:
         self.hostname = config.hostname
         self.port = config.port
         self.timeout = config.timeout
-
-
-class KeithleyCommander(Commander):
-    """Implement communication with the Keithley electrometer."""
-
-    def __init__(self, log):
-        super().__init__(log=log)
-
-    async def send_command(
-        self, msg: str, has_reply: bool = False, timeout: typing.Optional[int] = None
-    ) -> str:
-        """Send a command to the electrometer and read reply if has one.
-
-        Parameters
-        ----------
-        msg : `str`
-            The message to send.
-        has_reply : `bool`
-            Does the command expect a reply.
-
-        Returns
-        -------
-        reply
-        """
-        if timeout is None:
-            self.log.debug(f"Will use timeout {self.timeout}s")
-        else:
-            self.log.debug(f"Will use timeout {timeout}s")
-        async with self.lock:
-            msg = msg + self.command_terminator
-            msg = msg.encode("ascii")
-            if self.writer is not None:
-                self.log.debug(f"Commanding using: {msg}")
-                self.writer.write(msg)
-                await self.writer.drain()
-                if has_reply:
-                    reply = await asyncio.wait_for(
-                        self.reader.readuntil(self.reply_terminator),
-                        timeout=self.timeout if timeout is None else timeout,
-                    )
-                    self.log.debug(f"reply={reply}")
-                    reply = reply.decode().strip()
-                    return reply
-                return None
-            else:
-                raise RuntimeError("CSC not connected.")
-
-
-class KeysightCommander(Commander):
-    """Implement communication with the Keysight electrometer."""
-
-    def __init__(self, log=None):
-        super().__init__(log=log)
-
-    async def send_command(
-        self, msg: str, has_reply: bool = False, timeout: typing.Optional[int] = None
-    ) -> str:
-        """Send a command to the electrometer and read reply if has one.
-
-        Parameters
-        ----------
-        msg : `str`
-            The message to send.
-        has_reply : `bool`
-            Does the command expect a reply.
-
-        Returns
-        -------
-        reply
-        """
-        if timeout is None:
-            self.log.debug(f"Will use timeout {self.timeout}s")
-        else:
-            self.log.debug(f"Will use timeout {timeout}s")
-        async with self.lock:
-            msg = msg + self.command_terminator
-            msg = msg.encode("ascii")
-            if self.writer is not None:
-                self.log.debug(f"Commanding using: {msg}")
-                self.writer.write(msg)
-                await self.writer.drain()
-                # flush the echo
-                _ = await asyncio.wait_for(
-                    self.reader.readuntil(self.reply_terminator),
-                    timeout=self.timeout,
-                )
-                if has_reply:
-                    reply = await asyncio.wait_for(
-                        self.reader.readuntil(self.reply_terminator),
-                        timeout=self.timeout if timeout is None else timeout,
-                    )
-                    self.log.debug(f"reply={reply}")
-                    reply = reply.decode("ascii").strip()
-                    return reply
-                return None
-            else:
-                raise RuntimeError("CSC not connected.")

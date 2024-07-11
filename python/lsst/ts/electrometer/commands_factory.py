@@ -35,7 +35,7 @@ class ElectrometerCommandFactory:
     def activate_filter(self, mode, filter_type, active):
         unit = enums.UnitMode(mode).name
         filter = enums.Filter(filter_type).name
-        return f":sens:{unit}:{filter}:stat {int(active)}"
+        return f":sens:{unit}:{filter}:stat {int(active)};"
 
     def get_filter_status(self, mode, filter_type):
         unit = enums.UnitMode(mode).name
@@ -208,7 +208,7 @@ class ElectrometerCommandFactory:
         command : `str`
             The generated command string.
         """
-        command = f"sens:char:adis:stat {autodischarge_state}"
+        command = f"sens:char:adis:stat {autodischarge_state};"
         return command
 
     def discharge_capacitor(self):
