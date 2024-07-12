@@ -127,11 +127,11 @@ class MockKeysight:
                 r"^:sens:(CURR|CHAR|VOLT|RES):(MED|AVER):stat (0|1);$"
             ): self.do_activate_filter,
             re.compile(
-                r"^:sens:(CURR|CHAR|VOLT|RES):AVER:mov:stat\?;$"
+                r"^:sens:(CURR|CHAR|VOLT|RES):AVER:mov:stat (0|1);$"
             ): self.do_get_avg_filter_status,
             re.compile(
-                r"^:sens:(CURR|CHAR|VOLT|RES):AVER:stat\?;$"
-            ): self.do_get_avg_filter_status,
+                r"^:sens:(CURR|CHAR|VOLT|RES):AVER:mov:stat\?;$"
+            ): self.do_get_avg_filter_status_2,
             re.compile(
                 r"^:sens:(CURR|CHAR|VOLT|RES):MED:stat\?;$"
             ): self.do_get_med_filter_status,
@@ -309,6 +309,10 @@ class MockKeysight:
     def do_get_avg_filter_status(self):
         """Get the status of the filter in average mode."""
         return "0"
+
+    def do_get_avg_filter_status_2(self):
+        """Get the status of the filter in average mode."""
+        return "1"
 
     def do_get_med_filter_status(self):
         """Get the state of the filter in median mode."""

@@ -134,6 +134,9 @@ class ElectrometerController(abc.ABC):
         self.vsource = None
         self.commander = commander.Commander(log=self.log, brand=None)
         self.commands = commands_factory.ElectrometerCommandFactory()
+        self.median_filter_active = False
+        self.filter_active = False
+        self.avg_filter_active = False
         self.log.debug("Controller initialized")
 
     @property
@@ -312,7 +315,10 @@ class ElectrometerController(abc.ABC):
             f"{self.commands.get_filter_status(self.mode, 2)}", has_reply=True
         )
         self.log.debug(f"Average filter response is {res}")
-        self.avg_filter_active = bool(int(res))
+        if res == "":
+            self.avg_filter_active = False
+        else:
+            self.avg_filter_active = bool(int(res))
         await self.csc.evt_digitalFilterChange.set_write(
             activateAverageFilter=self.avg_filter_active
         )
@@ -691,6 +697,7 @@ class ElectrometerController(abc.ABC):
         res = await self.send_command(
             f"{self.commands.get_last_error()}", has_reply=True
         )
+        self.log.debug(f"check error: {res}")
         self.error_code, self.message = res.split(",")
 
     async def get_range(self):
@@ -763,9 +770,6 @@ class KeithleyElectrometerController(ElectrometerController):
     def __init__(self, csc, log=None):
         super().__init__(csc, log=log)
         self.commands = commands_factory.KeithleyElectrometerCommandFactory()
-        self.median_filter_active = False
-        self.filter_active = False
-        self.avg_filter_active = False
         # Intensity value when saturated in the positive direction.
         self.positive_saturation = 9.9e37
 
