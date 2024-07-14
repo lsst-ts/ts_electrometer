@@ -135,7 +135,7 @@ class MockKeysight:
             re.compile(
                 r"^:sens:(CURR|CHAR|VOLT|RES):MED:stat\?;$"
             ): self.do_get_med_filter_status,
-            re.compile(r"^:syst:err:next\?;$"): self.do_get_last_error,
+            re.compile(r"^:syst:err\?;$"): self.do_get_last_error,
             re.compile(r"^:sens:func\?;$"): self.do_get_mode,
             re.compile(r"^:trac:cle;$"): self.do_clear_buffer,
             re.compile(
