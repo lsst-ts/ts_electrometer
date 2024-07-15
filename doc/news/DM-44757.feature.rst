@@ -1,0 +1,1 @@
+Add optional groupId to startScan and startScanDt
