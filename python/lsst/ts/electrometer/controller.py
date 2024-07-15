@@ -131,6 +131,7 @@ class ElectrometerController:
         self.voltage_status = None
         self.temperature = None
         self.vsource = None
+        self.group_id = None
 
     @property
     def connected(self):
@@ -335,8 +336,9 @@ class ElectrometerController:
             format_trac_args["voltage"] = True
         await self.send_command(self.commands.format_trac(**format_trac_args))
 
-    async def start_scan(self):
+    async def start_scan(self, group_id=None):
         """Start storing values in the Keithley electrometer's buffer."""
+        self.group_id = group_id
         await self.prepare_scan()
         await self.send_command(f"{self.commands.set_buffer_size(50000)}")
         await self.send_command(
@@ -347,7 +349,7 @@ class ElectrometerController:
 
         self.manual_start_time = utils.current_tai()
 
-    async def start_scan_dt(self, scan_duration):
+    async def start_scan_dt(self, scan_duration, group_id=None):
         """Start storing values in the Keithley electrometer's buffer, for a
         set duration.
 
@@ -356,6 +358,7 @@ class ElectrometerController:
         scan_duration : `float`
             The amount of time to store values for.
         """
+        self.group_id = group_id
         await self.prepare_scan()
         await self.send_command(f"{self.commands.set_buffer_size(50000)}")
         await self.send_command(
@@ -405,7 +408,13 @@ class ElectrometerController:
             f"{self.commands.read_buffer()}", has_reply=True, timeout=read_timeout
         )
         intensity, times, temperature, unit, voltage = self.parse_buffer(res)
-        await self.write_fits_file(intensity, times, temperature, unit, voltage)
+        await self.write_fits_file(
+            intensity,
+            times,
+            temperature,
+            unit,
+            voltage,
+        )
 
     def make_primary_header(self):
         """Make primary header for fits file that follows Rubin Obs. format."""
@@ -498,6 +507,8 @@ class ElectrometerController:
             num_images=1
         )
         hdul[0].header["OBSID"] = obs_ids[0]
+        hdul[0].header["GROUPID"] = self.group_id
+        self.group_id = None
         filename = f"{obs_ids[0]}.fits"
         try:
             pathlib.Path(self.file_output_dir).mkdir(parents=True, exist_ok=True)
