@@ -312,7 +312,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         )
         try:
             await self.report_detailed_state(DetailedState.MANUALREADINGSTATE)
-            await self.controller.start_scan()
+            await self.controller.start_scan(group_id=getattr(data, "groupId", None))
             self.log.debug("startScan Completed")
         except Exception as e:
             msg = "startScanDt failed."
@@ -334,7 +334,9 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         )
         try:
             await self.report_detailed_state(DetailedState.SETDURATIONREADINGSTATE)
-            await self.controller.start_scan_dt(scan_duration=data.scanDuration)
+            await self.controller.start_scan_dt(
+                scan_duration=data.scanDuration, group_id=getattr(data, "groupId", None)
+            )
             await self.report_detailed_state(DetailedState.READINGBUFFERSTATE)
             await self.controller.stop_scan()
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
