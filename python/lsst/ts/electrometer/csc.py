@@ -248,8 +248,8 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             )
             self.log.debug("setDigitalFilter controller interaction completed")
             self.log.debug(
-                f"filter_active={self.controller.filter_active}"
-                f"avg_filter_active={self.controller.avg_filter_active}"
+                f"filter_active={self.controller.filter_active},"
+                f"avg_filter_active={self.controller.avg_filter_active},"
                 f"median_filter_active={self.controller.median_filter_active}"
             )
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
@@ -293,6 +293,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         )
         try:
             await self.report_detailed_state(DetailedState.CONFIGURINGSTATE)
+            self.log.debug(f"Setting mode: {data.mode}")
             await self.controller.set_mode(mode=data.mode)
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
         except Exception:

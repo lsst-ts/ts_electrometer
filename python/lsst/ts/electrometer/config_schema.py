@@ -39,7 +39,7 @@ properties:
           type: integer
           minValue: 1
         mode:
-          type: string
+          type: integer
         range:
           type: number
         tcpip:

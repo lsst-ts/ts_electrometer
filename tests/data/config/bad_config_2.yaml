@@ -1,6 +1,6 @@
 instances:
   - sal_index: 1
-    mode: CURR
+    mode: 1
     range: 0.01
     tcpip:
       hostname: 127.0.0.1

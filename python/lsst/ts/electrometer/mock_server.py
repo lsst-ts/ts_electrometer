@@ -128,14 +128,14 @@ class MockKeysight:
             ): self.do_activate_filter,
             re.compile(
                 r"^:sens:(CURR|CHAR|VOLT|RES):AVER:mov:stat (0|1);$"
-            ): self.do_get_avg_filter_status,
+            ): self.do_set_avg_filter_status,
             re.compile(
                 r"^:sens:(CURR|CHAR|VOLT|RES):AVER:mov:stat\?;$"
-            ): self.do_get_avg_filter_status_2,
+            ): self.do_get_avg_filter_status,
             re.compile(
                 r"^:sens:(CURR|CHAR|VOLT|RES):MED:stat\?;$"
             ): self.do_get_med_filter_status,
-            re.compile(r"^:syst:err\?;$"): self.do_get_last_error,
+            re.compile(r"^:syst:err:next\?;$"): self.do_get_last_error,
             re.compile(r"^:sens:func\?;$"): self.do_get_mode,
             re.compile(r"^:trac:cle;$"): self.do_clear_buffer,
             re.compile(
@@ -155,7 +155,7 @@ class MockKeysight:
             re.compile(r"^:init:acq;$"): self.do_init_buffer,
             re.compile(r"^:trac:feed:cont NEV;$"): self.do_stop_storing_buffer,
             re.compile(r"^:sens:data\?;$"): self.do_read_buffer,
-            re.compile(r"^:sens:data\?;$"): self.do_read_sensor,
+            # re.compile(r"^:sens:data\?;$"): self.do_read_sensor,
             re.compile(r"^TST:TYPE RTC;$"): self.do_rtc_time,
             re.compile(
                 r"^:sens:curr:nplc (?P<parameter>\d\.\d\d);$"
@@ -267,7 +267,7 @@ class MockKeysight:
 
     def do_get_mode(self):
         """Get the current mode."""
-        return "CURR"
+        return "CHAR"
 
     def do_clear_buffer(self):
         """Clear the buffer."""
@@ -310,9 +310,9 @@ class MockKeysight:
         """Get the status of the filter in average mode."""
         return "0"
 
-    def do_get_avg_filter_status_2(self):
+    def do_set_avg_filter_status(self):
         """Get the status of the filter in average mode."""
-        return "1"
+        return ""
 
     def do_get_med_filter_status(self):
         """Get the state of the filter in median mode."""
@@ -433,7 +433,7 @@ class MockKeithley:
             ): self.do_activate_filter,
             re.compile(
                 r"^:sens:(CURR|CHAR|VOLT|RES):AVER:move:stat\?;$"
-            ): self.do_get_avg_filter_status,
+            ): self.do_set_avg_filter_status,
             re.compile(
                 r"^:sens:(CURR|CHAR|VOLT|RES):AVER:stat\?;$"
             ): self.do_get_avg_filter_status,
@@ -444,6 +444,7 @@ class MockKeithley:
             re.compile(r"^:sens:func\?;$"): self.do_get_mode,
             re.compile(r"^:trac:cle;$"): self.do_clear_buffer,
             re.compile(r"^:trac:elem TST, VSO, CURR;$"): self.do_format_trac,
+            re.compile(r"^:sens:data:latest\?;$"): self.get_intensity,
             re.compile(r"^:trac:elem\?;$"): self.do_get_format_trac,
             re.compile(r"^:trac:points 50000;$"): self.do_set_buffer_size,
             re.compile(r"^:trig:count 50000;$"): self.do_set_buffer_size,
@@ -455,7 +456,7 @@ class MockKeithley:
             re.compile(r"^:init;$"): self.do_init_buffer,
             re.compile(r"^:trac:feed:cont NEV;$"): self.do_stop_storing_buffer,
             re.compile(r"^:trac:data\?;$"): self.do_read_buffer,
-            re.compile(r"^:sens:data\?;$"): self.do_read_sensor,
+            # re.compile(r"^:sens:data\?;$"): self.do_read_sensor,
             re.compile(r"^TST:TYPE RTC;$"): self.do_rtc_time,
             re.compile(
                 r"^:sens:curr:nplc (?P<parameter>\d\.\d\d);$"
@@ -478,6 +479,7 @@ class MockKeithley:
             re.compile(r"\*RST;$"): self.do_reset_device,
             re.compile(r"^:SENS:TOUT:SIGN 3;$"): self.do_output_trigger_line,
             re.compile(r"^:TRIG:ACQ:TOUT ON;$"): self.do_output_trigger_line,
+            re.compile(r"^:trac:elem TST, ETEM, VSO, CURR;$"): self.do_nothing,
         }
 
     def parse_message(self, msg):
@@ -540,8 +542,14 @@ class MockKeithley:
         """Set the mode."""
         return ""
 
+    def get_intensity(self):
+        return "0.001"
+
     def do_set_range(self, *args):
         """Set the range."""
+        return ""
+
+    def do_nothing(self):
         return ""
 
     def do_enable_zero_correction(self, *args):
@@ -570,7 +578,7 @@ class MockKeithley:
 
     def do_get_format_trac(self, *args):
         """Format the trac."""
-        return ["TST", "CURR", "TST", "CURR", "TST", "CURR", "TST", "CURR"]
+        return "TST, CURR"  # , "TST", "CURR", "TST", "CURR", "TST", "CURR"
 
     def do_set_buffer_size(self):
         """Set the buffer size."""
@@ -603,6 +611,10 @@ class MockKeithley:
     def do_get_avg_filter_status(self):
         """Get the status of the filter in average mode."""
         return "0"
+
+    def do_set_avg_filter_status(self):
+        """Get the status of the filter in average mode."""
+        return ""
 
     def do_get_med_filter_status(self):
         """Get the state of the filter in median mode."""
