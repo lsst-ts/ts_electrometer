@@ -254,7 +254,7 @@ class ElectrometerController(abc.ABC):
         self.log.debug("Device reset.")
 
         self.set_mode(enums.UnitMode(self.modes[self.default.mode]))
-        self.set_range(self.auto_range, self.default.range)
+        self.set_range(self.default.range)
         self.set_integration_time(self.default.integration_time)
 
         await self.set_digital_filter(
