@@ -22,9 +22,10 @@
 __all__ = ["execute_csc", "command_csc", "ElectrometerCsc"]
 
 import asyncio
+import types
 
 from lsst.ts import salobj, utils
-from lsst.ts.idl.enums.Electrometer import DetailedState
+from lsst.ts.xml.enums.Electrometer import DetailedState
 
 from . import __version__, controller, enums, mock_server
 from .config_schema import CONFIG_SCHEMA
@@ -86,12 +87,13 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             initial_state=initial_state,
             simulation_mode=simulation_mode,
         )
-        self.controller = controller.ElectrometerController(csc=self, log=self.log)
         self.simulator = None
         self.run_event_loop = False
         self.event_loop_task = utils.make_done_future()
         self.default_force_output = True
         self.bucket = None
+        self.controller = None
+        self.log.debug("finished initializing")
 
     def assert_substate(self, substates, action):
         """Assert the CSC is in the proper substate.
@@ -121,7 +123,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
 
         Returns
         -------
-        detailed_state : `lsst.ts.idl.enums.Electrometer.DetailedState`
+        detailed_state : `lsst.ts.xml.enums.Electrometer.DetailedState`
             The sub state of the CSC.
         """
         return self.evt_detailedState.data.detailedState
@@ -139,7 +141,24 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         config : `types.SimpleNamespace`
             The parsed yaml object.
         """
-        self.controller.configure(config)
+        for instance in config.instances:
+            if instance["sal_index"] == self.salinfo.index:
+                break
+        if instance["sal_index"] != self.salinfo.index:
+            raise RuntimeError(f"No configuration found for {self.salinfo.index=}")
+        self.log.debug(f"instance is {instance}")
+        self.log.debug(f'electrometer type is {instance["electrometer_type"]}')
+        electrometer_type = instance["electrometer_type"]
+        controller_class = getattr(
+            controller, f"{electrometer_type}ElectrometerController"
+        )
+        self.validator = salobj.DefaultingValidator(
+            controller_class.get_config_schema()
+        )
+        # self.validator.validate(instance)
+        self.controller = controller_class(csc=self, log=self.log)
+        self.controller.configure(types.SimpleNamespace(**instance))
+        self.log.debug(f"brand={electrometer_type}")
 
     async def handle_summary_state(self):
         """Handle the summary of the CSC.
@@ -159,7 +178,9 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         create = False
         if self.disabled_or_enabled:
             if self.simulation_mode and self.simulator is None:
-                self.simulator = mock_server.MockServer()
+                self.simulator = mock_server.MockServer(
+                    self.controller.electrometer_type
+                )
                 await self.simulator.start_task
                 do_mock = True
                 create = True
@@ -175,8 +196,9 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
                 await self.controller.connect()
                 await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
         else:
-            if self.controller.connected:
-                await self.controller.disconnect()
+            if self.controller is not None:
+                if self.controller.connected:
+                    await self.controller.disconnect()
             if self.simulator is not None:
                 await self.simulator.close()
                 self.simulator = None
@@ -226,8 +248,8 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             )
             self.log.debug("setDigitalFilter controller interaction completed")
             self.log.debug(
-                f"filter_active={self.controller.filter_active}"
-                f"avg_filter_active={self.controller.avg_filter_active}"
+                f"filter_active={self.controller.filter_active},"
+                f"avg_filter_active={self.controller.avg_filter_active},"
                 f"median_filter_active={self.controller.median_filter_active}"
             )
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
@@ -271,6 +293,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         )
         try:
             await self.report_detailed_state(DetailedState.CONFIGURINGSTATE)
+            self.log.debug(f"Setting mode: {data.mode}")
             await self.controller.set_mode(mode=data.mode)
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
         except Exception:
@@ -366,7 +389,9 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         )
         try:
             await self.report_detailed_state(DetailedState.READINGBUFFERSTATE)
+            self.log.debug("detailed state reported")
             await self.controller.stop_scan()
+            self.log.debug("controller stopped scan")
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
             self.log.info("stopScan Completed")
         except Exception as e:
@@ -405,7 +430,8 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
     async def close_tasks(self):
         """Close unfinished tasks when CSC is stopped."""
         await super().close_tasks()
-        await self.controller.disconnect()
+        if self.controller is not None:
+            await self.controller.disconnect()
         if self.simulator is not None:
             await self.simulator.close()
             self.simulator = None
