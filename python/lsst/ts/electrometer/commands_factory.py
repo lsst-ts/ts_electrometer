@@ -425,9 +425,9 @@ class ElectrometerCommandFactory:
             The generated command string.
         """
         if auto:
-            command = ":sens:" + enums.UnitMode(mode).name + ":rang:auto 1;"
+            command = ":sens:" + enums.UnitMode(mode).name + ":rang:auto ON;"
         else:
-            command = ":sens:" + enums.UnitMode(mode).name + ":rang:auto 0;"
+            command = ":sens:" + enums.UnitMode(mode).name + ":rang:auto OFF;"
             command += (
                 "\n:sens:"
                 + enums.UnitMode(mode).name

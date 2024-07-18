@@ -277,6 +277,8 @@ class ElectrometerController(abc.ABC):
             set_range = self.range
         if integration_time is None:
             integration_time = self.integration_time
+
+        self.log.debug(f"Mode being sent to Set Range: {enums.UnitMode(mode).name}")
         await self.send_command(
             self.commands.perform_zero_calibration(
                 mode, auto, set_range, integration_time
@@ -287,7 +289,7 @@ class ElectrometerController(abc.ABC):
         await self.get_mode()
         await self.get_range()
         await self.get_integration_time()
-        await self.check_error()
+        await self.check_error("perform_zero_calibration")
         self.log.debug("Zero Calibration sent to controller")
 
     async def set_digital_filter(
@@ -568,6 +570,7 @@ class ElectrometerController(abc.ABC):
         self.range = set_range
         self.log.debug(f"{set_range=}")
         if int(set_range) == -1:
+            self.log.debug("Auto Range set")
             self.auto_range = True
         else:
             self.auto_range = False
@@ -734,12 +737,15 @@ class ElectrometerController(abc.ABC):
         )
         self.log.debug(f"check error from {from_command}: {res}")
         self.error_code, self.message = res.split(",")
+        if self.message != "No Error":
+            raise RuntimeError(f"Check Error: {res}")
 
     async def get_range(self):
         """Get the range value."""
         res = await self.send_command(
             f"{self.commands.get_range(self.mode)}", has_reply=True
         )
+        self.log.debug(f"Get Range Output: {res}")
         self.range = float(res)
         await self.csc.evt_measureRange.set_write(
             rangeValue=self.range, force_output=True
