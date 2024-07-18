@@ -279,6 +279,9 @@ class ElectrometerController(abc.ABC):
             integration_time = self.integration_time
 
         self.log.debug(f"Mode being sent to Set Range: {enums.UnitMode(mode).name}")
+        self.log.debug(
+            f"perform zero calibs params: {mode, auto, set_range, integration_time}"
+        )
         await self.send_command(
             self.commands.perform_zero_calibration(
                 mode, auto, set_range, integration_time
