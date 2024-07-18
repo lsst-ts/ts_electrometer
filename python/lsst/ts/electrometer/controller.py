@@ -253,9 +253,9 @@ class ElectrometerController(abc.ABC):
                 await self.send_command(command=self.commands.output_trigger_line())
         self.log.debug("Device reset.")
 
-        self.set_mode(enums.UnitMode(self.modes[self.default.mode]))
-        self.set_range(self.default.range)
-        self.set_integration_time(self.default.integration_time)
+        await self.set_mode(enums.UnitMode(self.modes[self.default.mode]))
+        await self.set_range(self.default.range)
+        await self.set_integration_time(self.default.integration_time)
 
         await self.set_digital_filter(
             activate_filter=self.default.filters.general,
@@ -289,8 +289,6 @@ class ElectrometerController(abc.ABC):
         await self.get_mode()
         await self.get_range()
         await self.get_integration_time()
-        # await self.check_error("perform_zero_calibration")
-        self.log.debug("Zero Calibration sent to controller")
 
     async def set_digital_filter(
         self, activate_filter, activate_avg_filter, activate_med_filter
