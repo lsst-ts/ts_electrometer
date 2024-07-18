@@ -485,6 +485,7 @@ class ElectrometerController(abc.ABC):
         res = await self.send_command(f"{self.commands.get_mode()}", has_reply=True)
         self.log.debug(f"Mode returns {res}")
         if res not in ["CHAR", "RES", "VOLT", "CURR"]:
+            self.log.debug(f"HERE ({res})")
             mode, unit = res.split(":")
             mode = mode.replace('"', "")
         else:
