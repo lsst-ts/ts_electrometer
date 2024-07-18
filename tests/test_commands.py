@@ -22,12 +22,12 @@
 import unittest
 
 from lsst.ts.electrometer import enums
-from lsst.ts.electrometer.commands_factory import ElectrometerCommandFactory
+from lsst.ts.electrometer.commands_factory import KeithleyElectrometerCommandFactory
 
 
 class TestElectrometerCommandFactory(unittest.TestCase):
     def setUp(self):
-        self.commands = ElectrometerCommandFactory()
+        self.commands = KeithleyElectrometerCommandFactory()
 
     def test_activate_filter(self):
         reply = self.commands.activate_filter(
@@ -35,25 +35,9 @@ class TestElectrometerCommandFactory(unittest.TestCase):
         )
         self.assertEqual(reply, ":sens:CURR:MED:stat 1;")
 
-    def test_get_avg_filter_status(self):
-        reply = self.commands.get_avg_filter_status(enums.UnitMode.CURR)
-        self.assertEqual(reply, ":sens:CURR:aver:type?;")
-
-    def test_get_med_filter_status(self):
-        reply = self.commands.get_med_filter_status(enums.UnitMode.CURR)
-        self.assertEqual(reply, ":sens:CURR:med:stat?;")
-
     def test_get_filter_status(self):
-        reply = self.commands.get_filter_status(enums.UnitMode.CURR, 1)
+        reply = self.commands.get_filter_status(mode=enums.UnitMode.CURR, filter_type=1)
         self.assertEqual(reply, ":sens:CURR:MED:stat?;")
-
-    def test_set_avg_filter_status(self):
-        reply = self.commands.set_avg_filter_status(enums.UnitMode.CURR, 1)
-        self.assertEqual(reply, ":sens:CURR:aver:type NONE;")
-
-    def test_med_filter_status(self):
-        reply = self.commands.set_med_filter_status(enums.UnitMode.CURR, 1)
-        self.assertEqual(reply, ":sens:CURR:med:stat 1;")
 
     def test_always_read(self):
         reply = self.commands.always_read()
@@ -61,7 +45,7 @@ class TestElectrometerCommandFactory(unittest.TestCase):
 
     def test_next_read(self):
         reply = self.commands.next_read()
-        self.assertEqual(reply, ":trac:feed:cont next;:init;")
+        self.assertEqual(reply, ":trac:feed:cont NEXT;:init;")
 
     def test_clear_buffer(self):
         reply = self.commands.clear_buffer()
@@ -88,7 +72,7 @@ class TestElectrometerCommandFactory(unittest.TestCase):
         self.assertEqual(reply, "*idn?")
 
     def test_get_measure(self):
-        reply = self.commands.get_measure(1)
+        reply = self.commands.get_measure(read_option=2)
         self.assertEqual(reply, ":sens:data?;")
 
     def test_get_mode(self):
