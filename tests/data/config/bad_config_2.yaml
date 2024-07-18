@@ -1,0 +1,28 @@
+instances:
+  - sal_index: 1
+    mode: 1
+    range: 0.01
+    tcpip:
+      hostname: 127.0.0.1
+      port: 9999
+      timeout: 5
+    s3_instance: tuc
+    fits_file_path: /tmp/fits-files/
+    image_name_service: http://comcam-mcm.tuc.lsst.org
+    filters:
+      general: false
+      median: false
+      average: false
+    sensor:
+      model: s123
+      brand: test
+      serial_number: "123456"
+    accessories:
+      vsource: false
+      temperature: false
+    location: test
+    integration_time: 0.01
+    electrometer_type: Keithley
+    electrometer_model: B
+    electrometer_config: 
+      time: 1
