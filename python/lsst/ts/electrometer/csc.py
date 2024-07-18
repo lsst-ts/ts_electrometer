@@ -218,7 +218,9 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         )
         try:
             await self.report_detailed_state(DetailedState.CONFIGURINGSTATE)
-            await self.controller.perform_zero_calibration()
+            await self.controller.perform_zero_calibration(
+                mode=None, auto=None, set_range=None, integration_time=None
+            )
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
             self.log.info("Zero Calibration Completed")
         except Exception:
