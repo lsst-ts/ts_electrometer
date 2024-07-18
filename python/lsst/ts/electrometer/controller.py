@@ -317,7 +317,7 @@ class ElectrometerController(abc.ABC):
         await self.csc.evt_digitalFilterChange.set_write(activateFilter=filter_active)
         await self.get_avg_filter_status()
         await self.get_med_filter_status()
-        await self.check_error()
+        await self.check_error("set_digital_filter")
 
     async def get_avg_filter_status(self):
         """Get the average filter status."""
@@ -535,11 +535,12 @@ class ElectrometerController(abc.ABC):
             The integration time.
         """
         self.integration_time = int_time
+        self.log.debug(f"{int_time=}")
         await self.send_command(
             f"{self.commands.integration_time(mode=self.mode, time=self.integration_time)}"
         )
         await self.get_integration_time()
-        await self.check_error()
+        await self.check_error("set_integration_time")
 
     async def set_mode(self, mode):
         """Set the mode/unit.
@@ -572,7 +573,7 @@ class ElectrometerController(abc.ABC):
             self.auto_range = False
 
         await self.perform_zero_calibration(
-            self.mode, self.auto_range, set_range, self.integration_time
+            self.mode, self.auto_range, self.range, self.integration_time
         )
 
     def make_primary_header(self):
@@ -721,12 +722,17 @@ class ElectrometerController(abc.ABC):
         except Exception:
             self.log.exception("Uploading file to s3 bucket failed.")
 
-    async def check_error(self):
-        """Check the error."""
+    async def check_error(self, from_command: str = None):
+        """Check the error.
+        Parameter
+        ---------
+            from_command : `str`
+                Tells us where the check error is being called from
+        """
         res = await self.send_command(
             f"{self.commands.get_last_error()}", has_reply=True
         )
-        self.log.debug(f"check error: {res}")
+        self.log.debug(f"check error from {from_command}: {res}")
         self.error_code, self.message = res.split(",")
 
     async def get_range(self):
