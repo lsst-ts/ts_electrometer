@@ -252,12 +252,11 @@ class ElectrometerController(abc.ABC):
             case "Keysight":
                 await self.send_command(command=self.commands.output_trigger_line())
         self.log.debug("Device reset.")
-        await self.perform_zero_calibration(
-            mode=enums.UnitMode(self.modes[self.default.mode]),
-            auto=self.auto_range,
-            set_range=self.default.range,
-            integration_time=self.default.integration_time,
-        )
+
+        self.set_mode(enums.UnitMode(self.modes[self.default.mode]))
+        self.set_range(self.auto_range, self.default.range)
+        self.set_integration_time(self.default.integration_time)
+
         await self.set_digital_filter(
             activate_filter=self.default.filters.general,
             activate_avg_filter=self.default.filters.average,
@@ -278,21 +277,19 @@ class ElectrometerController(abc.ABC):
         if integration_time is None:
             integration_time = self.integration_time
 
-        self.log.debug(f"Mode being sent to Set Range: {enums.UnitMode(mode).name}")
-        self.log.debug(
-            f"perform zero calibs params: {mode, auto, set_range, integration_time}"
-        )
         await self.send_command(
             self.commands.perform_zero_calibration(
                 mode, auto, set_range, integration_time
             )
         )
+        await self.check_error("perform_zero_calibration")
+
         self.log.debug("Zero calibration command sent")
         await asyncio.sleep(3)
         await self.get_mode()
         await self.get_range()
         await self.get_integration_time()
-        await self.check_error("perform_zero_calibration")
+        # await self.check_error("perform_zero_calibration")
         self.log.debug("Zero Calibration sent to controller")
 
     async def set_digital_filter(
@@ -357,9 +354,6 @@ class ElectrometerController(abc.ABC):
             )
         await self.send_command(self.commands.enable_sync(False))
 
-        await self.perform_zero_calibration(
-            self.mode, self.auto_range, self.range, self.integration_time
-        )
         if self.electrometer_type == "Keithley":
             await self.send_command(f"{self.commands.output_trigger_line(3)}")
         elif self.electrometer_type == "Keysight":
@@ -541,11 +535,23 @@ class ElectrometerController(abc.ABC):
         """
         self.integration_time = int_time
         self.log.debug(f"{int_time=}")
+
         await self.send_command(
-            f"{self.commands.integration_time(mode=self.mode, time=self.integration_time)}"
+            self.commands.integration_time(self.mode, time=int_time)
         )
-        await self.get_integration_time()
-        await self.check_error("set_integration_time")
+
+        self.get_integration_time()
+
+    async def set_mode_and_range(self):
+        self.log.debug(
+            f"Mode and Range being set: {self.mode, self.auto_range, self.range}"
+        )
+        await self.commands.enable_zero_check(enable=True)
+        await self.commands.set_mode(mode=self.mode)
+        await self.commands.set_range(
+            auto=self.auto_range, range_value=self.range, mode=self.mode
+        )
+        await self.commands.enable_zero_check(enable=False)
 
     async def set_mode(self, mode):
         """Set the mode/unit.
@@ -558,9 +564,10 @@ class ElectrometerController(abc.ABC):
         self.mode = enums.UnitMode(self.modes[mode])
         self.log.debug(f"Set mode {self.mode}")
 
-        await self.perform_zero_calibration(
-            self.mode, self.auto_range, self.range, self.integration_time
-        )
+        self.set_mode_and_range()
+        self.check_error("set_mode")
+
+        self.get_mode()
 
     async def set_range(self, set_range):
         """Set the range.
@@ -578,9 +585,10 @@ class ElectrometerController(abc.ABC):
         else:
             self.auto_range = False
 
-        await self.perform_zero_calibration(
-            self.mode, self.auto_range, self.range, self.integration_time
-        )
+        self.set_mode_and_range()
+        self.check_error("set_range")
+
+        self.get_range()
 
     def make_primary_header(self):
         """Make primary header for fits file that follows Rubin Obs. format."""

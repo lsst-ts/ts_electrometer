@@ -615,6 +615,7 @@ class ElectrometerCommandFactory:
             f"{self.enable_zero_check(enable=True)} "
             f"{self.set_mode(mode=mode)} "
             f"{self.set_range(auto=auto, range_value=range_value, mode=mode)} "
+            f"{self.enable_zero_check(enable=False)} "
         )
         return command
 
@@ -948,33 +949,6 @@ class KeysightElectrometerCommandFactory(ElectrometerCommandFactory):
             The generated command string.
         """
         command = ":inp:zcor ON;" if enable else ":inp:zcor OFF;"
-        return command
-
-    def perform_zero_calibration(self, mode, auto, range_value, int_time):
-        """Return combo of commands for perform zero calibration command.
-        Required when setting mode to Volts/Amps to cancel any internal
-        offsets. See page 4-10 in User's manual for sequence
-
-        Parameters
-        ----------
-        mode : `UnitMode`
-            The unit of the device
-        auto : `bool`
-            Whether auto range is activated.
-        range_value : `float`
-            The range of the values.
-
-        Returns
-        -------
-        command : `str`
-            The generated command string
-        """
-        command = (
-            f"{self.set_mode(mode)}"
-            f"{self.set_range(auto=auto, range_value=range_value, mode=mode)}"
-            f"{self.integration_time(mode,int_time)}"
-            f"{self.enable_zero_correction(enable=True)}"
-        )
         return command
 
     def toggle_voltage_source(self, enable):
