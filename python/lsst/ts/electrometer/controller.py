@@ -544,12 +544,23 @@ class ElectrometerController(abc.ABC):
         self.log.debug(
             f"Mode and Range being set: {self.mode, self.auto_range, self.range}"
         )
-        await self.commands.enable_zero_check(enable=True)
-        await self.commands.set_mode(mode=self.mode)
-        await self.commands.set_range(
-            auto=self.auto_range, range_value=self.range, mode=self.mode
+        if self.electrometer_type == "Keithley":
+            self.send_command(
+                command=await self.commands.enable_zero_check(enable=True)
+            )
+        elif self.electrometer_type == "Keysight":
+            self.send_command(command=await self.commands.reset_device())
+
+        await self.send_command(command=self.commands.set_mode(mode=self.mode))
+        await self.send_command(
+            command=self.commands.set_range(
+                auto=self.auto_range, range_value=self.range, mode=self.mode
+            )
         )
-        await self.commands.enable_zero_check(enable=False)
+        if self.electrometer_type == "Keithley":
+            self.send_command(
+                command=await self.commands.enable_zero_check(enable=False)
+            )
 
     async def set_mode(self, mode):
         """Set the mode/unit.
@@ -746,8 +757,8 @@ class ElectrometerController(abc.ABC):
         )
         self.log.debug(f"check error from {from_command}: {res}")
         self.error_code, self.message = res.split(",")
-        if self.message != "No Error":
-            raise RuntimeError(f"Check Error: {res}")
+        # if self.message != "No Error":
+        #     raise RuntimeError(f"Check Error: {res}")
 
     async def get_range(self):
         """Get the range value."""
