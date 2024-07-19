@@ -253,6 +253,10 @@ class ElectrometerController(abc.ABC):
                 await self.send_command(command=self.commands.output_trigger_line())
         self.log.debug("Device reset.")
 
+        self.log.debug(
+            f"connecting: {self.default.mode, self.modes[self.default.mode]}"
+        )
+
         await self.set_mode(self.modes[self.default.mode])
         await self.set_range(self.default.range)
         await self.set_integration_time(self.default.integration_time)
