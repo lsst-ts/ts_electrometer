@@ -504,7 +504,7 @@ class ElectrometerController(abc.ABC):
         """Get the mode/unit."""
         res = await self.send_command(f"{self.commands.get_mode()}", has_reply=True)
         self.log.debug(f"Mode returns {res}")
-        if str(res) in ["CURR", "CHAR", "VOLT", "RES"]:
+        if str(res) in ['"CURR"', '"CHAR"','"VOLT"', '"RES"']:
             mode = res
             mode = mode.replace('"', "")
         else:
