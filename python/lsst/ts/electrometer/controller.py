@@ -570,7 +570,10 @@ class ElectrometerController(abc.ABC):
         mode : `int`
             The mode of the electrometer.
         """
-        self.mode = enums.UnitMode(self.modes[mode])
+        if mode in self.modes.keys():
+            self.mode = mode
+        else:
+            self.mode = enums.UnitMode(self.modes[mode])
         self.log.debug(f"Set mode {self.mode}")
 
         self.set_mode_and_range()
