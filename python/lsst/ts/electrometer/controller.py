@@ -387,6 +387,7 @@ class ElectrometerController(abc.ABC):
         """Start storing values in the Keithley electrometer's buffer."""
         self.group_id = group_id
         await self.prepare_scan()
+        await self.perform_zero_calibration()
         await self.send_command(f"{self.commands.clear_buffer()}")
 
         if self.electrometer_type == "Keithley":
@@ -416,6 +417,7 @@ class ElectrometerController(abc.ABC):
         """
         self.group_id = group_id
         await self.prepare_scan()
+        await self.perform_zero_calibration()
         await self.send_command(f"{self.commands.clear_buffer()}")
 
         if self.electrometer_type == "Keithley":
