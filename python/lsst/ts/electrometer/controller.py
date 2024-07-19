@@ -270,8 +270,20 @@ class ElectrometerController(abc.ABC):
         await self.commander.disconnect()
 
     async def perform_zero_calibration(self, mode, auto, set_range, integration_time):
-        """NOTE: THIS IS NOT DEFUNCT, BUT NEED TO KEEP IT UNTIL XML CAN
-        BE CHANGED
+        """This enables the zero check and sets the mode and range before
+        every measurement.
+
+        Parameters
+        ----------
+        mode : `str` | None
+            Mode of measurement, CURR, CHAR, VOLT, RES
+        auto : `bool` | None
+            Whether or not in auto range
+        set_range : `float` | None
+            The measurement range
+        integration_time : `float` | None
+            The integration time. This is not used in this and will be removed
+            in future xml changes
         """
         if mode is None:
             mode = self.mode
@@ -281,6 +293,7 @@ class ElectrometerController(abc.ABC):
             set_range = self.range
         if integration_time is None:
             integration_time = self.integration_time
+        # TO-DO : Remove integration time from perform_zero_calibration
 
         await self.send_command(
             self.commands.perform_zero_calibration(
@@ -293,7 +306,6 @@ class ElectrometerController(abc.ABC):
         await asyncio.sleep(3)
         await self.get_mode()
         await self.get_range()
-        await self.get_integration_time()
 
     async def set_digital_filter(
         self, activate_filter, activate_avg_filter, activate_med_filter
@@ -549,25 +561,6 @@ class ElectrometerController(abc.ABC):
 
         await self.get_integration_time()
 
-    async def set_mode_and_range(self):
-        """This sends the commands to set the mode and range, which
-        need to be done together. For the Keithley, need to enable
-        the zero check and for the Keysight, need to reset the device.
-        """
-        self.log.debug(
-            f"Mode and Range being set: {self.mode, self.auto_range, self.range}"
-        )
-        await self.send_command(command=self.commands.enable_zero_check(enable=True))
-
-        await self.send_command(command=self.commands.set_mode(mode=self.mode))
-        await self.send_command(
-            command=self.commands.set_range(
-                auto=self.auto_range, range_value=self.range, mode=self.mode
-            )
-        )
-
-        await self.send_command(command=self.commands.enable_zero_check(enable=False))
-
     async def set_mode(self, mode):
         """Set the mode/unit.
 
@@ -584,7 +577,7 @@ class ElectrometerController(abc.ABC):
             self.mode = self.modes[mode].name
         self.log.debug(f"Set mode {self.mode}")
 
-        await self.set_mode_and_range()
+        await self.perform_zero_calibration()
         await self.check_error("set_mode")
 
         await self.get_mode()
@@ -606,7 +599,7 @@ class ElectrometerController(abc.ABC):
         else:
             self.auto_range = False
 
-        await self.set_mode_and_range()
+        await self.perform_zero_calibration()
         await self.check_error("set_range")
 
         await self.get_range()
@@ -886,23 +879,6 @@ description: Schema for Keysight Electrometer configuration files.
 type: object
 properties: {}
 """
-        )
-
-    async def set_mode_and_range(self):
-        """This sends the commands to set the mode and range, which
-        need to be done together. For the Keysight, need to reset the device.
-        """
-        self.log.debug(
-            f"Mode and Range being set: {self.mode, self.auto_range, self.range}"
-        )
-
-        await self.send_command(command=await self.commands.reset_device())
-
-        await self.send_command(command=self.commands.set_mode(mode=self.mode))
-        await self.send_command(
-            command=self.commands.set_range(
-                auto=self.auto_range, range_value=self.range, mode=self.mode
-            )
         )
 
     async def setup_scan(self):
