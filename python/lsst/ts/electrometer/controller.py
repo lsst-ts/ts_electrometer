@@ -504,7 +504,7 @@ class ElectrometerController(abc.ABC):
         """Get the mode/unit."""
         res = await self.send_command(f"{self.commands.get_mode()}", has_reply=True)
         self.log.debug(f"Mode returns {res}")
-        if str(res) in ['"CURR"', '"CHAR"','"VOLT"', '"RES"']:
+        if str(res) in ['"CURR"', '"CHAR"', '"VOLT"', '"RES"']:
             mode = res
             mode = mode.replace('"', "")
         else:
@@ -514,7 +514,6 @@ class ElectrometerController(abc.ABC):
         self.log.debug(f"Mode is {mode}")
 
         self.mode = enums.UnitMode(mode).name
-        self.log.debug(f"In get mode: {self.mode}")
         await self.csc.evt_measureType.set_write(
             mode=int(
                 [num for num, mode in self.modes.items() if self.mode == mode.name][0]
@@ -579,13 +578,12 @@ class ElectrometerController(abc.ABC):
             self.mode = mode
         else:
             self.mode = self.modes[mode].name
-        self.log.debug(f"Set mode {self.mode}")
+        self.log.debug(f"{self.mode=}")
 
         await self.perform_zero_calibration()
         await self.check_error("set_mode")
 
         await self.get_mode()
-        self.log.debug("done with setting mode")
 
     async def set_range(self, set_range):
         """Set the range.
@@ -607,7 +605,6 @@ class ElectrometerController(abc.ABC):
         await self.check_error("set_range")
 
         await self.get_range()
-        self.log.debug("done with set range")
 
     def make_primary_header(self):
         """Make primary header for fits file that follows Rubin Obs. format."""
