@@ -269,7 +269,9 @@ class ElectrometerController(abc.ABC):
         self.image_service_client = None
         await self.commander.disconnect()
 
-    async def perform_zero_calibration(self, mode, auto, set_range, integration_time):
+    async def perform_zero_calibration(
+        self, mode=None, auto=None, set_range=None, integration_time=None
+    ):
         """This enables the zero check and sets the mode and range before
         every measurement.
 
