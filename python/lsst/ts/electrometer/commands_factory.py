@@ -612,6 +612,7 @@ class ElectrometerCommandFactory:
             The generated command string
         """
         command = (
+            f"{self.reset_device()}"
             f"{self.enable_zero_check(enable=True)} "
             f"{self.set_mode(mode=mode)} "
             f"{self.set_range(auto=auto, range_value=range_value, mode=mode)} "

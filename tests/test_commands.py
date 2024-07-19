@@ -115,7 +115,7 @@ class TestElectrometerCommandFactory(unittest.TestCase):
         reply = self.commands.set_range(
             auto=False, range_value=0.001, mode=enums.UnitMode.CURR
         )
-        self.assertEqual(reply, ":sens:CURR:rang:auto 0;\n:sens:CURR:rang 0.001;")
+        self.assertEqual(reply, ":sens:CURR:rang:auto OFF;\n:sens:CURR:rang 0.001;")
 
     def test_enable_sync(self):
         reply = self.commands.enable_sync(False)

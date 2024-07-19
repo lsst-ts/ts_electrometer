@@ -117,7 +117,7 @@ class MockKeysight:
                 r"^:sens:func:on (?P<parameter>'CURR'|'CHAR'|'VOLT'|'RES');$"
             ): self.do_set_mode,
             re.compile(
-                r"^:sens:(CURR|CHAR|VOLT|RES):rang:auto (0|1);$"
+                r"^:sens:(CURR|CHAR|VOLT|RES):rang:auto (OFF|ON);$"
             ): self.do_set_range,
             re.compile(r"^:sens:(CURR|CHAR|VOLT|RES):rang\?;$"): self.do_get_range,
             re.compile(
@@ -267,7 +267,7 @@ class MockKeysight:
 
     def do_get_mode(self):
         """Get the current mode."""
-        return "CHAR"
+        return '"CHAR"'
 
     def do_clear_buffer(self):
         """Clear the buffer."""
@@ -422,7 +422,7 @@ class MockKeithley:
                 r"^:sens:func (?P<parameter>'CURR'|'CHAR'|'VOLT'|'RES');$"
             ): self.do_set_mode,
             re.compile(
-                r"^:sens:(CURR|CHAR|VOLT|RES):rang:auto (0|1);$"
+                r"^:sens:(CURR|CHAR|VOLT|RES):rang:auto (OFF|ON);$"
             ): self.do_set_range,
             re.compile(r"^:sens:(CURR|CHAR|VOLT|RES):rang\?;$"): self.do_get_range,
             re.compile(
