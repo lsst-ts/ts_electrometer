@@ -190,8 +190,10 @@ class ElectrometerController(abc.ABC):
             filters=types.SimpleNamespace(**config.filters),
             integration_time=config.integration_time,
         )
+
         self.mode = self.modes[config.mode].name
         self.range = config.range
+        self.integration_time = config.integration_time
         tcpip = types.SimpleNamespace(**config.tcpip)
         self.commander = commander.Commander(
             log=self.log, brand=config.electrometer_type
@@ -255,7 +257,7 @@ class ElectrometerController(abc.ABC):
 
         await self.set_mode(self.mode)
         await self.set_range(self.range)
-        await self.set_integration_time(self.default.integration_time)
+        await self.set_integration_time(self.integration_time)
 
         await self.set_digital_filter(
             activate_filter=self.default.filters.general,
@@ -268,6 +270,9 @@ class ElectrometerController(abc.ABC):
         await self.commander.disconnect()
 
     async def perform_zero_calibration(self, mode, auto, set_range, integration_time):
+        """NOTE: THIS IS NOT DEFUNCT, BUT NEED TO KEEP IT UNTIL XML CAN
+        BE CHANGED
+        """
         if mode is None:
             mode = self.mode
         if auto is None:
@@ -344,19 +349,17 @@ class ElectrometerController(abc.ABC):
             activateMedianFilter=self.median_filter_active
         )
 
+    async def setup_scan(self):
+        """Sets up the electrometer to prepare for scan."""
+        await self.send_command(self.commands.set_resolution(mode=self.mode, digit=7))
+        await self.send_command(self.commands.enable_sync(False))
+        await self.send_command(f"{self.commands.output_trigger_line(3)}")
+        await self.send_command(f"{self.commands.clear_buffer()}")
+
     async def prepare_scan(self):
         """Prepare the keithley for scanning."""
-        if self.electrometer_type == "Keithley":
-            await self.send_command(
-                self.commands.set_resolution(mode=self.mode, digit=7)
-            )
-        await self.send_command(self.commands.enable_sync(False))
+        await self.setup_scan()
 
-        if self.electrometer_type == "Keithley":
-            await self.send_command(f"{self.commands.output_trigger_line(3)}")
-        elif self.electrometer_type == "Keysight":
-            await self.send_command(f"{self.commands.output_trigger_line()}")
-        await self.send_command(f"{self.commands.clear_buffer()}")
         format_trac_args = {}
         if self.accessories.temperature:
             format_trac_args["temperature"] = True
@@ -371,8 +374,10 @@ class ElectrometerController(abc.ABC):
         self.group_id = group_id
         await self.prepare_scan()
         await self.send_command(f"{self.commands.clear_buffer()}")
+
         if self.electrometer_type == "Keithley":
             await self.send_command(f"{self.commands.set_buffer_size(50000)}")
+
         await self.send_command(
             f"{self.commands.select_source(source=enums.Source.TIM)}"
         )
@@ -398,8 +403,10 @@ class ElectrometerController(abc.ABC):
         self.group_id = group_id
         await self.prepare_scan()
         await self.send_command(f"{self.commands.clear_buffer()}")
+
         if self.electrometer_type == "Keithley":
             await self.send_command(f"{self.commands.set_buffer_size(50000)}")
+
         await self.send_command(
             f"{self.commands.select_source(source=enums.Source.IMM)}"
         )
@@ -411,16 +418,16 @@ class ElectrometerController(abc.ABC):
         await self.send_command(f"{self.commands.next_read()}")
         self.manual_start_time = utils.current_tai()
 
-        if self.electrometer_type == "Keysight":
-            await asyncio.sleep(scan_duration)
-            await self.send_command(f"{self.commands.stop_taking_data()}")
-        elif self.electrometer_type == "Keithley":
-            dt = 0
-            while dt < scan_duration:
-                await self.get_intensity()
-                await self.csc.evt_intensity.set_write(intensity=self.last_value)
-                await asyncio.sleep(self.integration_time)
-                dt = utils.current_tai() - self.manual_start_time
+        await self.continuous_scan(scan_duration)
+
+    async def continuous_scan(self, scan_duration):
+        """Part of start scan dt for Keithley"""
+        dt = 0
+        while dt < scan_duration:
+            await self.get_intensity()
+            await self.csc.evt_intensity.set_write(intensity=self.last_value)
+            await asyncio.sleep(self.integration_time)
+            dt = utils.current_tai() - self.manual_start_time
 
     async def stop_scan(self):
         """Stop storing values in the electrometer."""
@@ -481,19 +488,21 @@ class ElectrometerController(abc.ABC):
         """Get the mode/unit."""
         res = await self.send_command(f"{self.commands.get_mode()}", has_reply=True)
         self.log.debug(f"Mode returns {res}")
-        try: 
-            mode, unit = res.split(":")
-            mode = mode.replace('"', "")
-        except:
+        if str(res) in ["CURR", "CHAR", "VOLT", "RES"]:
             mode = res
+            mode = mode.replace('"', "")
+        else:
+            mode, unit = res.split(":")
             mode = mode.replace('"', "")
 
         self.log.debug(f"Mode is {mode}")
 
-        self.mode = enums.UnitMode(mode)
-        self.log.debug(f'In get mode: {self.mode}')
+        self.mode = enums.UnitMode(mode).name
+        self.log.debug(f"In get mode: {self.mode}")
         await self.csc.evt_measureType.set_write(
-            mode=int([num for num, mode in self.modes.items() if self.mode == mode][0]),
+            mode=int(
+                [num for num, mode in self.modes.items() if self.mode == mode.name][0]
+            ),
             force_output=True,
         )
         # TO-DO: Change XML so that evt_measureType write mode as a str
@@ -541,15 +550,14 @@ class ElectrometerController(abc.ABC):
         await self.get_integration_time()
 
     async def set_mode_and_range(self):
+        """This sends the commands to set the mode and range, which
+        need to be done together. For the Keithley, need to enable
+        the zero check and for the Keysight, need to reset the device.
+        """
         self.log.debug(
             f"Mode and Range being set: {self.mode, self.auto_range, self.range}"
         )
-        if self.electrometer_type == "Keithley":
-            await self.send_command(
-                command=self.commands.enable_zero_check(enable=True)
-            )
-        elif self.electrometer_type == "Keysight":
-            await self.send_command(command=await self.commands.reset_device())
+        await self.send_command(command=self.commands.enable_zero_check(enable=True))
 
         await self.send_command(command=self.commands.set_mode(mode=self.mode))
         await self.send_command(
@@ -557,10 +565,8 @@ class ElectrometerController(abc.ABC):
                 auto=self.auto_range, range_value=self.range, mode=self.mode
             )
         )
-        if self.electrometer_type == "Keithley":
-            await self.send_command(
-                command=self.commands.enable_zero_check(enable=False)
-            )
+
+        await self.send_command(command=self.commands.enable_zero_check(enable=False))
 
     async def set_mode(self, mode):
         """Set the mode/unit.
@@ -570,7 +576,9 @@ class ElectrometerController(abc.ABC):
         mode : `int`
             The mode of the electrometer.
         """
-        if mode in ['CURR','CHAR','VOLT','RES']:
+        # TO-DO: Change XML so that evt_measureType write mode as a str
+        # DM-45177
+        if mode in ["CURR", "CHAR", "VOLT", "RES"]:
             self.mode = mode
         else:
             self.mode = self.modes[mode].name
@@ -580,7 +588,7 @@ class ElectrometerController(abc.ABC):
         await self.check_error("set_mode")
 
         await self.get_mode()
-        self.log.debug('done with setting mode')
+        self.log.debug("done with setting mode")
 
     async def set_range(self, set_range):
         """Set the range.
@@ -602,7 +610,7 @@ class ElectrometerController(abc.ABC):
         await self.check_error("set_range")
 
         await self.get_range()
-        self.log.debug('done with set range')
+        self.log.debug("done with set range")
 
     def make_primary_header(self):
         """Make primary header for fits file that follows Rubin Obs. format."""
@@ -762,8 +770,6 @@ class ElectrometerController(abc.ABC):
         )
         self.log.debug(f"check error from {from_command}: {res}")
         self.error_code, self.message = res.split(",")
-        # if self.message != "No Error":
-        #     raise RuntimeError(f"Check Error: {res}")
 
     async def get_range(self):
         """Get the range value."""
@@ -881,6 +887,34 @@ type: object
 properties: {}
 """
         )
+
+    async def set_mode_and_range(self):
+        """This sends the commands to set the mode and range, which
+        need to be done together. For the Keysight, need to reset the device.
+        """
+        self.log.debug(
+            f"Mode and Range being set: {self.mode, self.auto_range, self.range}"
+        )
+
+        await self.send_command(command=await self.commands.reset_device())
+
+        await self.send_command(command=self.commands.set_mode(mode=self.mode))
+        await self.send_command(
+            command=self.commands.set_range(
+                auto=self.auto_range, range_value=self.range, mode=self.mode
+            )
+        )
+
+    async def setup_scan(self):
+        """Sets up the electrometer to prepare for scan."""
+        await self.send_command(self.commands.enable_sync(False))
+        await self.send_command(f"{self.commands.output_trigger_line()}")
+        await self.send_command(f"{self.commands.clear_buffer()}")
+
+    async def continuous_scan(self, scan_duration):
+        """Part of start scan dt for Keysight."""
+        await asyncio.sleep(scan_duration)
+        await self.send_command(f"{self.commands.stop_taking_data()}")
 
     def configure(self, config):
         super().configure(config)
