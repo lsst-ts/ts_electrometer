@@ -190,7 +190,7 @@ class ElectrometerController(abc.ABC):
             filters=types.SimpleNamespace(**config.filters),
             integration_time=config.integration_time,
         )
-        self.mode = enums.UnitMode(self.modes[config.mode])
+        self.mode = self.modes[config.mode].name
         self.range = config.range
         tcpip = types.SimpleNamespace(**config.tcpip)
         self.commander = commander.Commander(
@@ -253,12 +253,8 @@ class ElectrometerController(abc.ABC):
                 await self.send_command(command=self.commands.output_trigger_line())
         self.log.debug("Device reset.")
 
-        self.log.debug(
-            f"connecting: {self.default.mode, self.modes[self.default.mode]}"
-        )
-
-        await self.set_mode(self.modes[self.default.mode])
-        await self.set_range(self.default.range)
+        await self.set_mode(self.mode)
+        await self.set_range(self.range)
         await self.set_integration_time(self.default.integration_time)
 
         await self.set_digital_filter(
@@ -367,7 +363,7 @@ class ElectrometerController(abc.ABC):
         if self.accessories.vsource:
             format_trac_args["voltage"] = True
         format_trac_args["set_mode"] = True
-        format_trac_args["mode"] = self.mode.name
+        format_trac_args["mode"] = self.mode
         await self.send_command(self.commands.format_trac(**format_trac_args))
 
     async def start_scan(self, group_id=None):
@@ -495,6 +491,7 @@ class ElectrometerController(abc.ABC):
         self.log.debug(f"Mode is {mode}")
 
         self.mode = enums.UnitMode(mode)
+        self.log.debug(f'In get mode: {self.mode}')
         await self.csc.evt_measureType.set_write(
             mode=int([num for num, mode in self.modes.items() if self.mode == mode][0]),
             force_output=True,
@@ -541,18 +538,18 @@ class ElectrometerController(abc.ABC):
             self.commands.integration_time(self.mode, time=int_time)
         )
 
-        self.get_integration_time()
+        await self.get_integration_time()
 
     async def set_mode_and_range(self):
         self.log.debug(
             f"Mode and Range being set: {self.mode, self.auto_range, self.range}"
         )
         if self.electrometer_type == "Keithley":
-            self.send_command(
-                command=await self.commands.enable_zero_check(enable=True)
+            await self.send_command(
+                command=self.commands.enable_zero_check(enable=True)
             )
         elif self.electrometer_type == "Keysight":
-            self.send_command(command=await self.commands.reset_device())
+            await self.send_command(command=await self.commands.reset_device())
 
         await self.send_command(command=self.commands.set_mode(mode=self.mode))
         await self.send_command(
@@ -561,8 +558,8 @@ class ElectrometerController(abc.ABC):
             )
         )
         if self.electrometer_type == "Keithley":
-            self.send_command(
-                command=await self.commands.enable_zero_check(enable=False)
+            await self.send_command(
+                command=self.commands.enable_zero_check(enable=False)
             )
 
     async def set_mode(self, mode):
@@ -573,16 +570,17 @@ class ElectrometerController(abc.ABC):
         mode : `int`
             The mode of the electrometer.
         """
-        if mode in self.modes.keys():
+        if mode in ['CURR','CHAR','VOLT','RES']:
             self.mode = mode
         else:
-            self.mode = enums.UnitMode(self.modes[mode])
+            self.mode = self.modes[mode].name
         self.log.debug(f"Set mode {self.mode}")
 
-        self.set_mode_and_range()
-        self.check_error("set_mode")
+        await self.set_mode_and_range()
+        await self.check_error("set_mode")
 
-        self.get_mode()
+        await self.get_mode()
+        self.log.debug('done with setting mode')
 
     async def set_range(self, set_range):
         """Set the range.
@@ -600,10 +598,11 @@ class ElectrometerController(abc.ABC):
         else:
             self.auto_range = False
 
-        self.set_mode_and_range()
-        self.check_error("set_range")
+        await self.set_mode_and_range()
+        await self.check_error("set_range")
 
-        self.get_range()
+        await self.get_range()
+        self.log.debug('done with set range')
 
     def make_primary_header(self):
         """Make primary header for fits file that follows Rubin Obs. format."""
