@@ -79,13 +79,23 @@ class Commander:
 
     async def connect(self) -> None:
         """Connect to the electrometer"""
-        self.client = tcpip.Client(
-            host=self.hostname,
-            port=self.port,
-            terminator=b"\r",
-            name=f"{self.brand} Client",
-            log=self.log,
-        )
+        if self.brand == "Keysight":
+            self.client = tcpip.Client(
+                host=self.hostname,
+                port=self.port,
+                terminator=b"\r",
+                name=f"{self.brand} Client",
+                log=self.log,
+                encoding="ascii",
+            )
+        else:
+            self.client = tcpip.Client(
+                host=self.hostname,
+                port=self.port,
+                terminator=b"\r",
+                name=f"{self.brand} Client",
+                log=self.log,
+            )
         await self.client.start_task
 
     async def disconnect(self) -> None:
