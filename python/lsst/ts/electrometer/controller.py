@@ -506,10 +506,17 @@ class ElectrometerController(abc.ABC):
         self.log.debug(f"Mode returns {res}")
         if str(res) in ['"CURR"', '"CHAR"', '"VOLT"', '"RES"']:
             mode = res
-            mode = mode.replace('"', "")
+        elif str(res) == '"VOLT","CHAR"':
+            _, mode = res.split(",")
         else:
-            mode, unit = res.split(":")
-            mode = mode.replace('"', "")
+            try:
+                mode, unit = res.split(":")
+            except Exception as e:
+                msg = f"Mode does not have a recognizable format {e}"
+                self.log.debug(msg)
+                mode = '"CURR"'  # TO_DO take this out once everythign working
+
+        mode = mode.replace('"', "")
 
         self.log.debug(f"Mode is {mode}")
 
