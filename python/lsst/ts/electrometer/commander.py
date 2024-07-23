@@ -93,7 +93,7 @@ class Commander:
                 port=self.port,
                 name=f"{self.brand} Client",
                 log=self.log,
-                terminator="\r",
+                terminator=b"\r",
             )
         await self.client.start_task
 
