@@ -44,16 +44,23 @@ class MockServer(tcpip.OneClientReadLoopServer):
     def __init__(self, brand) -> None:
         self.brand = brand
         self.log = logging.getLogger(__name__)
+        terminator = tcpip.DEFAULT_TERMINATOR
+        encoding = tcpip.DEFAULT_ENCODING
         if self.brand == "Keithley":
             self.device = MockKeithley()
+            terminator = b"\r"
+            encoding = tcpip.DEFAULT_ENCODING
         elif self.brand == "Keysight":
             self.device = MockKeysight()
+            terminator = tcpip.DEFAULT_TERMINATOR
+            encoding = "latin_1"
         super().__init__(
             name=f"Electrometer {self.brand} Mock Server",
             host=tcpip.LOCAL_HOST,
             port=9999,
             log=self.log,
-            encoding="latin_1",
+            terminator=terminator,
+            encoding=encoding,
         )
 
     async def read_and_dispatch(self) -> None:
