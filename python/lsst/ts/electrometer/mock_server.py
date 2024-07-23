@@ -53,8 +53,7 @@ class MockServer(tcpip.OneClientReadLoopServer):
             host=tcpip.LOCAL_HOST,
             port=9999,
             log=self.log,
-            terminator=b"\r",
-            encoding="ascii",
+            encoding="latin_1",
         )
 
     async def read_and_dispatch(self) -> None:
