@@ -83,16 +83,14 @@ class Commander:
             self.client = tcpip.Client(
                 host=self.hostname,
                 port=self.port,
-                terminator=b"\r",
                 name=f"{self.brand} Client",
                 log=self.log,
-                encoding="ascii",
+                encoding="latin_1",
             )
         else:
             self.client = tcpip.Client(
                 host=self.hostname,
                 port=self.port,
-                terminator=b"\r",
                 name=f"{self.brand} Client",
                 log=self.log,
             )
