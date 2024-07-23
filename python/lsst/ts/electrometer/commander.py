@@ -96,6 +96,9 @@ class Commander:
                 terminator=b"\r",
             )
         await self.client.start_task
+        if self.brand == "Keysight":
+            # ignore welcome message
+            await self.client.read_str()
 
     async def disconnect(self) -> None:
         """Disconnect from the electrometer."""

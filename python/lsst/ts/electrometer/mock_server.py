@@ -21,7 +21,6 @@
 
 __all__ = ["MockServer", "MockKeysight", "MockKeithley"]
 
-import asyncio
 import logging
 import re
 
@@ -61,6 +60,7 @@ class MockServer(tcpip.OneClientReadLoopServer):
             log=self.log,
             terminator=terminator,
             encoding=encoding,
+            connect_callback=self.connect_callback,
         )
 
     async def read_and_dispatch(self) -> None:
@@ -91,9 +91,8 @@ class MockServer(tcpip.OneClientReadLoopServer):
         server : `MockServer`
             The server object.
         """
-        self.read_loop_task.cancel()
-        if server.connected:
-            self.read_loop_task = asyncio.create_task(self.cmd_loop())
+        if server.connected and server.brand == "Keysight":
+            await server.write_str("something")
 
 
 class MockKeysight:
