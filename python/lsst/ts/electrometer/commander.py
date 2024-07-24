@@ -85,6 +85,7 @@ class Commander:
                 port=self.port,
                 name=f"{self.brand} Client",
                 log=self.log,
+                terminator=b"\r",
                 encoding="latin_1",
             )
         else:
