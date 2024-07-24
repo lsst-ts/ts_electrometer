@@ -125,6 +125,12 @@ class Commander:
                             self.log.debug(f"reply is {reply}")
                         except asyncio.IncompleteReadError as e:
                             self.log.exception(f"{e.partial=}")
+                        except asyncio.LimitOverrunError as loe:
+                            self.log.exception(f"{loe.consumed=}")
+                            reply = await self.client.readexactly(loe.consumed)
+                            reply = reply.rstrip(self.client.terminator).decode(
+                                self.client.encoding
+                            )
                     return reply
         else:
             raise RuntimeError("Client is not connected.")
