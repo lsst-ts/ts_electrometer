@@ -114,13 +114,15 @@ class Commander:
             async with self.lock:
                 self.log.debug(f"sending command {msg}")
                 await self.client.write_str(msg)
-                # if self.brand == "Keysight":
-                #     async with asyncio.timeout(timeout):
-                #         await self.client.read_str()
+                if self.brand == "Keysight":
+                    async with asyncio.timeout(timeout):
+                        echo = await self.client.read_str()
+                        self.log.debug(f"echo is {echo}")
                 if has_reply:
                     async with asyncio.timeout(timeout):
                         try:
                             reply = await self.client.read_str()
+                            self.log.debug(f"reply is {reply}")
                         except asyncio.IncompleteReadError as e:
                             self.log.exception(f"{e.partial=}")
                     return reply
