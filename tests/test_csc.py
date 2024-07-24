@@ -27,6 +27,7 @@ import unittest
 import unittest.mock
 
 from lsst.ts import electrometer, salobj
+from lsst.ts.xml.enums.Electrometer import DetailedState
 
 STD_TIMEOUT = 20
 TEST_CONFIG_DIR = pathlib.Path(__file__).parents[1].joinpath("tests", "data", "config")
@@ -266,6 +267,10 @@ class ElectrometerCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTe
             config_dir=TEST_CONFIG_DIR,
         ):
             await self.remote.cmd_performZeroCalib.set_start(timeout=STD_TIMEOUT)
+            await self.assert_next_sample(
+                topic=self.remote.evt_detailedState,
+                detailedState=DetailedState.NOTREADINGSTATE,
+            )
 
     async def test_set_digital_filter(self):
         async with self.make_csc(

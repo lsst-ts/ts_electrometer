@@ -114,7 +114,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             DetailedState(substate) for substate in substates
         ]:
             raise salobj.ExpectedError(
-                f"{action} not allowed in {self.detailed_state!r}"
+                f"command not allowed in {self.detailed_state!r}"
             )
 
     @property
@@ -130,8 +130,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
 
     async def report_detailed_state(self, new_state):
         """Report the new detailed state."""
-        detailed_state = DetailedState(new_state)
-        await self.evt_detailedState.set_write(detailedState=detailed_state)
+        await self.evt_detailedState.set_write(detailedState=new_state)
 
     async def configure(self, config):
         """Configure the Electrometer CSC.
