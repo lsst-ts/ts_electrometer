@@ -112,6 +112,7 @@ class Commander:
     async def send_command(self, msg, has_reply, timeout) -> None | str:
         if self.connected:
             async with self.lock:
+                self.log.debug(f"sending command {msg}")
                 await self.client.write_str(msg)
                 if self.brand == "Keysight":
                     async with asyncio.timeout(timeout):
