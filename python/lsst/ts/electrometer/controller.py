@@ -304,6 +304,7 @@ class ElectrometerController(abc.ABC):
                 mode, auto, set_range, integration_time
             )
         )
+        await asyncio.sleep(2)
         await self.check_error("perform_zero_calibration")
 
         self.log.debug("Zero calibration command sent")
