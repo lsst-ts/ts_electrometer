@@ -85,3 +85,4 @@ class ReadingOption(enum.IntEnum):
 class Error(enum.IntEnum):
     FILE_ERROR = 1
     """File failed to write properly."""
+    CONNECTION = 2

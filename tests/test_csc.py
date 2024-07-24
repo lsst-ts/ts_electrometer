@@ -85,6 +85,10 @@ class KeysightTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase)
             simulation_mode=1,
             config_dir=TEST_CONFIG_DIR,
         ):
+            await self.assert_next_sample(
+                topic=self.remote.evt_detailedState,
+                detailedState=DetailedState.NOTREADINGSTATE,
+            )
             await self.remote.cmd_performZeroCalib.set_start(timeout=STD_TIMEOUT)
 
     async def test_set_digital_filter(self):

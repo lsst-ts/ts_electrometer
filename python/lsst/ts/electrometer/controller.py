@@ -39,6 +39,7 @@ import numpy as np
 import yaml
 from astropy import table
 from lsst.ts import utils
+from lsst.ts.xml.enums.Electrometer import DetailedState
 
 from . import commander, commands_factory, enums
 
@@ -247,6 +248,7 @@ class ElectrometerController(abc.ABC):
                     raise RuntimeError("Electrometer did not report expected type.")
             case _:
                 raise RuntimeError("Expected type is not valid.")
+        await self.csc.report_detailed_state(DetailedState.NOTREADINGSTATE)
         await self.send_command(command=self.commands.reset_device())
         match expected_type:
             case "Keithley":

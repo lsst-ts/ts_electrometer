@@ -98,7 +98,11 @@ class Commander:
         await self.client.start_task
         if self.brand == "Keysight":
             # ignore welcome message
-            await self.client.read_str()
+            async with self.lock:
+                try:
+                    await self.client.read_str()
+                except asyncio.IncompleteReadError as e:
+                    self.log.exception(f"{e.partial=}")
 
     async def disconnect(self) -> None:
         """Disconnect from the electrometer."""
@@ -106,18 +110,21 @@ class Commander:
         self.client = tcpip.Client(host="", port=None, log=self.log)
 
     async def send_command(self, msg, has_reply, timeout) -> None | str:
-        async with self.lock:
-            await self.client.write_str(msg)
-            if self.brand == "Keysight":
-                async with asyncio.timeout(timeout):
-                    await self.client.read_str()
-            if has_reply:
-                async with asyncio.timeout(timeout):
-                    try:
-                        reply = await self.client.read_str()
-                    except asyncio.IncompleteReadError as e:
-                        self.log.exception(f"{e.partial=}")
-                return reply
+        if self.connected:
+            async with self.lock:
+                await self.client.write_str(msg)
+                if self.brand == "Keysight":
+                    async with asyncio.timeout(timeout):
+                        await self.client.read_str()
+                if has_reply:
+                    async with asyncio.timeout(timeout):
+                        try:
+                            reply = await self.client.read_str()
+                        except asyncio.IncompleteReadError as e:
+                            self.log.exception(f"{e.partial=}")
+                    return reply
+        else:
+            raise RuntimeError("Client is not connected.")
 
     def configure(self, config):
         self.hostname = config.hostname

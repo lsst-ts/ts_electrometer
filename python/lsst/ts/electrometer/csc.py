@@ -192,8 +192,12 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
                     domock=do_mock,
                 )
             if not self.controller.connected:
-                await self.controller.connect()
-                await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
+                try:
+                    await self.controller.connect()
+                except Exception:
+                    await self.fault(
+                        code=enums.Error.CONNECTION, report="Connection failed."
+                    )
         else:
             if self.controller is not None:
                 if self.controller.connected:
