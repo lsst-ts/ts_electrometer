@@ -681,6 +681,32 @@ class KeysightElectrometerCommandFactory(ElectrometerCommandFactory):
     def __init__(self) -> None:
         super().__init__()
 
+    def perform_zero_calibration(self, mode, auto, range_value, int_time):
+        """Return combo of commands for perform zero calibration command.
+        Required when setting mode to Volts/Amps to cancel any internal
+        offsets. See page 4-10 in User's manual for sequence
+
+        Parameters
+        ----------
+        mode : `UnitMode`
+            The unit of the device
+        auto : `bool`
+            Whether auto range is activated.
+        range_value : `float`
+            The range of the values.
+
+        Returns
+        -------
+        command : `str`
+            The generated command string
+        """
+        command = (
+            f"{self.reset_device()}"
+            f"{self.set_mode(mode=mode)} "
+            f"{self.set_range(auto=auto, range_value=range_value, mode=mode)} "
+        )
+        return command
+
     def activate_filter(self, mode, filter_type, active) -> str:
         """Return activate filter command.
 
