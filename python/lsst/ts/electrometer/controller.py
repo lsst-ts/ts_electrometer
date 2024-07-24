@@ -459,7 +459,8 @@ class ElectrometerController(abc.ABC):
         self.log.debug(f"last value is {self.last_value}")
         await self.csc.evt_intensity.set_write(intensity=self.last_value)
         await self.send_command(f"{self.commands.enable_display(True)}")
-        await self.send_command(f"{self.commands.enable_zero_check(True)}")
+        if self.electrometer_type == "Keithley":
+            await self.send_command(f"{self.commands.enable_zero_check(True)}")
         # FIXME: DM-37459
         # How long it takes to readout the buffer is dependent upon the
         # integration time and number of samples.
@@ -891,7 +892,6 @@ properties: {}
 
     async def setup_scan(self):
         """Sets up the electrometer to prepare for scan."""
-        await self.send_command(self.commands.enable_sync(False))
         await self.send_command(f"{self.commands.output_trigger_line()}")
         await self.send_command(f"{self.commands.clear_buffer()}")
 
