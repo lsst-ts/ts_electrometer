@@ -85,7 +85,6 @@ class Commander:
                 port=self.port,
                 name=f"{self.brand} Client",
                 log=self.log,
-                terminator=b"\r",
                 encoding="latin_1",
             )
         else:
@@ -114,7 +113,10 @@ class Commander:
                     await self.client.read_str()
             if has_reply:
                 async with asyncio.timeout(timeout):
-                    reply = await self.client.read_str()
+                    try:
+                        reply = await self.client.read_str()
+                    except asyncio.IncompleteReadError as e:
+                        self.log.exception(f"{e.partial=}")
                 return reply
 
     def configure(self, config):
