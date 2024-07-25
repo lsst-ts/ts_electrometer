@@ -996,3 +996,33 @@ class KeysightElectrometerCommandFactory(ElectrometerCommandFactory):
         """
         command = "sens:data:cle;"
         return command
+
+    def integration_time(self, mode, time=0.001):
+        """Return integration time.
+
+        Parameters
+        ----------
+        mode : `UnitMode`
+            The unit of the aperature to set.
+        time : `float`
+            The integration time of the aperture.
+
+        Returns
+        -------
+        command : `str`
+            The generated command string.
+        """
+        unit = enums.UnitMode(mode).name
+        command = f":sens:{unit}:aper {time:f};:trig:acq:tim {time:f};"
+        return command
+
+    def set_infinite_triggers(self):
+        """Return take infinite measurements
+
+        Returns
+        -------
+        command : `str`
+            The generated command string.
+        """
+        command = ":trig:coun INF;"
+        return command
