@@ -26,6 +26,8 @@ import logging
 
 from lsst.ts import tcpip
 
+LIMIT = 1024 * 1024
+
 
 class Commander:
     """Implement communication with the electrometer.
@@ -86,6 +88,7 @@ class Commander:
                 name=f"{self.brand} Client",
                 log=self.log,
                 encoding="latin_1",
+                limit=LIMIT,
             )
         else:
             self.client = tcpip.Client(
@@ -94,6 +97,7 @@ class Commander:
                 name=f"{self.brand} Client",
                 log=self.log,
                 terminator=b"\r",
+                limit=LIMIT,
             )
         await self.client.start_task
         if self.brand == "Keysight":
