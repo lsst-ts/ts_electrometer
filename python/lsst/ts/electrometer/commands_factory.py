@@ -986,7 +986,7 @@ class KeysightElectrometerCommandFactory(ElectrometerCommandFactory):
         command = ":sens:res:man:vso:oper?;"
         return command
 
-    def clear_buffer(self):
+    def clear_array(self):
         """Return clear buffer.
 
         Returns
