@@ -391,6 +391,8 @@ class ElectrometerController(abc.ABC):
         await self.prepare_scan()
         await self.perform_zero_calibration()
         await self.send_command(f"{self.commands.clear_buffer()}")
+        if self.electrometer_type == "Keysight":
+            await self.send_command(f"{self.commands.clear_array()}")
 
         if self.electrometer_type == "Keithley":
             await self.send_command(f"{self.commands.set_buffer_size(50000)}")
@@ -421,6 +423,8 @@ class ElectrometerController(abc.ABC):
         await self.prepare_scan()
         await self.perform_zero_calibration()
         await self.send_command(f"{self.commands.clear_buffer()}")
+        if self.electrometer_type == "Keysight":
+            await self.send_command(f"{self.commands.clear_array()}")
 
         if self.electrometer_type == "Keithley":
             await self.send_command(f"{self.commands.set_buffer_size(50000)}")
