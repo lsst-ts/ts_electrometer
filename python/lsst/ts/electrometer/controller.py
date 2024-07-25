@@ -467,7 +467,6 @@ class ElectrometerController(abc.ABC):
         # self.log.debug(f"last value is {self.last_value}")
         # await self.csc.evt_intensity.set_write(intensity=self.last_value)
         await self.send_command(f"{self.commands.enable_display(True)}")
-        await asyncio.sleep(2)
         if self.electrometer_type == "Keithley":
             await self.send_command(f"{self.commands.enable_zero_check(True)}")
         # FIXME: DM-37459
@@ -496,7 +495,6 @@ class ElectrometerController(abc.ABC):
             f"{self.commands.read_buffer()}", has_reply=True, timeout=read_timeout
         )
         # get the format of the data
-        await asyncio.sleep(2)
         trace_format = await self.send_command(
             f"{self.commands.get_trace_format()}", has_reply=True
         )
