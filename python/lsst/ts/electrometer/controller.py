@@ -308,7 +308,6 @@ class ElectrometerController(abc.ABC):
         await self.check_error("perform_zero_calibration")
 
         self.log.debug("Zero calibration command sent")
-        await asyncio.sleep(3)
         await self.get_mode()
         await self.get_range()
 
@@ -457,10 +456,10 @@ class ElectrometerController(abc.ABC):
             await self.send_command(f"{self.commands.stop_taking_data()}")
         await self.send_command(f"{self.commands.stop_storing_buffer()}")
         self.log.debug("Scanning stopped.")
-        await self.get_intensity()
-        self.log.debug("get_intensity complete")
-        self.log.debug(f"last value is {self.last_value}")
-        await self.csc.evt_intensity.set_write(intensity=self.last_value)
+        # await self.get_intensity()
+        # self.log.debug("get_intensity complete")
+        # self.log.debug(f"last value is {self.last_value}")
+        # await self.csc.evt_intensity.set_write(intensity=self.last_value)
         await self.send_command(f"{self.commands.enable_display(True)}")
         if self.electrometer_type == "Keithley":
             await self.send_command(f"{self.commands.enable_zero_check(True)}")
