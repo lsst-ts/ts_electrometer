@@ -400,6 +400,7 @@ class ElectrometerController(abc.ABC):
         await self.send_command(
             f"{self.commands.select_source(source=enums.Source.TIM)}"
         )
+
         await self.send_command(f"{self.commands.set_infinite_triggers()}")
 
         await self.send_command(f"{self.commands.enable_display(False)}")
@@ -437,7 +438,8 @@ class ElectrometerController(abc.ABC):
             await self.send_command(f"{self.commands.set_autodischarge('OFF')}")
             await self.send_command(f"{self.commands.discharge_capacitor()}")
         await self.send_command(f"{self.commands.start_storing_buffer()}")
-        await self.send_command(f"{self.commands.next_read()}")
+        if self.electrometer_type == "Keithley":
+            await self.send_command(f"{self.commands.next_read()}")
         self.manual_start_time = utils.current_tai()
 
         await self.continuous_scan(scan_duration)
@@ -905,6 +907,7 @@ properties: {}
 
     async def continuous_scan(self, scan_duration):
         """Part of start scan dt for Keysight."""
+        await self.send_command(f"{self.commands.acquire_data()}")
         await asyncio.sleep(scan_duration)
         await self.send_command(f"{self.commands.stop_taking_data()}")
 
