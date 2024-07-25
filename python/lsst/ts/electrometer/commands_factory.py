@@ -985,3 +985,14 @@ class KeysightElectrometerCommandFactory(ElectrometerCommandFactory):
     def get_voltage_source_status(self):
         command = ":sens:res:man:vso:oper?;"
         return command
+
+    def clear_buffer(self):
+        """Return clear buffer.
+
+        Returns
+        -------
+        command : `str`
+            The generated command string.
+        """
+        command = "sens:data:cle;"
+        return command
