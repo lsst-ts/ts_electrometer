@@ -430,9 +430,16 @@ class ElectrometerController(abc.ABC):
         if self.electrometer_type == "Keithley":
             await self.send_command(f"{self.commands.set_buffer_size(50000)}")
 
-        await self.send_command(
-            f"{self.commands.select_source(source=enums.Source.IMM)}"
-        )
+        if self.electrometer_type == "Keithley":
+            await self.send_command(
+                f"{self.commands.select_source(source=enums.Source.IMM)}"
+            )
+        else:
+            await self.send_command(
+                f"{self.commands.select_source(source=enums.Source.TIM)}"
+            )
+            await self.send_command(f"{self.commands.set_infinite_triggers()}")
+
         await self.send_command(f"{self.commands.enable_display(False)}")
         if self.mode == "CHAR":
             await self.send_command(f"{self.commands.set_autodischarge('OFF')}")
