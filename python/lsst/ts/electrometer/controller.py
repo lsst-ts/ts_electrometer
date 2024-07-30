@@ -725,6 +725,12 @@ class ElectrometerController(abc.ABC):
             for item in data_format
         ]
 
+        if self.electrometer_type == "Keithley":
+            _format = ["Signal", "Elapsed Time", "RNUM"]
+            if len(data_format) == 3 & set(_format).issuperset(set(data_format)):
+                data_format = _format
+                self.log.debug(f"Changed data format for Keithley: {data_format}")
+
         data = {header: raw_data[i] for i, header in enumerate(data_format)}
         self.log.debug(f"Data is {data}")
         self.log.debug("Making data table")
