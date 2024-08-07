@@ -366,6 +366,9 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
                 scan_duration=data.scanDuration, group_id=getattr(data, "groupId", None)
             )
             await self.report_detailed_state(DetailedState.READINGBUFFERSTATE)
+            await self.cmd_startScanDt.ack_in_progress(
+                data=data, timeout=data.scanDuration, result=""
+            )
             await self.controller.stop_scan()
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
         except Exception as e:
