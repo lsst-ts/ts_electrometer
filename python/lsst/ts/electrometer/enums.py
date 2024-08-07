@@ -19,6 +19,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+__all__ = ["UnitMode", "Filter", "Source", "AverFilterType", "ReadingOption", "Error"]
+
 import enum
 
 
@@ -83,3 +85,4 @@ class ReadingOption(enum.IntEnum):
 class Error(enum.IntEnum):
     FILE_ERROR = 1
     """File failed to write properly."""
+    CONNECTION = 2
