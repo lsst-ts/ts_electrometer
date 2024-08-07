@@ -1,0 +1,1 @@
+Updated config schema to handle Keysight and Keithley.
