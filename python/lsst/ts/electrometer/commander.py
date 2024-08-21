@@ -19,11 +19,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+__all__ = ["Commander"]
+
 import asyncio
 import logging
-import typing
 
 from lsst.ts import tcpip
+
+LIMIT = 1024 * 1024
 
 
 class Commander:
@@ -53,7 +56,9 @@ class Commander:
         Whether the electrometer is connected or not.
     """
 
-    def __init__(self, log: None | logging.Logger = None) -> None:
+    def __init__(
+        self, log: None | logging.Logger = None, brand: str | None = None
+    ) -> None:
         # Create a logger if none were passed during the instantiation of
         # the class
         self.log: None | logging.Logger = None
@@ -62,79 +67,79 @@ class Commander:
         else:
             self.log = log.getChild(type(self).__name__)
 
-        self.reader: None = None
-        self.writer: None = None
-        self.reply_terminator: bytes = b"\r"
-        self.command_terminator: str = "\r"
         self.lock: asyncio.Lock = asyncio.Lock()
-        self.host: str = tcpip.LOCAL_HOST
+        self.hostname: str = tcpip.LOCAL_HOST
         self.port: int = 9999
-        self.timeout: int = 2
+        self.timeout: int = 5
         self.long_timeout: int = 30
-        self.connected: bool = False
+        self.brand: str | None = brand
+        self.client: tcpip.Client = tcpip.Client(host="", port=None, log=log)
+
+    @property
+    def connected(self) -> bool:
+        return self.client.connected
 
     async def connect(self) -> None:
         """Connect to the electrometer"""
-        async with self.lock:
-            try:
-                connect_task = asyncio.open_connection(
-                    host=self.host, port=int(self.port), limit=1024 * 1024
-                )
-                self.reader, self.writer = await asyncio.wait_for(
-                    connect_task, timeout=self.long_timeout
-                )
-            except Exception as e:
-                raise RuntimeError(
-                    f"Failed to connect. {self.host=} {self.port=}: {e!r}"
-                )
-            self.connected = True
+        if self.brand == "Keysight":
+            self.client = tcpip.Client(
+                host=self.hostname,
+                port=self.port,
+                name=f"{self.brand} Client",
+                log=self.log,
+                encoding="latin_1",
+                limit=LIMIT,
+            )
+        else:
+            self.client = tcpip.Client(
+                host=self.hostname,
+                port=self.port,
+                name=f"{self.brand} Client",
+                log=self.log,
+                terminator=b"\r",
+                limit=LIMIT,
+            )
+        await self.client.start_task
+        if self.brand == "Keysight":
+            # ignore welcome message
+            async with self.lock:
+                try:
+                    await self.client.read_str()
+                except asyncio.IncompleteReadError as e:
+                    self.log.exception(f"{e.partial=}")
 
     async def disconnect(self) -> None:
         """Disconnect from the electrometer."""
-        async with self.lock:
-            if self.writer is None:
-                return
-            try:
-                await tcpip.close_stream_writer(self.writer)
-            except Exception:
-                self.log.exception("Disconnect failed, continuing")
-            finally:
-                self.writer = None
-                self.reader = None
-                self.connected = False
+        await self.client.close()
+        self.client = tcpip.Client(host="", port=None, log=self.log)
 
-    async def send_command(
-        self, msg: str, has_reply: bool = False, timeout: typing.Optional[int] = None
-    ) -> str:
-        """Send a command to the electrometer and read reply if has one.
-
-        Parameters
-        ----------
-        msg : `str`
-            The message to send.
-        has_reply : `bool`
-            Does the command expect a reply.
-
-        Returns
-        -------
-        reply
-        """
-
-        async with self.lock:
-            msg = msg + self.command_terminator
-            msg = msg.encode("ascii")
-            if self.writer is not None:
-                self.log.debug(f"Commanding using: {msg}")
-                self.writer.write(msg)
-                await self.writer.drain()
+    async def send_command(self, msg, has_reply, timeout) -> None | str:
+        if self.connected:
+            async with self.lock:
+                self.log.debug(f"sending command {msg}")
+                await self.client.write_str(msg)
+                if self.brand == "Keysight":
+                    async with asyncio.timeout(timeout):
+                        echo = await self.client.read_str()
+                        self.log.debug(f"echo is {echo}")
                 if has_reply:
-                    reply = await asyncio.wait_for(
-                        self.reader.readuntil(self.reply_terminator),
-                        timeout=self.timeout if timeout is None else timeout,
-                    )
-                    self.log.debug(f"reply={reply}")
-                    reply = reply.decode().strip()
+                    async with asyncio.timeout(timeout):
+                        try:
+                            reply = await self.client.read_str()
+                            self.log.debug(f"reply is {reply}")
+                        except asyncio.IncompleteReadError as e:
+                            self.log.exception(f"{e.partial=}")
+                        except asyncio.LimitOverrunError as loe:
+                            self.log.exception(f"{loe.consumed=}")
+                            reply = await self.client.readexactly(loe.consumed)
+                            reply = reply.rstrip(self.client.terminator).decode(
+                                self.client.encoding
+                            )
                     return reply
-                return None
-            else:
-                raise RuntimeError("CSC not connected.")
+        else:
+            raise RuntimeError("Client is not connected.")
+
+    def configure(self, config):
+        self.hostname = config.hostname
+        self.port = config.port
+        self.timeout = config.timeout
