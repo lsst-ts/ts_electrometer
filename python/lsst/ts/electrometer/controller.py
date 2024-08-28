@@ -35,7 +35,6 @@ import types
 
 import astropy.io.fits as fits
 import astropy.time
-import numpy as np
 import yaml
 from astropy import table
 from lsst.ts import utils
