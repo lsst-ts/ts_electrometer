@@ -1,0 +1,1 @@
+Removed log message describing scan data redundantly.
