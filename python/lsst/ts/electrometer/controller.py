@@ -35,7 +35,6 @@ import types
 
 import astropy.io.fits as fits
 import astropy.time
-import numpy as np
 import yaml
 from astropy import table
 from lsst.ts import utils
@@ -781,14 +780,6 @@ class ElectrometerController(abc.ABC):
             try:
                 pathlib.Path(self.fits_file_path).mkdir(parents=True, exist_ok=True)
                 hdul.writeto(f"{self.fits_file_path}/{filename}")
-                signal = data["Signal"]
-                self.log.info(
-                    f"Electrometer Scan data file written: {filename}\n"
-                    f"Scan Summary of Signal [Mean, median, std] is: "
-                    f"[{np.mean(signal):0.5e}, {np.median(signal):0.5e}, {np.std(signal):0.5e}]\n"
-                    f"Scan Summary of Time [Mean, median] is: "
-                    f"[{np.mean(data['Elapsed Time']):0.5e}, {np.median(data['Elapsed Time']):0.5e}]"
-                )
             except Exception as e:
                 msg = "Writing file to local disk failed."
                 self.log.exception(msg)
