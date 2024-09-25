@@ -1,0 +1,1 @@
+Change to only set Keysight median filter if in current mode.
