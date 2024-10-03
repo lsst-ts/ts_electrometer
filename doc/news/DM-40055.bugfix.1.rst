@@ -1,1 +1,0 @@
-Fixed fits file name for the s3 bucket.
