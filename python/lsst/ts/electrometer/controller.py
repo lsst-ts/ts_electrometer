@@ -331,14 +331,12 @@ class ElectrometerController(abc.ABC):
         )
         filter_active = activate_med_filter and activate_filter
         self.log.debug(f"filter_type is {enums.Filter(1)}")
-        if self.electrometer_type == "Keithley" or self.mode == "CURR":
-            await self.send_command(
-                f"{self.commands.activate_filter(self.mode, enums.Filter(1), filter_active)}"
-            )
+        await self.send_command(
+            f"{self.commands.activate_filter(self.mode, enums.Filter(1), filter_active)}"
+        )
         await self.csc.evt_digitalFilterChange.set_write(activateFilter=filter_active)
         await self.get_avg_filter_status()
-        if self.electrometer_type == "Keithley" or self.mode == "CURR":
-            await self.get_med_filter_status()
+        await self.get_med_filter_status()
         await self.check_error("set_digital_filter")
 
     async def get_avg_filter_status(self):
@@ -357,15 +355,9 @@ class ElectrometerController(abc.ABC):
 
     async def get_med_filter_status(self):
         """Get the median filter status."""
-        if self.electrometer_type == "Keithley" or self.mode == "CURR":
-            res = await self.send_command(
-                f"{self.commands.get_filter_status(self.mode, 1)}", has_reply=True
-            )
-        else:
-            self.log.debug(
-                f"Keysight electrometer has mode {self.mode}. No median filter."
-            )
-            res = 0
+        res = await self.send_command(
+            f"{self.commands.get_filter_status(self.mode, 1)}", has_reply=True
+        )
         self.log.debug(f"median filter response is {res}")
         self.median_filter_active = bool(int(res))
         await self.csc.evt_digitalFilterChange.set_write(

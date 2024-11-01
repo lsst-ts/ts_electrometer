@@ -730,11 +730,7 @@ class KeysightElectrometerCommandFactory(ElectrometerCommandFactory):
         if filter_name == "AVER":
             command = f":sens:{unit_}:{filter_name}:mov:stat {int(active)};"
         else:
-            if unit_ == "CURR":
-                command = f":sens:{unit_}:{filter_name}:stat {int(active)};"
-            else:
-                # cannot set filter type
-                return "0"
+            command = f":sens:{unit_}:{filter_name}:stat {int(active)};"
         return command
 
     def get_filter_status(self, mode, filter_type) -> str:
@@ -757,8 +753,7 @@ class KeysightElectrometerCommandFactory(ElectrometerCommandFactory):
         if enums.Filter(filter_type).name == "AVER":
             command = f":sens:{unit}:{filter_name}:mov:stat?;"
         else:
-            if unit == "CURR":
-                command = f":sens:{unit}:{filter_name}:stat?;"
+            command = f":sens:{unit}:{filter_name}:stat?;"
         return command
 
     def always_read(self) -> str:
