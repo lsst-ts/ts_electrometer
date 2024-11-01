@@ -780,7 +780,9 @@ class ElectrometerController(abc.ABC):
                 f"{self.csc.bucket.name}/{filename}"
             )
             await self.csc.evt_largeFileObjectAvailable.set_write(
-                url=url, generator=f"{self.csc.salinfo.name}:{self.csc.salinfo.index}"
+                url=url,
+                id=self.group_id,
+                generator=f"{self.csc.salinfo.name}:{self.csc.salinfo.index}",
             )
         except Exception:
             self.log.exception("Uploading file to s3 bucket failed.")
