@@ -12,6 +12,33 @@ Version History
 
 .. towncrier release notes start
 
+ts_electrometer v0.9.0 (2024-10-03)
+===================================
+
+Features
+--------
+
+- Added Keysight capabilities. (`DM-40055 <https://rubinobs.atlassian.net/DM-40055>`_)
+- Implement the ts-tcpip.lsst.io library. (`DM-40055 <https://rubinobs.atlassian.net/DM-40055>`_)
+- Updated config schema to handle Keysight and Keithley. (`DM-40055 <https://rubinobs.atlassian.net/DM-40055>`_)
+- Add optional groupId to startScan and startScanDt (`DM-44757 <https://rubinobs.atlassian.net/DM-44757>`_)
+
+
+Bugfixes
+--------
+
+- Fixed fits file name for the s3 bucket. (`DM-40055 <https://rubinobs.atlassian.net/DM-40055>`_)
+- Add startScanDt ack_in_progress. (`DM-40055 <https://rubinobs.atlassian.net/DM-40055>`_)
+- Update ts-conda-build 0.4. (`DM-43486 <https://rubinobs.atlassian.net/DM-43486>`_)
+- Removed log message describing scan data redundantly. (`DM-45981 <https://rubinobs.atlassian.net/DM-45981>`_)
+
+
+Improved Documentation
+----------------------
+
+- Add towncrier support. (`DM-43486 <https://rubinobs.atlassian.net/DM-43486>`_)
+
+
 v0.8.3
 ======
 
