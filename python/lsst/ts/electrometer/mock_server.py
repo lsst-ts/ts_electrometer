@@ -61,6 +61,7 @@ class MockServer(tcpip.OneClientReadLoopServer):
             terminator=terminator,
             encoding=encoding,
             connect_callback=self.connect_callback,
+            limit=2**40,
         )
 
     async def read_and_dispatch(self) -> None:
@@ -70,18 +71,6 @@ class MockServer(tcpip.OneClientReadLoopServer):
             await self.write_str("")
         if reply is not None:
             await self.write_str(reply)
-
-    async def cmd_loop(self):
-        """Implement the command loop for the electrometer"""
-        while self.connected:
-            line = await self.readuntil(b"\r")
-            reply = self.device.parse_message(line)
-            self.log.debug(f"reply={reply}")
-            if reply is not None:
-                reply = reply + "\r"
-                reply = reply.encode("ascii")
-                self.log.debug(f"writing reply={reply}")
-                await self.write(reply)
 
     async def connect_callback(self, server):
         """Start the command loop when client is connected.
@@ -304,8 +293,11 @@ class MockKeysight:
 
     def do_read_buffer(self):
         """Read the values in the buffer."""
-        return "-1.200000E-11,+1.102000E-02,-1.000000E-11,+2.111700E-02, \
+        return (
+            "-1.200000E-11,+1.102000E-02,-1.000000E-11,+2.111700E-02, \
             -1.400000E-11,+3.125200E-02,-1.300000E-11,+4.136600E-02\n"
+            * 10000
+        )
 
     def do_read_sensor(self):
         """Read the sensor."""
@@ -607,7 +599,7 @@ class MockKeithley:
 
     def do_read_buffer(self):
         """Read the values in the buffer."""
-        return "+0.01DC 0.33\n+0.01DC 0.33\n+0.01DC 0.33\n+0.01DC 0.33\n"
+        return "+0.01DC 0.33\n+0.01DC 0.33\n+0.01DC 0.33\n+0.01DC 0.33\n" * 10000
 
     def do_read_sensor(self):
         """Read the sensor."""

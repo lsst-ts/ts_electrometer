@@ -26,7 +26,7 @@ import logging
 
 from lsst.ts import tcpip
 
-LIMIT = 1024 * 1024
+LIMIT = 2**40
 
 
 class Commander:
@@ -125,16 +125,20 @@ class Commander:
                 if has_reply:
                     async with asyncio.timeout(timeout):
                         try:
-                            reply = await self.client.read_str()
+                            reply = b""
+                            byte = b""
+                            while not reply.endswith(self.client.terminator):
+                                byte = await self.client.read(LIMIT)
+                                reply += byte
+                            reply = reply.rstrip(self.client.terminator).decode(
+                                self.client.encoding
+                            )
+                            # reply = await self.client.read_str()
                             self.log.debug(f"reply is {reply}")
                         except asyncio.IncompleteReadError as e:
                             self.log.exception(f"{e.partial=}")
                         except asyncio.LimitOverrunError as loe:
                             self.log.exception(f"{loe.consumed=}")
-                            reply = await self.client.readexactly(loe.consumed)
-                            reply = reply.rstrip(self.client.terminator).decode(
-                                self.client.encoding
-                            )
                     return reply
         else:
             raise RuntimeError("Client is not connected.")
