@@ -113,8 +113,12 @@ class Commander:
         await self.client.close()
         self.client = tcpip.Client(host="", port=None, log=self.log)
 
-    async def send_command(self, msg, has_reply, timeout) -> None | str:
+    async def send_command(self, msg, has_reply, timeout=None) -> None | str:
         if self.connected:
+            if timeout is None:
+                timeout = self.timeout
+            else:
+                timeout = timeout
             async with self.lock:
                 self.log.debug(f"sending command {msg}")
                 await self.client.write_str(msg)
@@ -134,7 +138,7 @@ class Commander:
                                 self.client.encoding
                             )
                             # reply = await self.client.read_str()
-                            self.log.debug(f"reply is {reply}")
+                            self.log.debug(f"reply is {reply[:100]}")
                         except asyncio.IncompleteReadError as e:
                             self.log.exception(f"{e.partial=}")
                         except asyncio.LimitOverrunError as loe:
