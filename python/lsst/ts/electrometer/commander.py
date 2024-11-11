@@ -132,7 +132,7 @@ class Commander:
                             reply = b""
                             byte = b""
                             while not reply.endswith(self.client.terminator):
-                                byte = await self.client.read(1024)
+                                byte = await self.client.read(1)
                                 reply += byte
                             reply = reply.rstrip(self.client.terminator).decode(
                                 self.client.encoding
