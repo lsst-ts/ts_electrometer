@@ -26,7 +26,7 @@ import logging
 
 from lsst.ts import tcpip
 
-LIMIT = 2**40
+LIMIT = 2**16
 
 
 class Commander:
@@ -132,7 +132,7 @@ class Commander:
                             reply = b""
                             byte = b""
                             while not reply.endswith(self.client.terminator):
-                                byte = await self.client.read(LIMIT)
+                                byte = await self.client.read(1024)
                                 reply += byte
                             reply = reply.rstrip(self.client.terminator).decode(
                                 self.client.encoding

@@ -61,7 +61,7 @@ class MockServer(tcpip.OneClientReadLoopServer):
             terminator=terminator,
             encoding=encoding,
             connect_callback=self.connect_callback,
-            limit=2**40,
+            limit=2**32,
         )
 
     async def read_and_dispatch(self) -> None:
@@ -296,7 +296,7 @@ class MockKeysight:
         return (
             "-1.200000E-11,+1.102000E-02,-1.000000E-11,+2.111700E-02, \
             -1.400000E-11,+3.125200E-02,-1.300000E-11,+4.136600E-02\n"
-            * 10000
+            * 1000
         )
 
     def do_read_sensor(self):
@@ -599,7 +599,7 @@ class MockKeithley:
 
     def do_read_buffer(self):
         """Read the values in the buffer."""
-        return "+0.01DC 0.33\n+0.01DC 0.33\n+0.01DC 0.33\n+0.01DC 0.33\n" * 10000
+        return "+0.01DC 0.33\n+0.01DC 0.33\n+0.01DC 0.33\n+0.01DC 0.33\n" * 1000
 
     def do_read_sensor(self):
         """Read the sensor."""
