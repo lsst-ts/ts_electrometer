@@ -195,6 +195,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
                 try:
                     await self.controller.connect()
                 except Exception:
+                    self.log.exception("Connection failed.")
                     await self.fault(
                         code=enums.Error.CONNECTION, report="Connection failed."
                     )
