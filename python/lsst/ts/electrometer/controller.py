@@ -760,7 +760,6 @@ class ElectrometerController(abc.ABC):
         )
         hdul[0].header["OBSID"] = obs_ids[0]
         hdul[0].header["GROUPID"] = self.group_id
-        self.group_id = None
         filename = f"{obs_ids[0]}.fits"
 
         try:
