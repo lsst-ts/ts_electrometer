@@ -771,12 +771,13 @@ class ElectrometerController(abc.ABC):
                 salindexname=self.csc.salinfo.index,
                 generator="fits",
                 date=astropy.time.Time(self.manual_end_time, format="unix_tai"),
+                other=obs_ids[0],
                 suffix=".fits",
             )
             await self.csc.bucket.upload(fileobj=file_upload, key=key_name)
             url = (
                 f"{self.csc.bucket.service_resource.meta.client.meta.endpoint_url}/"
-                f"{self.csc.bucket.name}/{filename}"
+                f"{self.csc.bucket.name}/{key_name}"
             )
             await self.csc.evt_largeFileObjectAvailable.set_write(
                 url=url,
