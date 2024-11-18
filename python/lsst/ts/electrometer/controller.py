@@ -768,12 +768,13 @@ class ElectrometerController(abc.ABC):
             file_upload.seek(0)
             key_name = self.csc.bucket.make_key(
                 salname="Electrometer",
-                salindexname=None,
-                generator=self.csc.salinfo.index,
+                salindexname=self.csc.salinfo.index,
+                generator="fits",
                 date=astropy.time.Time(self.manual_end_time, format="unix_tai"),
                 other=obs_ids[0],
                 suffix=".fits",
             )
+            key_name = key_name[: key_name.rfind("/") + 1] + filename
             await self.csc.bucket.upload(fileobj=file_upload, key=key_name)
             url = (
                 f"{self.csc.bucket.service_resource.meta.client.meta.endpoint_url}/"
