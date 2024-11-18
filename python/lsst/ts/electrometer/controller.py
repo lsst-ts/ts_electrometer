@@ -768,8 +768,8 @@ class ElectrometerController(abc.ABC):
             file_upload.seek(0)
             key_name = self.csc.bucket.make_key(
                 salname="Electrometer",
-                salindexname=self.csc.salinfo.index,
-                generator="fits",
+                salindexname=None,
+                generator=self.csc.salinfo.index,
                 date=astropy.time.Time(self.manual_end_time, format="unix_tai"),
                 other=obs_ids[0],
                 suffix=".fits",
