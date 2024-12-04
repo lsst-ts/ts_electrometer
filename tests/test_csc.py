@@ -61,7 +61,7 @@ class KeysightTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase)
         async with self.make_csc(
             initial_state=salobj.State.STANDBY,
             index=2,
-            simulation_mode=1,
+            simulation_mode=2,
             config_dir=TEST_CONFIG_DIR,
         ):
             await self.check_standard_state_transitions(
@@ -82,7 +82,7 @@ class KeysightTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase)
         async with self.make_csc(
             initial_state=salobj.State.ENABLED,
             index=2,
-            simulation_mode=1,
+            simulation_mode=2,
             config_dir=TEST_CONFIG_DIR,
         ):
             await self.assert_next_sample(
@@ -95,7 +95,7 @@ class KeysightTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase)
         async with self.make_csc(
             initial_state=salobj.State.ENABLED,
             index=2,
-            simulation_mode=1,
+            simulation_mode=2,
             config_dir=TEST_CONFIG_DIR,
         ):
             self.remote.evt_digitalFilterChange.flush()
@@ -116,7 +116,7 @@ class KeysightTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase)
         async with self.make_csc(
             initial_state=salobj.State.ENABLED,
             index=2,
-            simulation_mode=1,
+            simulation_mode=2,
             config_dir=TEST_CONFIG_DIR,
         ):
             await self.remote.cmd_setIntegrationTime.set_start(
@@ -129,7 +129,7 @@ class KeysightTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase)
         async with self.make_csc(
             initial_state=salobj.State.ENABLED,
             index=2,
-            simulation_mode=1,
+            simulation_mode=2,
             config_dir=TEST_CONFIG_DIR,
         ):
             await self.remote.cmd_setMode.set_start(mode=2, timeout=STD_TIMEOUT)
@@ -139,7 +139,7 @@ class KeysightTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase)
         async with self.make_csc(
             initial_state=salobj.State.ENABLED,
             index=2,
-            simulation_mode=1,
+            simulation_mode=2,
             config_dir=TEST_CONFIG_DIR,
         ):
             self.remote.evt_measureRange.flush()
@@ -152,7 +152,7 @@ class KeysightTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase)
         async with self.make_csc(
             initial_state=salobj.State.ENABLED,
             index=2,
-            simulation_mode=1,
+            simulation_mode=2,
             config_dir=TEST_CONFIG_DIR,
         ):
             self.csc.controller.image_service_client.get_next_obs_id = (
@@ -164,7 +164,7 @@ class KeysightTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase)
         async with self.make_csc(
             initial_state=salobj.State.ENABLED,
             index=2,
-            simulation_mode=1,
+            simulation_mode=2,
             config_dir=TEST_CONFIG_DIR,
         ):
             self.csc.controller.image_service_client.get_next_obs_id = (
@@ -182,7 +182,7 @@ class KeysightTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase)
         async with self.make_csc(
             initial_state=salobj.State.ENABLED,
             index=2,
-            simulation_mode=1,
+            simulation_mode=2,
             config_dir=TEST_CONFIG_DIR,
         ):
             await self.remote.cmd_setVoltageSource.set_start(
@@ -246,7 +246,7 @@ class ElectrometerCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTe
         async with self.make_csc(
             initial_state=salobj.State.STANDBY,
             index=1,
-            simulation_mode=1,
+            simulation_mode=2,
             config_dir=TEST_CONFIG_DIR,
         ):
             await self.check_standard_state_transitions(
@@ -267,7 +267,7 @@ class ElectrometerCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTe
         async with self.make_csc(
             initial_state=salobj.State.ENABLED,
             index=1,
-            simulation_mode=1,
+            simulation_mode=2,
             config_dir=TEST_CONFIG_DIR,
         ):
             await self.remote.cmd_performZeroCalib.set_start(timeout=STD_TIMEOUT)
@@ -280,7 +280,7 @@ class ElectrometerCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTe
         async with self.make_csc(
             initial_state=salobj.State.ENABLED,
             index=1,
-            simulation_mode=1,
+            simulation_mode=2,
             config_dir=TEST_CONFIG_DIR,
         ):
             self.remote.evt_digitalFilterChange.flush()
@@ -295,7 +295,7 @@ class ElectrometerCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTe
         async with self.make_csc(
             initial_state=salobj.State.ENABLED,
             index=1,
-            simulation_mode=1,
+            simulation_mode=2,
             config_dir=TEST_CONFIG_DIR,
         ):
             await self.remote.cmd_setIntegrationTime.set_start(
@@ -306,7 +306,7 @@ class ElectrometerCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTe
         async with self.make_csc(
             initial_state=salobj.State.ENABLED,
             index=1,
-            simulation_mode=1,
+            simulation_mode=2,
             config_dir=TEST_CONFIG_DIR,
         ):
             await self.remote.cmd_setMode.set_start(mode=2, timeout=STD_TIMEOUT)
@@ -315,7 +315,7 @@ class ElectrometerCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTe
         async with self.make_csc(
             initial_state=salobj.State.ENABLED,
             index=1,
-            simulation_mode=1,
+            simulation_mode=2,
             config_dir=TEST_CONFIG_DIR,
         ):
             self.remote.evt_measureRange.flush()
@@ -328,7 +328,7 @@ class ElectrometerCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTe
         async with self.make_csc(
             initial_state=salobj.State.ENABLED,
             index=1,
-            simulation_mode=1,
+            simulation_mode=2,
             config_dir=TEST_CONFIG_DIR,
         ):
             self.csc.controller.image_service_client.get_next_obs_id = (
@@ -340,7 +340,7 @@ class ElectrometerCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTe
         async with self.make_csc(
             initial_state=salobj.State.ENABLED,
             index=1,
-            simulation_mode=1,
+            simulation_mode=2,
             config_dir=TEST_CONFIG_DIR,
         ):
             self.csc.controller.image_service_client.get_next_obs_id = (
@@ -354,7 +354,7 @@ class ElectrometerCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTe
         async with self.make_csc(
             initial_state=salobj.State.ENABLED,
             index=1,
-            simulation_mode=1,
+            simulation_mode=2,
             config_dir=TEST_CONFIG_DIR,
         ):
             await self.remote.cmd_setVoltageSource.set_start(

@@ -69,7 +69,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
     bucket : `None` or `salobj.AsyncS3Bucket`
     """
 
-    valid_simulation_modes = (0, 1)
+    valid_simulation_modes = (0, 1, 2)
     version = __version__
 
     def __init__(
@@ -181,6 +181,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
                     self.controller.electrometer_type
                 )
                 await self.simulator.start_task
+            if self.simulation_mode == 2:
                 do_mock = True
                 create = True
             if self.bucket is None:
