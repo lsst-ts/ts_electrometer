@@ -26,7 +26,7 @@ import logging
 
 from lsst.ts import tcpip
 
-LIMIT = 1024 * 1024
+LIMIT = 2**16
 
 
 class Commander:
@@ -113,8 +113,12 @@ class Commander:
         await self.client.close()
         self.client = tcpip.Client(host="", port=None, log=self.log)
 
-    async def send_command(self, msg, has_reply, timeout) -> None | str:
+    async def send_command(self, msg, has_reply, timeout=None) -> None | str:
         if self.connected:
+            if timeout is None:
+                timeout = self.timeout
+            else:
+                timeout = timeout
             async with self.lock:
                 self.log.debug(f"sending command {msg}")
                 await self.client.write_str(msg)
@@ -125,16 +129,20 @@ class Commander:
                 if has_reply:
                     async with asyncio.timeout(timeout):
                         try:
-                            reply = await self.client.read_str()
-                            self.log.debug(f"reply is {reply}")
+                            reply = b""
+                            byte = b""
+                            while not reply.endswith(self.client.terminator):
+                                byte = await self.client.read(1)
+                                reply += byte
+                            reply = reply.rstrip(self.client.terminator).decode(
+                                self.client.encoding
+                            )
+                            # reply = await self.client.read_str()
+                            self.log.debug(f"reply is {reply[:100]}")
                         except asyncio.IncompleteReadError as e:
                             self.log.exception(f"{e.partial=}")
                         except asyncio.LimitOverrunError as loe:
                             self.log.exception(f"{loe.consumed=}")
-                            reply = await self.client.readexactly(loe.consumed)
-                            reply = reply.rstrip(self.client.terminator).decode(
-                                self.client.encoding
-                            )
                     return reply
         else:
             raise RuntimeError("Client is not connected.")
