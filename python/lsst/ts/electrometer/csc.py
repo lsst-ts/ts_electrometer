@@ -181,17 +181,26 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
                     self.controller.electrometer_type
                 )
                 await self.simulator.start_task
+                self.controller.commander.host = self.simulator.host
+                self.controller.commander.port = self.simulator.port
             if self.simulation_mode == 2:
                 do_mock = True
                 create = True
             if self.bucket is None:
-                self.bucket = salobj.AsyncS3Bucket(
-                    salobj.AsyncS3Bucket.make_bucket_name(
-                        s3instance=self.controller.s3_instance
-                    ),
-                    create=create,
-                    domock=do_mock,
-                )
+                try:
+                    self.bucket = salobj.AsyncS3Bucket(
+                        salobj.AsyncS3Bucket.make_bucket_name(
+                            s3instance=self.controller.s3_instance
+                        ),
+                        create=create,
+                        domock=do_mock,
+                    )
+                except Exception:
+                    self.log.exception("Bucket creation failed.")
+                    await self.fault(
+                        code=enums.Error.BUCKET, report="Bucket creation failed."
+                    )
+                    return
             if not self.controller.connected:
                 try:
                     await self.controller.connect()
@@ -200,6 +209,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
                     await self.fault(
                         code=enums.Error.CONNECTION, report="Connection failed."
                     )
+                    return
         else:
             if self.controller is not None:
                 if self.controller.connected:
