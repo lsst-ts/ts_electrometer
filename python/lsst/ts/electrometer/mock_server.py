@@ -56,7 +56,7 @@ class MockServer(tcpip.OneClientReadLoopServer):
         super().__init__(
             name=f"Electrometer {self.brand} Mock Server",
             host=tcpip.LOCAL_HOST,
-            port=9999,
+            port=0,
             log=self.log,
             terminator=terminator,
             encoding=encoding,
