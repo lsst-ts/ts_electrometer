@@ -1,0 +1,1 @@
+Now use URL returned by bucket upload function rather than constructing it.
