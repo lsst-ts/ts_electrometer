@@ -12,6 +12,25 @@ Version History
 
 .. towncrier release notes start
 
+ts_electrometer v0.10.0 (2025-03-28)
+====================================
+
+Features
+--------
+
+- Populate largeFileEventAvailable id field in EFD with the groupID. (`DM-47322 <https://rubinobs.atlassian.net/DM-47322>`_)
+- Chunk responses from the device to avoid hitting the limit. (`DM-47478 <https://rubinobs.atlassian.net/DM-47478>`_)
+- Now use URL returned by bucket upload function rather than constructing it. (`DM-49672 <https://rubinobs.atlassian.net/DM-49672>`_)
+
+
+Bugfixes
+--------
+
+- Change to only set Keysight median filter if in current mode. (`DM-46502 <https://rubinobs.atlassian.net/DM-46502>`_)
+- Set timeout properly in send_command. (`DM-47478 <https://rubinobs.atlassian.net/DM-47478>`_)
+- Removed debug log messages that produced large logs. (`DM-49672 <https://rubinobs.atlassian.net/DM-49672>`_)
+
+
 ts_electrometer v0.9.0 (2024-10-03)
 ===================================
 

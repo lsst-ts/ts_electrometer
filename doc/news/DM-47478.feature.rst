@@ -1,1 +1,0 @@
-Chunk responses from the device to avoid hitting the limit.

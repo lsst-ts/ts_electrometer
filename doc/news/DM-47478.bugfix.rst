@@ -1,1 +1,0 @@
-Set timeout properly in send_command.
