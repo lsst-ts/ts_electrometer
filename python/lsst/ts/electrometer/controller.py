@@ -166,9 +166,7 @@ class ElectrometerController(abc.ABC):
         """
         regex_numbers = r"[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?"
         # regex_strings = "(?!E+)[a-zA-Z]+"
-        self.log.debug(f"response: {response}")
         raw_values = list(map(float, re.findall(regex_numbers, response)))
-        self.log.debug(f"parse_buffer: {raw_values=}")
 
         # Converting each value to a float
         raw_str_values = [float(value) for value in raw_values]
@@ -178,8 +176,6 @@ class ElectrometerController(abc.ABC):
         for i, value in enumerate(raw_str_values):
             category_index = i % num_categories
             categorized_lists[category_index].append(value)
-        self.log.debug(f"number of categories: {num_categories}")
-        self.log.debug(f"categorized lists: {categorized_lists}")
         return categorized_lists
 
     @abc.abstractmethod
@@ -726,8 +722,6 @@ class ElectrometerController(abc.ABC):
         primary_hdu = self.make_primary_header()
         self.log.debug("Primary header complete")
         data_metadata = {"name": "Single Electrometer scan readout"}
-        self.log.debug(raw_data)
-        self.log.debug(data_format)
         data_format = [
             item.strip() for item in data_format if item not in ["STAT", "UNIT"]
         ]  # unique to Keithley and are not floats
@@ -748,11 +742,9 @@ class ElectrometerController(abc.ABC):
                 self.log.debug(f"Changed data format for Keithley: {data_format}")
 
         data = {header: raw_data[i] for i, header in enumerate(data_format)}
-        self.log.debug(f"Data is {data}")
         self.log.debug("Making data table")
         data_table = table.QTable(data=data, meta=data_metadata)
         table_hdu = fits.table_to_hdu(data_table)
-        self.log.debug(f"Data table {data_table}")
         self.log.debug("Making fits file")
         hdul = fits.HDUList([primary_hdu, table_hdu])
         image_sequence_array, obs_ids = await self.image_service_client.get_next_obs_id(
@@ -775,11 +767,7 @@ class ElectrometerController(abc.ABC):
                 suffix=".fits",
             )
             key_name = key_name[: key_name.rfind("/") + 1] + filename
-            await self.csc.bucket.upload(fileobj=file_upload, key=key_name)
-            url = (
-                f"{self.csc.bucket.service_resource.meta.client.meta.endpoint_url}/"
-                f"{self.csc.bucket.name}/{key_name}"
-            )
+            url = await self.csc.bucket.upload(fileobj=file_upload, key=key_name)
             await self.csc.evt_largeFileObjectAvailable.set_write(
                 url=url,
                 id=self.group_id,
