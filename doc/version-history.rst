@@ -12,6 +12,22 @@ Version History
 
 .. towncrier release notes start
 
+ts_electrometer v0.11.0 (2025-03-31)
+====================================
+
+Features
+--------
+
+- Added a second simulation mode that does not create a mock S3 bucket for use on the Tucson Test Stand. (`DM-47555 <https://rubinobs.atlassian.net/DM-47555>`_)
+
+
+Bugfixes
+--------
+
+- Added a try-except block for creating the bucket so that the CSC does not get stuck in state in case of failure. (`DM-47555 <https://rubinobs.atlassian.net/DM-47555>`_)
+- Ensured that commander host and port are set to simulator host and port when in simulation mode. (`DM-47555 <https://rubinobs.atlassian.net/DM-47555>`_)
+
+
 ts_electrometer v0.10.0 (2025-03-28)
 ====================================
 
