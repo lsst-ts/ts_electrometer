@@ -1,1 +1,0 @@
-Added a second simulation mode that does not create a mock S3 bucket for use on the Tucson Test Stand.

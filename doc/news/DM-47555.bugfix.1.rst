@@ -1,1 +1,0 @@
-Added a try-except block for creating the bucket so that the CSC does not get stuck in state in case of failure.

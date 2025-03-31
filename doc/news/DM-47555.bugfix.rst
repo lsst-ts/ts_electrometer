@@ -1,1 +1,0 @@
-Ensured that commander host and port are set to simulator host and port when in simulation mode.
