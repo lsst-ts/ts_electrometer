@@ -750,6 +750,7 @@ class ElectrometerController(abc.ABC):
         image_sequence_array, obs_ids = await self.image_service_client.get_next_obs_id(
             num_images=1
         )
+        hdul[0].header["CALIBCLS"] = "lsst.ip.isr.PhotodiodeCalib"
         hdul[0].header["OBSID"] = obs_ids[0]
         hdul[0].header["GROUPID"] = self.group_id
         filename = f"{obs_ids[0]}.fits"
