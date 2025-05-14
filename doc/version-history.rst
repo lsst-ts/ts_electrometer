@@ -12,6 +12,15 @@ Version History
 
 .. towncrier release notes start
 
+ts_electrometer v0.12.0 (2025-05-14)
+====================================
+
+Features
+--------
+
+- Added CALIBCLS: 'lsst.ip.isr.PhotodiodeCalib' to the primary header of the fits file (`DM-50891 <https://rubinobs.atlassian.net/DM-50891>`_)
+
+
 ts_electrometer v0.11.0 (2025-03-31)
 ====================================
 
