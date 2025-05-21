@@ -389,6 +389,11 @@ class ElectrometerCommandFactory:
         command = f":sens:{unit}:aper {time:f};"
         return command
 
+    def auto_integration_time_on(self, mode):
+        unit = enums.UnitMode(mode).name
+        command = f":sens:{unit}:aper:auto ON;"
+        return command
+
     def set_mode(self, mode):
         """Return set mode.
 
@@ -566,7 +571,7 @@ class ElectrometerCommandFactory:
         command = ":disp:enab ON;" if enable is True else ":disp:enab OFF;"
         return command
 
-    def set_timer(self, mode):
+    def set_timer(self, mode, value):
         """Return set time command string.
 
         Returns
@@ -574,7 +579,7 @@ class ElectrometerCommandFactory:
         command : `str`
             The generated command string.
         """
-        command = f":sens:{enums.UnitMode(mode).lower()}:nplc 0.01;"
+        command = f":sens:{enums.UnitMode(mode).lower()}:nplc {value};"
         return command
 
     def prepare_buffer(self):

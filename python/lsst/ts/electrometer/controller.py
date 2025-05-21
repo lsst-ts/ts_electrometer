@@ -593,13 +593,22 @@ class ElectrometerController(abc.ABC):
             The integration time.
         """
         self.integration_time = int_time
-        self.log.debug(f"{int_time=}")
 
-        await self.send_command(
-            self.commands.integration_time(self.mode, time=int_time)
-        )
+        await self.send_command(self.commands.auto_integration_time_on(mode=self.mode))
+
+        await self.send_command(self.commands.set_timer(self.mode, value=int_time))
 
         await self.get_integration_time()
+
+    async def get_timer(self):
+        self.nplc = float(
+            await self.send_command(self.commands.get_timer(self.mode), has_reply=True)
+        )
+
+    async def set_timer(self, nplc):
+        await self.send_command(self.commands.auto_integration_time_on(mode=self.mode))
+        await self.send_command(self.commands.set_timer(self.mode, nplc))
+        await self.get_timer()
 
     async def set_mode(self, mode):
         """Set the mode/unit.
