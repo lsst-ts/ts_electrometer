@@ -117,6 +117,10 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
                 f"command not allowed in {self.detailed_state!r}"
             )
 
+    def assert_valid_range(self):
+        # TODO DM-51208 Write method that asserts value is in valid range.
+        pass
+
     @property
     def detailed_state(self):
         """The current substate of the CSC.
@@ -290,7 +294,8 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         )
         try:
             await self.report_detailed_state(DetailedState.CONFIGURINGSTATE)
-            await self.controller.set_integration_time(int_time=data.intTime)
+            # FIXME DM-51208 Fix command name to use NPLC terminology.
+            await self.controller.set_timer(int_time=data.intTime)
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
         except Exception:
             self.log.exception("setIntegrationTime failed.")
