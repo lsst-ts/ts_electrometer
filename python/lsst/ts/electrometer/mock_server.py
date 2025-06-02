@@ -476,6 +476,9 @@ class MockKeithley:
             re.compile(r"\*RST;$"): self.do_reset_device,
             re.compile(r"^:SENS:TOUT:SIGN 3;$"): self.do_output_trigger_line,
             re.compile(r"^:TRIG:ACQ:TOUT ON;$"): self.do_output_trigger_line,
+            re.compile(
+                r"^:sens:(CURR|CHAR|VOLT|RES):aper:auto (OFF|ON);$"
+            ): self.do_nothing,
             re.compile(r"^:trac:elem TST, ETEM, VSO, CURR;$"): self.do_nothing,
         }
 

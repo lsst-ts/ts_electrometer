@@ -150,5 +150,5 @@ class TestElectrometerCommandFactory(unittest.TestCase):
         self.assertEqual(reply, ":disp:enab ON;")
 
     def test_set_timer(self):
-        reply = self.commands.set_timer(enums.UnitMode.CURR)
-        self.assertEqual(reply, ":sens:curr:nplc 0.01;")
+        reply = self.commands.set_timer(enums.UnitMode.CURR, 1)
+        self.assertEqual(reply, ":sens:curr:nplc 1;")
