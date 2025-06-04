@@ -69,7 +69,7 @@ class TestElectrometerCommandFactory(unittest.TestCase):
 
     def test_get_hardware_info(self):
         reply = self.commands.get_hardware_info()
-        self.assertEqual(reply, "*idn?")
+        self.assertEqual(reply, "*idn?;")
 
     def test_get_measure(self):
         reply = self.commands.get_measure(read_option=2)

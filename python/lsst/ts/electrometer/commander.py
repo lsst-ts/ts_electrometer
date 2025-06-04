@@ -120,12 +120,11 @@ class Commander:
             else:
                 timeout = timeout
             async with self.lock:
-                self.log.debug(f"sending command {msg}")
+                self.log.info(f"sending command {msg}")
                 await self.client.write_str(msg)
                 if self.brand == "Keysight":
                     async with asyncio.timeout(timeout):
-                        echo = await self.client.read_str()
-                        self.log.debug(f"echo is {echo}")
+                        await self.client.read_str()
                 if has_reply:
                     async with asyncio.timeout(timeout):
                         try:

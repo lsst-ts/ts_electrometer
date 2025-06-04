@@ -26,11 +26,13 @@ import shutil
 import unittest
 import unittest.mock
 
+import parameterized
 from lsst.ts import electrometer, salobj
 from lsst.ts.xml.enums.Electrometer import DetailedState
 
 STD_TIMEOUT = 20
 TEST_CONFIG_DIR = pathlib.Path(__file__).parents[1].joinpath("tests", "data", "config")
+INDICES = [101, 102, 103, 201]
 
 
 class KeysightTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
@@ -52,15 +54,17 @@ class KeysightTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase)
             index=index,
         )
 
-    async def test_bin_script(self):
+    @parameterized.parameterized.expand(INDICES)
+    async def test_bin_script(self, index):
         await self.check_bin_script(
-            name="Electrometer", index=2, exe_name="run_electrometer"
+            name="Electrometer", index=index, exe_name="run_electrometer"
         )
 
-    async def test_standard_state_transitions(self):
+    @parameterized.parameterized.expand(INDICES)
+    async def test_standard_state_transitions(self, index):
         async with self.make_csc(
             initial_state=salobj.State.STANDBY,
-            index=2,
+            index=index,
             simulation_mode=2,
             config_dir=TEST_CONFIG_DIR,
         ):
@@ -78,10 +82,11 @@ class KeysightTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase)
                 ]
             )
 
-    async def test_perform_zero_calib(self):
+    @parameterized.parameterized.expand(INDICES)
+    async def test_perform_zero_calib(self, index):
         async with self.make_csc(
             initial_state=salobj.State.ENABLED,
-            index=2,
+            index=index,
             simulation_mode=2,
             config_dir=TEST_CONFIG_DIR,
         ):
@@ -91,10 +96,11 @@ class KeysightTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase)
             )
             await self.remote.cmd_performZeroCalib.set_start(timeout=STD_TIMEOUT)
 
-    async def test_set_digital_filter(self):
+    @parameterized.parameterized.expand(INDICES)
+    async def test_set_digital_filter(self, index):
         async with self.make_csc(
             initial_state=salobj.State.ENABLED,
-            index=2,
+            index=index,
             simulation_mode=2,
             config_dir=TEST_CONFIG_DIR,
         ):
@@ -112,10 +118,11 @@ class KeysightTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase)
             #     activateAverageFilter=False,
             # )
 
-    async def test_set_integration_time(self):
+    @parameterized.parameterized.expand(INDICES)
+    async def test_set_integration_time(self, index):
         async with self.make_csc(
             initial_state=salobj.State.ENABLED,
-            index=2,
+            index=index,
             simulation_mode=2,
             config_dir=TEST_CONFIG_DIR,
         ):
@@ -125,20 +132,27 @@ class KeysightTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase)
             topic = await self.assert_next_sample(topic=self.remote.evt_integrationTime)
             self.assertAlmostEqual(topic.intTime, 0.01)
 
-    async def test_set_mode(self):
+    @parameterized.parameterized.expand(INDICES)
+    async def test_set_mode(self, index):
         async with self.make_csc(
             initial_state=salobj.State.ENABLED,
-            index=2,
+            index=index,
             simulation_mode=2,
             config_dir=TEST_CONFIG_DIR,
         ):
+            await self.assert_next_sample(topic=self.remote.evt_measureType, mode=1)
             await self.remote.cmd_setMode.set_start(mode=2, timeout=STD_TIMEOUT)
             await self.assert_next_sample(topic=self.remote.evt_measureType, mode=2)
+            await self.remote.cmd_setMode.set_start(mode=3, timeout=STD_TIMEOUT)
+            await self.assert_next_sample(topic=self.remote.evt_measureType, mode=3)
+            await self.remote.cmd_setMode.set_start(mode=4, timeout=STD_TIMEOUT)
+            await self.assert_next_sample(topic=self.remote.evt_measureType, mode=4)
 
-    async def test_set_range(self):
+    @parameterized.parameterized.expand(INDICES)
+    async def test_set_range(self, index):
         async with self.make_csc(
             initial_state=salobj.State.ENABLED,
-            index=2,
+            index=index,
             simulation_mode=2,
             config_dir=TEST_CONFIG_DIR,
         ):
@@ -148,10 +162,11 @@ class KeysightTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase)
                 topic=self.remote.evt_measureRange, rangeValue=0.1
             )
 
-    async def test_start_scan(self):
+    @parameterized.parameterized.expand(INDICES)
+    async def test_start_scan(self, index):
         async with self.make_csc(
             initial_state=salobj.State.ENABLED,
-            index=2,
+            index=index,
             simulation_mode=2,
             config_dir=TEST_CONFIG_DIR,
         ):
@@ -160,10 +175,11 @@ class KeysightTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase)
             )
             await self.remote.cmd_startScan.set_start(timeout=STD_TIMEOUT)
 
-    async def test_start_scan_dt(self):
+    @parameterized.parameterized.expand(INDICES)
+    async def test_start_scan_dt(self, index):
         async with self.make_csc(
             initial_state=salobj.State.ENABLED,
-            index=2,
+            index=index,
             simulation_mode=2,
             config_dir=TEST_CONFIG_DIR,
         ):
@@ -178,10 +194,11 @@ class KeysightTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase)
                 topic=self.remote.evt_largeFileObjectAvailable
             )
 
-    async def test_set_voltage_source(self):
+    @parameterized.parameterized.expand(INDICES)
+    async def test_set_voltage_source(self, index):
         async with self.make_csc(
             initial_state=salobj.State.ENABLED,
-            index=2,
+            index=index,
             simulation_mode=2,
             config_dir=TEST_CONFIG_DIR,
         ):
@@ -218,6 +235,7 @@ class KeysightTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase)
             )
 
 
+@unittest.skip("Deprecated.")
 class ElectrometerCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
     def tearDown(self) -> None:
         file_path = "/tmp/electrometerFitsFiles"

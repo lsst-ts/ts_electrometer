@@ -21,10 +21,12 @@
 
 __all__ = ["MockServer", "MockKeysight", "MockKeithley"]
 
+import asyncio
 import logging
 import re
 
 from lsst.ts import tcpip
+from lsst.ts.electrometer.enums import UnitMode
 
 
 class MockServer(tcpip.OneClientReadLoopServer):
@@ -41,10 +43,8 @@ class MockServer(tcpip.OneClientReadLoopServer):
     """
 
     def __init__(self, brand) -> None:
+        log = logging.getLogger(type(self).__name__)
         self.brand = brand
-        self.log = logging.getLogger(__name__)
-        terminator = tcpip.DEFAULT_TERMINATOR
-        encoding = tcpip.DEFAULT_ENCODING
         if self.brand == "Keithley":
             self.device = MockKeithley()
             terminator = b"\r"
@@ -53,11 +53,12 @@ class MockServer(tcpip.OneClientReadLoopServer):
             self.device = MockKeysight()
             terminator = tcpip.DEFAULT_TERMINATOR
             encoding = "latin_1"
+        self.lock = asyncio.Lock()
         super().__init__(
-            name=f"Electrometer {self.brand} Mock Server",
+            name="Electrometer Mock Server",
             host=tcpip.LOCAL_HOST,
             port=0,
-            log=self.log,
+            log=log,
             terminator=terminator,
             encoding=encoding,
             connect_callback=self.connect_callback,
@@ -65,12 +66,20 @@ class MockServer(tcpip.OneClientReadLoopServer):
         )
 
     async def read_and_dispatch(self) -> None:
-        command = await self.read_str()
-        reply = self.device.parse_message(command)
+        commands = await self.read_str()
+        self.log.info(f"{commands=}")
         if self.brand == "Keysight":
-            await self.write_str("")
-        if reply is not None:
-            await self.write_str(reply)
+            self.log.info(f"Writing echo: {commands.strip()}")
+            await self.write_str(commands.strip())
+        commands = commands.split(";")[:-1]
+        self.log.info(commands)
+        for command in commands:
+            async with self.lock:
+                self.log.info(f"{command=}")
+                reply = self.device.parse_message(command.strip())
+                self.log.info(reply)
+                if reply is not None:
+                    await self.write_str(reply)
 
     async def connect_callback(self, server):
         """Start the command loop when client is connected.
@@ -96,6 +105,7 @@ class MockKeysight:
             Regular expressions that correspond to a given command.
         """
         self.log = logging.getLogger(__name__)
+        self.mode = UnitMode.CURR
         self.commands = {
             re.compile(r"^\*idn\?;$"): self.do_get_hardware_info,
             re.compile(
@@ -152,7 +162,7 @@ class MockKeysight:
             # re.compile(r"^:sens:data\?;$"): self.do_read_sensor,
             re.compile(r"^TST:TYPE RTC;$"): self.do_rtc_time,
             re.compile(
-                r"^:sens:curr:nplc (?P<parameter>\d\.\d\d);$"
+                r"^:sens:curr:nplc (?P<parameter>\d?\.?\d?\d?);$"
             ): self.do_change_nplc,
             re.compile(
                 r"^:syst:lsyn:stat (?P<parameter>ON|OFF);$"
@@ -175,7 +185,18 @@ class MockKeysight:
             re.compile(r"^ABOR:ACQ;$"): self.do_stop_storing_buffer,
             re.compile(r"^:sens:CURR:AVER:mov:stat 1;$"): self.do_nothing,
             re.compile(r"^:form:elem:sens\?;$"): self.do_get_trace_format,
-            re.compile(r"^:trac:elem TST, ETEM, VSO, CURR;$"): self.do_nothing,
+            re.compile(r"^:trac:elem .*;$"): self.do_nothing,
+            re.compile(r"^:sens:CURR:aper:auto .*;$"): self.do_nothing,
+            re.compile(r"^:trac:cle;$"): self.do_nothing,
+            re.compile(r"^:SENS:TOUT:STAT (ON|OFF);$"): self.do_nothing,
+            re.compile(
+                r"^:(sens|SENS):(CURR|CHAR|VOLT|RES):rang .*;$"
+            ): self.do_nothing,
+            re.compile(
+                r"^:(trig|TRIG):(ACQ|acq):(TOUT|tout):(SIGN|sign) .*;$"
+            ): self.do_nothing,
+            re.compile(r"^:(inp|INP) .*;$"): self.do_nothing,
+            re.compile(r"^:(FORM|form):(ELEM|elem):sens .*;$"): self.do_nothing,
         }
 
     def parse_message(self, msg):
@@ -197,28 +218,26 @@ class MockKeysight:
             Raised when command is not implemented.
         """
         try:
-            msgs = msg.split(";")
-            for msg in msgs:
-                msg = msg + ";"
-                self.log.info(repr(msg))
-                for command, func in self.commands.items():
-                    self.log.info(command)
-                    matched_command = command.match(msg)
-                    self.log.info(matched_command)
-                    if matched_command:
-                        try:
-                            reply = func(matched_command.group("parameter"))
-                            self.log.info(reply)
-                            if reply != "":
-                                return reply
-                            return None
-                        except IndexError:
-                            reply = func()
-                            self.log.info(reply)
-                            if reply != "":
-                                return reply
-                            return None
-                raise NotImplementedError(msg)
+            msg = msg + ";"
+            self.log.info(repr(msg))
+            for command, func in self.commands.items():
+                self.log.info(command)
+                matched_command = command.match(msg)
+                self.log.info(matched_command)
+                if matched_command:
+                    try:
+                        reply = func(matched_command.group("parameter"))
+                        self.log.info(reply)
+                        if reply != "":
+                            return reply
+                        return None
+                    except IndexError:
+                        reply = func()
+                        self.log.info(reply)
+                        if reply != "":
+                            return reply
+                        return None
+            raise NotImplementedError(msg)
         except Exception:
             self.log.exception("Parsing message failed.")
 
@@ -241,6 +260,7 @@ class MockKeysight:
 
     def do_set_mode(self, *args):
         """Set the mode."""
+        self.mode = UnitMode(args[0].replace("'", ""))
         return ""
 
     def do_set_range(self, *args):
@@ -261,7 +281,7 @@ class MockKeysight:
 
     def do_get_mode(self):
         """Get the current mode."""
-        return '"CHAR"'
+        return f"{self.mode}:1"
 
     def do_clear_buffer(self):
         """Clear the buffer."""
@@ -404,6 +424,7 @@ class MockKeithley:
             Regular expressions that correspond to a given command.
         """
         self.log = logging.getLogger(__name__)
+        self.mode = UnitMode.CURR
         self.commands = {
             re.compile(r"^\*idn\?;$"): self.do_get_hardware_info,
             re.compile(
@@ -456,7 +477,7 @@ class MockKeithley:
             # re.compile(r"^:sens:data\?;$"): self.do_read_sensor,
             re.compile(r"^TST:TYPE RTC;$"): self.do_rtc_time,
             re.compile(
-                r"^:sens:curr:nplc (?P<parameter>\d\.\d\d);$"
+                r"^:sens:curr:nplc (?P<parameter>\d?\.?\d?\d?);$"
             ): self.do_change_nplc,
             re.compile(
                 r"^:syst:lsyn:stat (?P<parameter>ON|OFF);$"
@@ -479,7 +500,13 @@ class MockKeithley:
             re.compile(
                 r"^:sens:(CURR|CHAR|VOLT|RES):aper:auto (OFF|ON);$"
             ): self.do_nothing,
-            re.compile(r"^:trac:elem TST, ETEM, VSO, CURR;$"): self.do_nothing,
+            re.compile(r"^:trac:elem .*;$"): self.do_nothing,
+            re.compile(r"^:sens:CURR:aper:auto .*;$"): self.do_nothing,
+            re.compile(r"^:SENS:TOUT:STAT (ON|OFF);$"): self.do_nothing,
+            re.compile(r"^:trac:cle;$"): self.do_nothing,
+            re.compile(
+                r"^:(sens|SENS):(CURR|CHAR|VOLT|RES):rang .*;$"
+            ): self.do_nothing,
         }
 
     def parse_message(self, msg):
@@ -501,28 +528,26 @@ class MockKeithley:
             Raised when command is not implemented.
         """
         try:
-            msgs = msg.split(";")
-            for msg in msgs:
-                msg = msg + ";"
-                self.log.info(repr(msg))
-                for command, func in self.commands.items():
-                    self.log.info(command)
-                    matched_command = command.match(msg)
-                    self.log.info(matched_command)
-                    if matched_command:
-                        try:
-                            reply = func(matched_command.group("parameter"))
-                            self.log.info(reply)
-                            if reply != "":
-                                return reply
-                            return None
-                        except IndexError:
-                            reply = func()
-                            self.log.info(reply)
-                            if reply != "":
-                                return reply
-                            return None
-                raise NotImplementedError(msg)
+            msg = msg + ";"
+            self.log.info(repr(msg))
+            for command, func in self.commands.items():
+                self.log.info(command)
+                matched_command = command.match(msg)
+                self.log.info(matched_command)
+                if matched_command:
+                    try:
+                        reply = func(matched_command.group("parameter"))
+                        self.log.info(reply)
+                        if reply != "":
+                            return reply
+                        return None
+                    except IndexError:
+                        reply = func()
+                        self.log.info(reply)
+                        if reply != "":
+                            return reply
+                        return None
+            raise NotImplementedError(msg)
         except Exception as e:
             self.log.exception(e)
             raise e
@@ -540,6 +565,7 @@ class MockKeithley:
 
     def do_set_mode(self, *args):
         """Set the mode."""
+        self.mode = UnitMode(args[0].replace("'", ""))
         return ""
 
     def get_intensity(self):
@@ -566,7 +592,7 @@ class MockKeithley:
 
     def do_get_mode(self):
         """Get the current mode."""
-        return "CURR:1"
+        return f"{self.mode}:1"
 
     def do_clear_buffer(self):
         """Clear the buffer."""
