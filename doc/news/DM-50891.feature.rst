@@ -1,1 +1,0 @@
-Added CALIBCLS: 'lsst.ip.isr.PhotodiodeCalib' to the primary header of the fits file
