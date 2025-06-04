@@ -555,7 +555,7 @@ class ElectrometerController(abc.ABC):
             mode=int(
                 [num for num, mode in self.modes.items() if self.mode == mode.name][0]
             ),
-            force_output=True,
+            force_output=False,
         )
         # TO-DO: Change XML so that evt_measureType write mode as a str
         # DM-45177
