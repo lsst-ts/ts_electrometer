@@ -1,0 +1,1 @@
+Changed int_time to nplc when calling set_time in csc.py.
