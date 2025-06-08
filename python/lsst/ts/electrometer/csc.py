@@ -295,7 +295,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         try:
             await self.report_detailed_state(DetailedState.CONFIGURINGSTATE)
             # FIXME DM-51208 Fix command name to use NPLC terminology.
-            await self.controller.set_timer(int_time=data.intTime)
+            await self.controller.set_timer(nplc=data.intTime)
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
         except Exception:
             self.log.exception("setIntegrationTime failed.")
