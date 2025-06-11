@@ -379,12 +379,19 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         )
         try:
             await self.report_detailed_state(DetailedState.SETDURATIONREADINGSTATE)
+            await self.cmd_startScanDt.ack_in_progress(
+                data=data,
+                timeout=data.scanDuration,
+                result="Starting scan on controller.",
+            )
             await self.controller.start_scan_dt(
                 scan_duration=data.scanDuration, group_id=getattr(data, "groupId", None)
             )
             await self.report_detailed_state(DetailedState.READINGBUFFERSTATE)
             await self.cmd_startScanDt.ack_in_progress(
-                data=data, timeout=data.scanDuration, result=""
+                data=data,
+                timeout=data.scanDuration,
+                result="Reading the buffer from controller.",
             )
             await self.controller.stop_scan()
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
