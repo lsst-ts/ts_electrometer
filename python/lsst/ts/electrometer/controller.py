@@ -745,7 +745,7 @@ class ElectrometerController(abc.ABC):
         ]
 
         if self.electrometer_type == "Keithley":
-            _format = ["Signal", "Elapsed Time", "RNUM"]
+            _format = ["Signal", "RNUM", "Elapsed Time"]
             if len(data_format) == 3 & set(_format).issuperset(set(data_format)):
                 data_format = _format
                 self.log.debug(f"Changed data format for Keithley: {data_format}")
