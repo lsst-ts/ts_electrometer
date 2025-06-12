@@ -296,9 +296,9 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             await self.report_detailed_state(DetailedState.CONFIGURINGSTATE)
             # FIXME DM-51208 Fix command name to use NPLC terminology.
             await self.controller.set_timer(nplc=data.intTime)
-            await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
         except Exception:
             self.log.exception("setIntegrationTime failed.")
+        finally:
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
 
     async def do_setMode(self, data):
@@ -317,9 +317,9 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             await self.report_detailed_state(DetailedState.CONFIGURINGSTATE)
             self.log.debug(f"Setting mode: {data.mode}")
             await self.controller.set_mode(mode=data.mode)
-            await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
         except Exception:
             self.log.exception("setMode failed.")
+        finally:
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
 
     async def do_setRange(self, data):
@@ -337,9 +337,9 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         try:
             await self.report_detailed_state(DetailedState.CONFIGURINGSTATE)
             await self.controller.set_range(set_range=data.setRange)
-            await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
         except Exception:
             self.log.exception("setRange failed.")
+        finally:
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
 
     async def do_startScan(self, data):
@@ -358,7 +358,6 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         try:
             await self.report_detailed_state(DetailedState.MANUALREADINGSTATE)
             await self.controller.start_scan(group_id=getattr(data, "groupId", None))
-            self.log.debug("startScan Completed")
         except Exception as e:
             msg = "startScanDt failed."
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
