@@ -582,6 +582,16 @@ class ElectrometerCommandFactory:
         command = f":sens:{enums.UnitMode(mode).lower()}:nplc {value};"
         return command
 
+    def get_timer(self, mode):
+        """Return the get nplc command.
+
+        Parameters
+        ----------
+        mode : `str`
+            The name of the mode to set the nplc for.
+        """
+        return f":sens:{enums.UnitMode(mode).lower()}:nplc?;"
+
     def prepare_buffer(self):
         """Return combo of commands for prepare buffer command.
 

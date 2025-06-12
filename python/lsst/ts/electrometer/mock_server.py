@@ -234,9 +234,7 @@ class MockKeysight:
                     except IndexError:
                         reply = func()
                         self.log.info(reply)
-                        if reply != "":
-                            return reply
-                        return None
+                        return reply if reply != "" else None
             raise NotImplementedError(msg)
         except Exception:
             self.log.exception("Parsing message failed.")
@@ -538,15 +536,11 @@ class MockKeithley:
                     try:
                         reply = func(matched_command.group("parameter"))
                         self.log.info(reply)
-                        if reply != "":
-                            return reply
-                        return None
+                        return reply if reply != "" else None
                     except IndexError:
                         reply = func()
                         self.log.info(reply)
-                        if reply != "":
-                            return reply
-                        return None
+                        return reply if reply != "" else None
             raise NotImplementedError(msg)
         except Exception as e:
             self.log.exception(e)

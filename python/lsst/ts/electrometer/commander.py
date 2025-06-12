@@ -131,7 +131,15 @@ class Commander:
                             reply = b""
                             byte = b""
                             while not reply.endswith(self.client.terminator):
-                                byte = await self.client.read(1)
+                                for _ in range(10):
+                                    byte = await self.client.read(1)
+                                    if byte:
+                                        break
+                                    else:
+                                        self.log.debug(
+                                            "Failed to read byte...Trying again in 1 second."
+                                        )
+                                        await asyncio.sleep(1)
                                 reply += byte
                             reply = reply.rstrip(self.client.terminator).decode(
                                 self.client.encoding
