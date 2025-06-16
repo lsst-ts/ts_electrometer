@@ -175,7 +175,7 @@ class ElectrometerCommandFactory:
         command : `str`
             The generated command string.
         """
-        command = ":trac:elem?"
+        command = ":trac:elem?;"
         return command
 
     def get_buffer_quantity(self):
@@ -197,7 +197,7 @@ class ElectrometerCommandFactory:
         command : `str`
             The generated command string.
         """
-        command = "*idn?"
+        command = "*idn?;"
         return command
 
     def set_autodischarge(self, autodischarge_state):
@@ -582,6 +582,16 @@ class ElectrometerCommandFactory:
         command = f":sens:{enums.UnitMode(mode).lower()}:nplc {value};"
         return command
 
+    def get_timer(self, mode):
+        """Return the get nplc command.
+
+        Parameters
+        ----------
+        mode : `str`
+            The name of the mode to set the nplc for.
+        """
+        return f":sens:{enums.UnitMode(mode).lower()}:nplc?;"
+
     def prepare_buffer(self):
         """Return combo of commands for prepare buffer command.
 
@@ -880,7 +890,7 @@ class KeysightElectrometerCommandFactory(ElectrometerCommandFactory):
         command : `str`
             The generated command string.
         """
-        command = ":form:elem:sens?"
+        command = ":form:elem:sens?;"
         return command
 
     def discharge_capacitor(self):
@@ -891,7 +901,7 @@ class KeysightElectrometerCommandFactory(ElectrometerCommandFactory):
         command : `str`
             The generated command string.
         """
-        command = "SENS:CHAR:DISC"
+        command = "SENS:CHAR:DISC;"
         return command
 
     def stop_taking_data(self):
@@ -943,7 +953,7 @@ class KeysightElectrometerCommandFactory(ElectrometerCommandFactory):
         command : `str`
             The generated command string.
         """
-        command = ":TRIG:ACQ:TOUT ON;:TRIG:ACQ:TOUT:SIGN TOUT"
+        command = ":TRIG:ACQ:TOUT ON;:TRIG:ACQ:TOUT:SIGN TOUT;"
         return command
 
     def init_buffer(self):
