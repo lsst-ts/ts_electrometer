@@ -136,6 +136,8 @@ class Commander:
                                     reply += byte
                                     break
                             except ConnectionError:
+                                self.log.exception("Connection lost...Reconnecting.")
+                                await self.disconnect()
                                 await self.connect()
                                 continue
                             except Exception:

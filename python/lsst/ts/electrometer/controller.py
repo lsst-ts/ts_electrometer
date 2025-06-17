@@ -206,6 +206,7 @@ class ElectrometerController(abc.ABC):
         self.location = config.location
         self.electrometer_type = config.electrometer_type
         self.model_id = config.electrometer_model
+        self.image_service_client = None
 
     @classmethod
     @abc.abstractmethod
@@ -395,6 +396,7 @@ class ElectrometerController(abc.ABC):
             This is passed into this method as it is called
             in the CSC, but it is used in write_fits_file
         """
+        assert self.image_service_client is not None
         self.group_id = group_id
         await self.prepare_scan()
         await self.perform_zero_calibration()
@@ -432,6 +434,7 @@ class ElectrometerController(abc.ABC):
             This is passed into this method as it is called
             in the CSC, but it is used in write_fits_file
         """
+        assert self.image_service_client is not None
         self.group_id = group_id
         await self.prepare_scan()
         await self.perform_zero_calibration()
