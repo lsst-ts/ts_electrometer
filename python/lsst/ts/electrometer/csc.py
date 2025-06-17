@@ -30,6 +30,8 @@ from lsst.ts.xml.enums.Electrometer import DetailedState
 from . import __version__, controller, enums, mock_server
 from .config_schema import CONFIG_SCHEMA
 
+READ_DURATION = 20
+
 
 def execute_csc() -> None:
     asyncio.run(ElectrometerCsc.amain(index=True))
@@ -93,7 +95,6 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         self.default_force_output = True
         self.bucket = None
         self.controller = None
-        self.log.debug("finished initializing")
 
     def assert_substate(self, substates, action):
         """Assert the CSC is in the proper substate.
@@ -182,7 +183,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         if self.disabled_or_enabled:
             if self.simulation_mode and self.simulator is None:
                 self.simulator = mock_server.MockServer(
-                    self.controller.electrometer_type
+                    self.controller.electrometer_type, False
                 )
                 await self.simulator.start_task
                 self.controller.commander.host = self.simulator.host
@@ -295,7 +296,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         try:
             await self.report_detailed_state(DetailedState.CONFIGURINGSTATE)
             # FIXME DM-51208 Fix command name to use NPLC terminology.
-            await self.controller.set_timer(nplc=data.intTime)
+            await self.controller.set_timer(data.intTime)
         except Exception:
             self.log.exception("setIntegrationTime failed.")
         finally:
@@ -359,9 +360,10 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             await self.report_detailed_state(DetailedState.MANUALREADINGSTATE)
             await self.controller.start_scan(group_id=getattr(data, "groupId", None))
         except Exception as e:
-            msg = "startScanDt failed."
-            await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
+            msg = "startScan failed."
             await self.fault(code=enums.Error.FILE_ERROR, report=f"{msg}: {repr(e)}")
+        finally:
+            await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
 
     async def do_startScanDt(self, data):
         """Start the scan with a set duration.
@@ -371,7 +373,6 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         data : `cmd_startScanDt.DataType`
             The data for the command.
         """
-        self.log.debug("Starting startScanDt")
         self.assert_enabled()
         self.assert_substate(
             substates=[DetailedState.NOTREADINGSTATE], action="startScanDt"
@@ -389,17 +390,16 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             await self.report_detailed_state(DetailedState.READINGBUFFERSTATE)
             await self.cmd_startScanDt.ack_in_progress(
                 data=data,
-                timeout=data.scanDuration,
+                timeout=READ_DURATION,
                 result="Reading the buffer from controller.",
             )
             await self.controller.stop_scan()
-            await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
         except Exception as e:
             msg = "startScanDt failed."
-            await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
+            self.log.exception(msg)
             await self.fault(code=enums.Error.FILE_ERROR, report=f"{msg}: {repr(e)}")
-
-        self.log.info("startScanDt Completed")
+        finally:
+            await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
 
     async def do_stopScan(self, data):
         """Stop the scan.
@@ -420,16 +420,13 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         )
         try:
             await self.report_detailed_state(DetailedState.READINGBUFFERSTATE)
-            self.log.debug("detailed state reported")
             await self.controller.stop_scan()
-            self.log.debug("controller stopped scan")
-            await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
-            self.log.info("stopScan Completed")
         except Exception as e:
             msg = "stopScan failed."
-            self.log.exception("stopScan failed.")
-            await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
+            self.log.exception(msg)
             await self.fault(code=enums.Error.FILE_ERROR, report=f"{msg}: {repr(e)}")
+        finally:
+            await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
 
     async def do_setVoltageSource(self, data):
         self.assert_enabled()
@@ -442,9 +439,9 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             await self.controller.set_voltage_limit(data.voltage_limit)
             await self.controller.set_voltage_range(data.range)
             await self.controller.set_voltage_level(data.level)
-            await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
         except Exception:
             self.log.exception("SetVoltageSource failed.")
+        finally:
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
 
     @staticmethod

@@ -1,0 +1,1 @@
+Added get_integration_time call to set_timer to get updated integration time.

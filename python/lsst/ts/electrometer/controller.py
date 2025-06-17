@@ -47,6 +47,7 @@ TIME_PER_LINE = 0.0047
 ~4 seconds."""
 OVERHEAD_FACTOR = 1.3
 """Assume a 30% overhead when gathering data from the buffer."""
+SLEEP = 2
 
 
 class ElectrometerController(abc.ABC):
@@ -136,7 +137,6 @@ class ElectrometerController(abc.ABC):
         self.median_filter_active = False
         self.filter_active = False
         self.avg_filter_active = False
-        self.log.debug("Controller initialized")
         self.group_id = None
 
     @property
@@ -245,16 +245,15 @@ class ElectrometerController(abc.ABC):
                 raise RuntimeError("Expected type is not valid.")
         await self.csc.report_detailed_state(DetailedState.NOTREADINGSTATE)
         await self.send_command(command=self.commands.reset_device())
+        await self.send_command(command=self.commands.clear())
         match expected_type:
-            case "Keithley":
-                await self.send_command(command=self.commands.output_trigger_line(3))
             case "Keysight":
                 await self.send_command(command=self.commands.output_trigger_line())
         self.log.debug("Device reset.")
 
         await self.set_mode(self.mode)
         await self.set_range(self.range)
-        await self.set_integration_time(self.integration_time)
+        await self.set_timer(self.integration_time)
 
         await self.set_digital_filter(
             activate_filter=self.default.filters.general,
@@ -320,13 +319,11 @@ class ElectrometerController(abc.ABC):
         activate_med_filter : `bool`
             Whether the median filter should be activated.
         """
-        self.log.debug(f"filter_type is {enums.Filter(2)}")
         filter_active = activate_avg_filter and activate_filter
         await self.send_command(
             f"{self.commands.activate_filter(self.mode, enums.Filter(2), filter_active)}"
         )
         filter_active = activate_med_filter and activate_filter
-        self.log.debug(f"filter_type is {enums.Filter(1)}")
         if self.electrometer_type == "Keithley" or self.mode == "CURR":
             await self.send_command(
                 f"{self.commands.activate_filter(self.mode, enums.Filter(1), filter_active)}"
@@ -486,7 +483,7 @@ class ElectrometerController(abc.ABC):
         self.log.debug("Scanning stopped.")
 
         await self.send_command(f"{self.commands.enable_display(True)}")
-        await asyncio.sleep(2)
+        await asyncio.sleep(SLEEP)
         if self.electrometer_type == "Keithley":
             await self.send_command(f"{self.commands.enable_zero_check(True)}")
         # FIXME: DM-37459
@@ -509,13 +506,14 @@ class ElectrometerController(abc.ABC):
             + ((num_of_lines * TIME_PER_LINE) * OVERHEAD_FACTOR * 2)
         )
         read_timeout = max(read_timeout, 10)
+        self.read_timeout = read_timeout
         self.log.debug(f"{self.scan_duration=} so read timeout will be {read_timeout=}")
         self.log.debug("Starting to read buffer")
         res = await self.send_command(
             f"{self.commands.read_buffer()}", has_reply=True, timeout=read_timeout
         )
         # get the format of the data
-        await asyncio.sleep(2)
+        await asyncio.sleep(SLEEP)
         trace_format = await self.send_command(
             f"{self.commands.get_trace_format()}", has_reply=True
         )
@@ -543,7 +541,7 @@ class ElectrometerController(abc.ABC):
                 mode, unit = res.split(":")
             except Exception as e:
                 msg = f"Mode does not have a recognizable format {e}"
-                self.log.debug(msg)
+                self.log.exception(msg)
                 mode = '"CURR"'  # TO-DO remove once everything working
 
         mode = mode.replace('"', "")
@@ -565,7 +563,6 @@ class ElectrometerController(abc.ABC):
         res = await self.send_command(
             f"{self.commands.get_measure(enums.ReadingOption.LATEST)}", has_reply=True
         )
-        self.log.debug(f"intensity is {res}")
         res = res.split(",")
         # +9.90000+E37O with an O not zero
         try:
@@ -578,7 +575,6 @@ class ElectrometerController(abc.ABC):
             return  # return early
         # If the range saturates the intensity positively, the device returns
         # +9.90000+E37
-        self.log.debug(f"Positive saturation is {self.positive_saturation}")
         if res == self.positive_saturation:
             self.log.debug("Positive saturation reached")
             self.last_value = float("inf")
@@ -609,6 +605,7 @@ class ElectrometerController(abc.ABC):
         await self.send_command(self.commands.auto_integration_time_on(mode=self.mode))
         await self.send_command(self.commands.set_timer(self.mode, nplc))
         await self.get_timer()
+        await self.get_integration_time()
 
     async def set_mode(self, mode):
         """Set the mode/unit.
@@ -624,7 +621,6 @@ class ElectrometerController(abc.ABC):
             self.mode = mode
         else:
             self.mode = self.modes[mode].name
-        self.log.debug(f"{self.mode=}")
 
         await self.perform_zero_calibration()
         await self.check_error("set_mode")
@@ -640,7 +636,6 @@ class ElectrometerController(abc.ABC):
             The new range value.
         """
         self.range = set_range
-        self.log.debug(f"{set_range=}")
         if int(set_range) == -1:
             self.log.debug("Auto Range set")
             self.auto_range = True
@@ -804,15 +799,18 @@ class ElectrometerController(abc.ABC):
         res = await self.send_command(
             f"{self.commands.get_last_error()}", has_reply=True
         )
-        self.log.debug(f"check error from {from_command}: {res}")
         self.error_code, self.message = res.split(",")
+        self.error_code = int(self.error_code)
+        if self.error_code != 0:
+            self.log.info(
+                f"Non zero error code received {from_command}: {self.error_code=} {self.message=}"
+            )
 
     async def get_range(self):
         """Get the range value."""
         res = await self.send_command(
             f"{self.commands.get_range(self.mode)}", has_reply=True
         )
-        self.log.debug(f"Get Range Output: {res}")
         self.range = float(res)
         await self.csc.evt_measureRange.set_write(
             rangeValue=self.range, force_output=True

@@ -23,6 +23,7 @@ __all__ = ["MockServer", "MockKeysight", "MockKeithley"]
 
 import asyncio
 import logging
+import random
 import re
 
 from lsst.ts import tcpip
@@ -42,7 +43,7 @@ class MockServer(tcpip.OneClientReadLoopServer):
         The task that tracks the read loop.
     """
 
-    def __init__(self, brand) -> None:
+    def __init__(self, brand, unstable=False) -> None:
         log = logging.getLogger(type(self).__name__)
         self.brand = brand
         if self.brand == "Keithley":
@@ -54,6 +55,7 @@ class MockServer(tcpip.OneClientReadLoopServer):
             terminator = tcpip.DEFAULT_TERMINATOR
             encoding = "latin_1"
         self.lock = asyncio.Lock()
+        self.unstable = unstable
         super().__init__(
             name="Electrometer Mock Server",
             host=tcpip.LOCAL_HOST,
@@ -79,6 +81,11 @@ class MockServer(tcpip.OneClientReadLoopServer):
                 reply = self.device.parse_message(command.strip())
                 self.log.info(reply)
                 if reply is not None:
+                    if self.unstable:
+                        write = random.uniform(0, 2)
+                    else:
+                        write = 0
+                    await asyncio.sleep(write)
                     await self.write_str(reply)
 
     async def connect_callback(self, server):
@@ -161,9 +168,8 @@ class MockKeysight:
             re.compile(r"^:sens:data\?;$"): self.do_read_buffer,
             # re.compile(r"^:sens:data\?;$"): self.do_read_sensor,
             re.compile(r"^TST:TYPE RTC;$"): self.do_rtc_time,
-            re.compile(
-                r"^:sens:curr:nplc (?P<parameter>\d?\.?\d?\d?);$"
-            ): self.do_change_nplc,
+            re.compile(r"^:sens:curr:nplc (?P<parameter>.*);$"): self.do_change_nplc,
+            re.compile(r"^:sens:curr:nplc\?;$"): self.do_get_nplc,
             re.compile(
                 r"^:syst:lsyn:stat (?P<parameter>ON|OFF);$"
             ): self.do_change_nplc,
@@ -359,6 +365,9 @@ class MockKeysight:
         ."""
         pass
 
+    def do_get_nplc(self):
+        return "5"
+
     def do_change_sync(self, sync):
         """Change the line synchronization setting.
 
@@ -474,9 +483,8 @@ class MockKeithley:
             re.compile(r"^:trac:data\?;$"): self.do_read_buffer,
             # re.compile(r"^:sens:data\?;$"): self.do_read_sensor,
             re.compile(r"^TST:TYPE RTC;$"): self.do_rtc_time,
-            re.compile(
-                r"^:sens:curr:nplc (?P<parameter>\d?\.?\d?\d?);$"
-            ): self.do_change_nplc,
+            re.compile(r"^:sens:curr:nplc (?P<parameter>.*);$"): self.do_change_nplc,
+            re.compile(r"^:sens:curr:nplc\?;$"): self.do_get_nplc,
             re.compile(
                 r"^:syst:lsyn:stat (?P<parameter>ON|OFF);$"
             ): self.do_change_nplc,
@@ -665,6 +673,9 @@ class MockKeithley:
             The number of cycles.
         ."""
         pass
+
+    def do_get_nplc(self):
+        return "5"
 
     def do_change_sync(self, sync):
         """Change the line synchronization setting.

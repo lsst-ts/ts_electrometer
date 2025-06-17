@@ -70,7 +70,7 @@ class Commander:
         self.lock: asyncio.Lock = asyncio.Lock()
         self.hostname: str = tcpip.LOCAL_HOST
         self.port: int = 9999
-        self.timeout: int = 5
+        self.timeout: int = 10
         self.long_timeout: int = 30
         self.brand: str | None = brand
         self.client: tcpip.Client = tcpip.Client(host="", port=None, log=log)
@@ -114,45 +114,56 @@ class Commander:
         self.client = tcpip.Client(host="", port=None, log=self.log)
 
     async def send_command(self, msg, has_reply, timeout=None) -> None | str:
-        if self.connected:
-            if timeout is None:
-                timeout = self.timeout
-            else:
-                timeout = timeout
-            async with self.lock:
-                self.log.info(f"sending command {msg}")
-                await self.client.write_str(msg)
-                if self.brand == "Keysight":
-                    async with asyncio.timeout(timeout):
-                        await self.client.read_str()
-                if has_reply:
-                    async with asyncio.timeout(timeout):
-                        try:
-                            reply = b""
-                            byte = b""
-                            while not reply.endswith(self.client.terminator):
-                                for _ in range(10):
-                                    byte = await self.client.read(1)
-                                    if byte:
-                                        break
-                                    else:
-                                        self.log.debug(
-                                            "Failed to read byte...Trying again in 1 second."
-                                        )
-                                        await asyncio.sleep(1)
-                                reply += byte
-                            reply = reply.rstrip(self.client.terminator).decode(
-                                self.client.encoding
-                            )
-                            # reply = await self.client.read_str()
-                            self.log.debug(f"reply is {reply[:100]}")
-                        except asyncio.IncompleteReadError as e:
-                            self.log.exception(f"{e.partial=}")
-                        except asyncio.LimitOverrunError as loe:
-                            self.log.exception(f"{loe.consumed=}")
-                    return reply
+        if not timeout:
+            timeout = self.timeout
         else:
-            raise RuntimeError("Client is not connected.")
+            timeout = timeout
+        async with self.lock:
+            if not self.connected:
+                await self.connect()
+            await self.client.write_str(msg)
+            if self.brand == "Keysight":
+                async with asyncio.timeout(240):
+                    await self.client.read_str()
+            if has_reply:
+                async with asyncio.timeout(240):
+                    reply = b""
+                    while not reply.endswith(self.client.terminator):
+                        for _ in range(10):
+                            try:
+                                byte = await self.client.read(1)
+                                if byte:
+                                    reply += byte
+                                    break
+                            except ConnectionError:
+                                await self.connect()
+                                continue
+                            except Exception:
+                                self.log.exception(
+                                    "Getting reply failed... trying again in 1 second."
+                                )
+                                await asyncio.sleep(1)
+                reply = reply.rstrip(self.client.terminator).decode(
+                    self.client.encoding
+                )
+                # while not reply.endswith(self.client.terminator):
+                #     for _ in range(10):
+                #         try:
+                #             if not self.connected:
+                #                 await self.connect()
+                #             byte = await self.client.read(1)
+                #             if byte:
+                #                 break
+                #         except ConnectionError:
+                #             self.log.exception("Lost connection...")
+                #         except Exception:
+                #             self.log.exception("")
+                #     if byte:
+                #         reply += byte
+                # reply = reply.rstrip(self.client.terminator).decode(
+                #     self.client.encoding
+                # )
+                return reply
 
     def configure(self, config):
         self.hostname = config.hostname

@@ -681,6 +681,9 @@ class ElectrometerCommandFactory:
         command = f":sens:{enums.UnitMode(mode).value}:dig {digit};"
         return command
 
+    def clear(self):
+        return "*CLS;"
+
 
 class KeithleyElectrometerCommandFactory(ElectrometerCommandFactory):
     """Class that formats commands to control the electrometer via RS-232."""
