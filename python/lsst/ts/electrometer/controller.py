@@ -799,15 +799,21 @@ class ElectrometerController(abc.ABC):
         from_command : `str` | None
             Tells us where the check error is being called from
         """
-        res = await self.send_command(
-            f"{self.commands.get_last_error()}", has_reply=True
-        )
-        self.error_code, self.message = res.split(",")
-        self.error_code = int(self.error_code)
-        if self.error_code != 0:
-            self.log.info(
-                f"Non zero error code received {from_command}: {self.error_code=} {self.message=}"
+
+        async def get_error():
+            res = await self.send_command(
+                self.commands.get_last_error(), has_reply=True
             )
+            error_code, message = res.split(",")
+            error_code = int(error_code)
+            return error_code, message
+
+        error_code, message = await get_error()
+        while error_code != 0:
+            self.log.info(
+                f"Non zero error code from {from_command}: {error_code=} {message=}"
+            )
+            error_code, message = await get_error()
 
     async def get_range(self):
         """Get the range value."""
