@@ -1052,3 +1052,14 @@ class KeysightElectrometerCommandFactory(ElectrometerCommandFactory):
         """
         command = ":trig:coun INF;"
         return command
+
+    def set_timer(self, mode, value):
+        """Return set time command string.
+
+        Returns
+        -------
+        command : `str`
+            The generated command string.
+        """
+        command = f":sens:{enums.UnitMode(mode).lower()}:nplc {value};:trig:acq:tim {value/50:f};"
+        return command
