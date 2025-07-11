@@ -148,23 +148,6 @@ class Commander:
                 reply = reply.rstrip(self.client.terminator).decode(
                     self.client.encoding
                 )
-                # while not reply.endswith(self.client.terminator):
-                #     for _ in range(10):
-                #         try:
-                #             if not self.connected:
-                #                 await self.connect()
-                #             byte = await self.client.read(1)
-                #             if byte:
-                #                 break
-                #         except ConnectionError:
-                #             self.log.exception("Lost connection...")
-                #         except Exception:
-                #             self.log.exception("")
-                #     if byte:
-                #         reply += byte
-                # reply = reply.rstrip(self.client.terminator).decode(
-                #     self.client.encoding
-                # )
                 return reply
 
     def configure(self, config):
