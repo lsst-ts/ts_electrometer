@@ -681,6 +681,9 @@ class ElectrometerCommandFactory:
         command = f":sens:{enums.UnitMode(mode).value}:dig {digit};"
         return command
 
+    def clear(self):
+        return "*CLS;"
+
 
 class KeithleyElectrometerCommandFactory(ElectrometerCommandFactory):
     """Class that formats commands to control the electrometer via RS-232."""
@@ -1048,4 +1051,15 @@ class KeysightElectrometerCommandFactory(ElectrometerCommandFactory):
             The generated command string.
         """
         command = ":trig:coun INF;"
+        return command
+
+    def set_timer(self, mode, value):
+        """Return set time command string.
+
+        Returns
+        -------
+        command : `str`
+            The generated command string.
+        """
+        command = f":sens:{enums.UnitMode(mode).lower()}:nplc {value};:trig:acq:tim {value/50:f};"
         return command
