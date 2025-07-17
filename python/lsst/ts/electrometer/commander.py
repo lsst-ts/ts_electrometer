@@ -138,6 +138,7 @@ class Commander:
                             except ConnectionError:
                                 self.log.exception("Connection lost...Reconnecting.")
                                 await self.disconnect()
+                                await asyncio.sleep(1)
                                 await self.connect()
                                 continue
                             except Exception:
