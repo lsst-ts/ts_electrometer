@@ -27,6 +27,10 @@ import logging
 from lsst.ts import tcpip
 
 LIMIT = 2**16
+DEFAULT_TIMEOUT = 240
+RETRY_DELAY = 1
+RECONNECTION_DELAY = 1
+NUMBER_OF_RETRIES = 10
 
 
 class Commander:
@@ -113,7 +117,25 @@ class Commander:
         await self.client.close()
         self.client = tcpip.Client(host="", port=None, log=self.log)
 
-    async def send_command(self, msg, has_reply, timeout=None) -> None | str:
+    async def send_command(
+        self, msg: str, has_reply: bool, timeout: None | float = None
+    ) -> None | str:
+        """Send command to the device and receive reply if expected.
+
+        Parameters
+        ----------
+        msg : str
+            The command to be sent.
+        has_reply : bool
+            Does the command expect a reply?
+        timeout : None | float, optional
+            How long to wait before timing out reply, by default None.
+
+        Returns
+        -------
+        None | str
+            Return the reply if expected else return None.
+        """
         if not timeout:
             timeout = self.timeout
         else:
@@ -123,32 +145,37 @@ class Commander:
                 await self.connect()
             await self.client.write_str(msg)
             if self.brand == "Keysight":
-                async with asyncio.timeout(240):
+                async with asyncio.timeout(DEFAULT_TIMEOUT):
                     await self.client.read_str()
             if has_reply:
-                async with asyncio.timeout(240):
+                async with asyncio.timeout(DEFAULT_TIMEOUT):
                     reply = b""
                     while not reply.endswith(self.client.terminator):
-                        for _ in range(10):
+                        for _ in range(NUMBER_OF_RETRIES):
                             try:
                                 byte = await self.client.read(1)
                                 if byte:
                                     reply += byte
                                     break
                             except ConnectionError:
-                                self.log.exception("Connection lost...Reconnecting.")
+                                self.log.exception(
+                                    f"Connection lost...Reconnecting in {RECONNECTION_DELAY} second(s)."
+                                )
                                 await self.disconnect()
+                                await asyncio.sleep(RECONNECTION_DELAY)
                                 await self.connect()
                                 continue
                             except Exception:
                                 self.log.exception(
-                                    "Getting reply failed... trying again in 1 second."
+                                    f"Getting reply failed... trying again in {RETRY_DELAY} second(s)."
                                 )
-                                await asyncio.sleep(1)
+                                await asyncio.sleep(RETRY_DELAY)
                 reply = reply.rstrip(self.client.terminator).decode(
                     self.client.encoding
                 )
                 return reply
+            else:
+                return None
 
     def configure(self, config):
         self.hostname = config.hostname
