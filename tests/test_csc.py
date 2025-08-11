@@ -79,6 +79,7 @@ class KeysightTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase)
                     "startScanDt",
                     "stopScan",
                     "setVoltageSource",
+                    "changeNPLC"
                 ]
             )
 

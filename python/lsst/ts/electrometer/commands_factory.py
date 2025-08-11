@@ -394,6 +394,23 @@ class ElectrometerCommandFactory:
         command = f":sens:{unit}:aper:auto ON;"
         return command
 
+    def auto_nplc_on(self, mode):
+        """Turn on auto NPLC.
+
+        Parameters
+        ----------
+        mode : UnitMode
+            The unit to change setting.
+
+        Returns
+        -------
+        command: `str`
+            The formatted command.
+        """
+        unit = enums.UnitMode(mode).name
+        command = f":sens:{unit}:nplc:auto ON;"
+        return command
+
     def set_mode(self, mode):
         """Return set mode.
 

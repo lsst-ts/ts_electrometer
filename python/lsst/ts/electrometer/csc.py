@@ -24,7 +24,8 @@ __all__ = ["execute_csc", "command_csc", "ElectrometerCsc"]
 import asyncio
 import types
 
-from lsst.ts import salobj, utils
+from lsst.ts import salobj
+from lsst.ts import utils
 from lsst.ts.xml.enums.Electrometer import DetailedState
 
 from . import __version__, controller, enums, mock_server
@@ -88,6 +89,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             config_dir=config_dir,
             initial_state=initial_state,
             simulation_mode=simulation_mode,
+            extra_commands=["changeNPLC"]
         )
         self.simulator = None
         self.run_event_loop = False
@@ -295,10 +297,30 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         )
         try:
             await self.report_detailed_state(DetailedState.CONFIGURINGSTATE)
-            # FIXME DM-51208 Fix command name to use NPLC terminology.
-            await self.controller.set_timer(data.intTime)
+            await self.controller.set_integration_time(data.intTime)
         except Exception:
             self.log.exception("setIntegrationTime failed.")
+        finally:
+            await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
+
+    async def do_changeNPLC(self, data):
+        """Change the Number of Power Line Cycles (NPLC).
+
+        Parameters
+        ----------
+        data : `cmd_changeNPLC.DataType`
+            The data for the command.
+        """
+        self.assert_enabled()
+        self.assert_substate(
+            substates=[DetailedState.NOTREADINGSTATE],
+            action="changeNPLC"
+        )
+        try:
+            await self.controller.set_timer(data.value)
+            await self.evt_changedNPLC.set_write(value=float(self.controller.nplc))
+        except Exception:
+            self.log.exception("Failed to change NPLC.")
         finally:
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
 
