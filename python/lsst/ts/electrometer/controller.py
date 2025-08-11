@@ -593,9 +593,9 @@ class ElectrometerController(abc.ABC):
         """
         self.integration_time = int_time
 
-        await self.send_command(self.commands.auto_integration_time_on(mode=self.mode))
+        await self.send_command(self.commands.auto_nplc_on(mode=self.mode))
 
-        await self.send_command(self.commands.set_timer(self.mode, value=int_time))
+        await self.send_command(self.commands.integration_time(self.mode, value=int_time))
 
         await self.get_integration_time()
 
