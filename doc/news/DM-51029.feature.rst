@@ -1,1 +1,0 @@
-Switched from integration time to NPLC and set integration time to use auto functionality.

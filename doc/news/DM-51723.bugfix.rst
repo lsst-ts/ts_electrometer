@@ -1,1 +1,0 @@
-Fixed the Keysight so that when it sets the timer it also sets the appropriate trigger wait time.

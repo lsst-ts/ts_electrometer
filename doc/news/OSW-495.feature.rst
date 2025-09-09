@@ -1,1 +1,0 @@
-Added ack_in_progress to startScanDt for both before starting the scan and for reading the buffer.
