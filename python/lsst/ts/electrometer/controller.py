@@ -804,7 +804,11 @@ class ElectrometerController(abc.ABC):
             res = await self.send_command(
                 self.commands.get_last_error(), has_reply=True
             )
-            error_code, message = res.split(",")
+            try:
+                error_code, message = res.split(",")
+            except Exception:
+                self.log.debug(f"{res=}")
+                raise RuntimeError("Failed to parse message.")
             error_code = int(error_code)
             return error_code, message
 

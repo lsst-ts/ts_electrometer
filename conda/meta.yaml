@@ -12,6 +12,7 @@ build:
         - run_electrometer = lsst.ts.electrometer.csc:execute_csc
         - command_electrometer = lsst.ts.electrometer.csc:command_csc
     script: {{ PYTHON }} -m pip install --no-deps --ignore-installed .
+    string: "py{{ PY_VER | replace('.', '') }}{{ PKG_HASH }}_{{ PKG_BUILDNUM }}"
 
 test:
     requires:
