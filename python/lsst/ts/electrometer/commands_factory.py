@@ -450,13 +450,7 @@ class ElectrometerCommandFactory:
             command = ":sens:" + enums.UnitMode(mode).name + ":rang:auto ON;"
         else:
             command = ":sens:" + enums.UnitMode(mode).name + ":rang:auto OFF;"
-            command += (
-                "\n:sens:"
-                + enums.UnitMode(mode).name
-                + ":rang "
-                + str(range_value)
-                + ";"
-            )
+            command += "\n:sens:" + enums.UnitMode(mode).name + ":rang " + str(range_value) + ";"
         return command
 
     def enable_sync(self, enable):
@@ -617,11 +611,7 @@ class ElectrometerCommandFactory:
         command : `str`
             The generated command string.
         """
-        command = (
-            f"{self.clear_buffer()} "
-            f"{self.format_trac()} "
-            f"{self.set_buffer_size(50000)}"
-        )
+        command = f"{self.clear_buffer()} {self.format_trac()} {self.set_buffer_size(50000)}"
         return command
 
     def perform_zero_calibration(self, mode, auto, range_value, int_time):
@@ -738,8 +728,7 @@ class KeysightElectrometerCommandFactory(ElectrometerCommandFactory):
             The generated command string
         """
         command = (
-            f"{self.set_mode(mode=mode)} "
-            f"{self.set_range(auto=auto, range_value=range_value, mode=mode)} "
+            f"{self.set_mode(mode=mode)} {self.set_range(auto=auto, range_value=range_value, mode=mode)} "
         )
         return command
 
@@ -1020,9 +1009,7 @@ class KeysightElectrometerCommandFactory(ElectrometerCommandFactory):
         return command
 
     def toggle_voltage_source(self, enable):
-        command = (
-            ":sens:res:man:vso:oper ON;" if enable else ":sens:res:man:vso:oper OFF;"
-        )
+        command = ":sens:res:man:vso:oper ON;" if enable else ":sens:res:man:vso:oper OFF;"
         return command
 
     def get_voltage_source_status(self):
@@ -1078,5 +1065,5 @@ class KeysightElectrometerCommandFactory(ElectrometerCommandFactory):
         command : `str`
             The generated command string.
         """
-        command = f":sens:{enums.UnitMode(mode).lower()}:nplc {value};:trig:acq:tim {value/50:f};"
+        command = f":sens:{enums.UnitMode(mode).lower()}:nplc {value};:trig:acq:tim {value / 50:f};"
         return command
