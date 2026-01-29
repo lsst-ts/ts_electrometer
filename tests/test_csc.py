@@ -27,6 +27,7 @@ import unittest
 import unittest.mock
 
 import parameterized
+
 from lsst.ts import electrometer, salobj
 from lsst.ts.xml.enums.Electrometer import DetailedState
 
@@ -56,9 +57,7 @@ class KeysightTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase)
 
     @parameterized.parameterized.expand(INDICES)
     async def test_bin_script(self, index):
-        await self.check_bin_script(
-            name="Electrometer", index=index, exe_name="run_electrometer"
-        )
+        await self.check_bin_script(name="Electrometer", index=index, exe_name="run_electrometer")
 
     @parameterized.parameterized.expand(INDICES)
     async def test_standard_state_transitions(self, index):
@@ -79,7 +78,7 @@ class KeysightTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase)
                     "startScanDt",
                     "stopScan",
                     "setVoltageSource",
-                    "changeNPLC"
+                    "changeNPLC",
                 ]
             )
 
@@ -127,9 +126,7 @@ class KeysightTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase)
             simulation_mode=2,
             config_dir=TEST_CONFIG_DIR,
         ):
-            await self.remote.cmd_setIntegrationTime.set_start(
-                intTime=0.01, timeout=STD_TIMEOUT
-            )
+            await self.remote.cmd_setIntegrationTime.set_start(intTime=0.01, timeout=STD_TIMEOUT)
             topic = await self.assert_next_sample(topic=self.remote.evt_integrationTime)
             self.assertAlmostEqual(topic.intTime, 0.01)
 
@@ -159,9 +156,7 @@ class KeysightTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase)
         ):
             self.remote.evt_measureRange.flush()
             await self.remote.cmd_setRange.set_start(setRange=0.1, timeout=STD_TIMEOUT)
-            await self.assert_next_sample(
-                topic=self.remote.evt_measureRange, rangeValue=0.1
-            )
+            await self.assert_next_sample(topic=self.remote.evt_measureRange, rangeValue=0.1)
 
     @parameterized.parameterized.expand(INDICES)
     async def test_start_scan(self, index):
@@ -171,8 +166,8 @@ class KeysightTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase)
             simulation_mode=2,
             config_dir=TEST_CONFIG_DIR,
         ):
-            self.csc.controller.image_service_client.get_next_obs_id = (
-                unittest.mock.AsyncMock(return_value=([1], ["EM1_O_20221130_000001"]))
+            self.csc.controller.image_service_client.get_next_obs_id = unittest.mock.AsyncMock(
+                return_value=([1], ["EM1_O_20221130_000001"])
             )
             await self.remote.cmd_startScan.set_start(timeout=STD_TIMEOUT)
 
@@ -184,16 +179,12 @@ class KeysightTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase)
             simulation_mode=2,
             config_dir=TEST_CONFIG_DIR,
         ):
-            self.csc.controller.image_service_client.get_next_obs_id = (
-                unittest.mock.AsyncMock(return_value=([2], ["EM1_O_20221130_000002"]))
+            self.csc.controller.image_service_client.get_next_obs_id = unittest.mock.AsyncMock(
+                return_value=([2], ["EM1_O_20221130_000002"])
             )
-            await self.remote.cmd_startScanDt.set_start(
-                scanDuration=2, timeout=STD_TIMEOUT
-            )
+            await self.remote.cmd_startScanDt.set_start(scanDuration=2, timeout=STD_TIMEOUT)
 
-            await self.assert_next_sample(
-                topic=self.remote.evt_largeFileObjectAvailable
-            )
+            await self.assert_next_sample(topic=self.remote.evt_largeFileObjectAvailable)
 
     @parameterized.parameterized.expand(INDICES)
     async def test_set_voltage_source(self, index):
@@ -203,9 +194,7 @@ class KeysightTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase)
             simulation_mode=2,
             config_dir=TEST_CONFIG_DIR,
         ):
-            await self.remote.cmd_setVoltageSource.set_start(
-                status=True, range=1, voltage_limit=2, level=2
-            )
+            await self.remote.cmd_setVoltageSource.set_start(status=True, range=1, voltage_limit=2, level=2)
             await self.assert_next_sample(
                 topic=self.remote.evt_voltageSourceChanged,
                 voltage_limit=0,
@@ -257,9 +246,7 @@ class ElectrometerCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTe
         )
 
     async def test_bin_script(self):
-        await self.check_bin_script(
-            name="Electrometer", index=1, exe_name="run_electrometer"
-        )
+        await self.check_bin_script(name="Electrometer", index=1, exe_name="run_electrometer")
 
     async def test_standard_state_transitions(self):
         async with self.make_csc(
@@ -317,9 +304,7 @@ class ElectrometerCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTe
             simulation_mode=2,
             config_dir=TEST_CONFIG_DIR,
         ):
-            await self.remote.cmd_setIntegrationTime.set_start(
-                intTime=0.01, timeout=STD_TIMEOUT
-            )
+            await self.remote.cmd_setIntegrationTime.set_start(intTime=0.01, timeout=STD_TIMEOUT)
 
     async def test_set_mode(self):
         async with self.make_csc(
@@ -339,9 +324,7 @@ class ElectrometerCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTe
         ):
             self.remote.evt_measureRange.flush()
             await self.remote.cmd_setRange.set_start(setRange=0.1, timeout=STD_TIMEOUT)
-            await self.assert_next_sample(
-                topic=self.remote.evt_measureRange, rangeValue=0.1
-            )
+            await self.assert_next_sample(topic=self.remote.evt_measureRange, rangeValue=0.1)
 
     async def test_start_scan(self):
         async with self.make_csc(
@@ -350,8 +333,8 @@ class ElectrometerCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTe
             simulation_mode=2,
             config_dir=TEST_CONFIG_DIR,
         ):
-            self.csc.controller.image_service_client.get_next_obs_id = (
-                unittest.mock.AsyncMock(return_value=([1], ["EM1_O_20221130_000001"]))
+            self.csc.controller.image_service_client.get_next_obs_id = unittest.mock.AsyncMock(
+                return_value=([1], ["EM1_O_20221130_000001"])
             )
             await self.remote.cmd_startScan.set_start(timeout=STD_TIMEOUT)
 
@@ -362,8 +345,8 @@ class ElectrometerCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTe
             simulation_mode=2,
             config_dir=TEST_CONFIG_DIR,
         ):
-            self.csc.controller.image_service_client.get_next_obs_id = (
-                unittest.mock.AsyncMock(return_value=([2], ["EM1_O_20221130_000002"]))
+            self.csc.controller.image_service_client.get_next_obs_id = unittest.mock.AsyncMock(
+                return_value=([2], ["EM1_O_20221130_000002"])
             )
             await self.remote.cmd_startScanDt.set_start(scanDuration=2)
 
@@ -376,9 +359,7 @@ class ElectrometerCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTe
             simulation_mode=2,
             config_dir=TEST_CONFIG_DIR,
         ):
-            await self.remote.cmd_setVoltageSource.set_start(
-                status=True, range=1, voltage_limit=2, level=2
-            )
+            await self.remote.cmd_setVoltageSource.set_start(status=True, range=1, voltage_limit=2, level=2)
             await self.assert_next_sample(
                 topic=self.remote.evt_voltageSourceChanged,
                 voltage_limit=0,

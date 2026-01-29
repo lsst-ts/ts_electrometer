@@ -4,6 +4,7 @@ import unittest
 import jsonschema
 import jsonschema.exceptions
 import yaml
+
 from lsst.ts import electrometer, salobj
 
 TEST_CONFIG_DIR = pathlib.Path(__file__).parents[1].joinpath("tests", "data", "config")

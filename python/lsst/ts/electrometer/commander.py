@@ -60,9 +60,7 @@ class Commander:
         Whether the electrometer is connected or not.
     """
 
-    def __init__(
-        self, log: None | logging.Logger = None, brand: str | None = None
-    ) -> None:
+    def __init__(self, log: None | logging.Logger = None, brand: str | None = None) -> None:
         # Create a logger if none were passed during the instantiation of
         # the class
         self.log: None | logging.Logger = None
@@ -117,9 +115,7 @@ class Commander:
         await self.client.close()
         self.client = tcpip.Client(host="", port=None, log=self.log)
 
-    async def send_command(
-        self, msg: str, has_reply: bool, timeout: None | float = None
-    ) -> None | str:
+    async def send_command(self, msg: str, has_reply: bool, timeout: None | float = None) -> None | str:
         """Send command to the device and receive reply if expected.
 
         Parameters
@@ -170,9 +166,7 @@ class Commander:
                                     f"Getting reply failed... trying again in {RETRY_DELAY} second(s)."
                                 )
                                 await asyncio.sleep(RETRY_DELAY)
-                reply = reply.rstrip(self.client.terminator).decode(
-                    self.client.encoding
-                )
+                reply = reply.rstrip(self.client.terminator).decode(self.client.encoding)
                 return reply
             else:
                 return None

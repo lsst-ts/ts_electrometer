@@ -24,8 +24,7 @@ __all__ = ["execute_csc", "command_csc", "ElectrometerCsc"]
 import asyncio
 import types
 
-from lsst.ts import salobj
-from lsst.ts import utils
+from lsst.ts import salobj, utils
 from lsst.ts.xml.enums.Electrometer import DetailedState
 
 from . import __version__, controller, enums, mock_server
@@ -89,7 +88,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             config_dir=config_dir,
             initial_state=initial_state,
             simulation_mode=simulation_mode,
-            extra_commands=["changeNPLC"]
+            extra_commands=["changeNPLC"],
         )
         self.simulator = None
         self.run_event_loop = False
@@ -113,12 +112,8 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         salobj.ExpectedError
             If the current substate is not allowed to preform the action.
         """
-        if self.detailed_state not in [
-            DetailedState(substate) for substate in substates
-        ]:
-            raise salobj.ExpectedError(
-                f"command not allowed in {self.detailed_state!r}"
-            )
+        if self.detailed_state not in [DetailedState(substate) for substate in substates]:
+            raise salobj.ExpectedError(f"command not allowed in {self.detailed_state!r}")
 
     def assert_valid_range(self):
         # TODO DM-51208 Write method that asserts value is in valid range.
@@ -153,14 +148,10 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         if instance["sal_index"] != self.salinfo.index:
             raise RuntimeError(f"No configuration found for {self.salinfo.index=}")
         self.log.debug(f"instance is {instance}")
-        self.log.debug(f'electrometer type is {instance["electrometer_type"]}')
+        self.log.debug(f"electrometer type is {instance['electrometer_type']}")
         electrometer_type = instance["electrometer_type"]
-        controller_class = getattr(
-            controller, f"{electrometer_type}ElectrometerController"
-        )
-        self.validator = salobj.DefaultingValidator(
-            controller_class.get_config_schema()
-        )
+        controller_class = getattr(controller, f"{electrometer_type}ElectrometerController")
+        self.validator = salobj.DefaultingValidator(controller_class.get_config_schema())
         # self.validator.validate(instance)
         self.controller = controller_class(csc=self, log=self.log)
         self.controller.configure(types.SimpleNamespace(**instance))
@@ -184,9 +175,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         create = False
         if self.disabled_or_enabled:
             if self.simulation_mode and self.simulator is None:
-                self.simulator = mock_server.MockServer(
-                    self.controller.electrometer_type, False
-                )
+                self.simulator = mock_server.MockServer(self.controller.electrometer_type, False)
                 await self.simulator.start_task
                 self.controller.commander.host = self.simulator.host
                 self.controller.commander.port = self.simulator.port
@@ -196,26 +185,20 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             if self.bucket is None:
                 try:
                     self.bucket = salobj.AsyncS3Bucket(
-                        salobj.AsyncS3Bucket.make_bucket_name(
-                            s3instance=self.controller.s3_instance
-                        ),
+                        salobj.AsyncS3Bucket.make_bucket_name(s3instance=self.controller.s3_instance),
                         create=create,
                         domock=do_mock,
                     )
                 except Exception:
                     self.log.exception("Bucket creation failed.")
-                    await self.fault(
-                        code=enums.Error.BUCKET, report="Bucket creation failed."
-                    )
+                    await self.fault(code=enums.Error.BUCKET, report="Bucket creation failed.")
                     return
             if not self.controller.connected:
                 try:
                     await self.controller.connect()
                 except Exception:
                     self.log.exception("Connection failed.")
-                    await self.fault(
-                        code=enums.Error.CONNECTION, report="Connection failed."
-                    )
+                    await self.fault(code=enums.Error.CONNECTION, report="Connection failed.")
                     return
         else:
             if self.controller is not None:
@@ -312,10 +295,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             The data for the command.
         """
         self.assert_enabled()
-        self.assert_substate(
-            substates=[DetailedState.NOTREADINGSTATE],
-            action="changeNPLC"
-        )
+        self.assert_substate(substates=[DetailedState.NOTREADINGSTATE], action="changeNPLC")
         try:
             await self.controller.set_timer(data.value)
             await self.evt_changedNPLC.set_write(value=float(self.controller.nplc))
@@ -333,9 +313,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             The data for the command.
         """
         self.assert_enabled()
-        self.assert_substate(
-            substates=[DetailedState.NOTREADINGSTATE], action="setMode"
-        )
+        self.assert_substate(substates=[DetailedState.NOTREADINGSTATE], action="setMode")
         try:
             await self.report_detailed_state(DetailedState.CONFIGURINGSTATE)
             self.log.debug(f"Setting mode: {data.mode}")
@@ -354,9 +332,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             The data for the command.
         """
         self.assert_enabled()
-        self.assert_substate(
-            substates=[DetailedState.NOTREADINGSTATE], action="setRange"
-        )
+        self.assert_substate(substates=[DetailedState.NOTREADINGSTATE], action="setRange")
         try:
             await self.report_detailed_state(DetailedState.CONFIGURINGSTATE)
             await self.controller.set_range(set_range=data.setRange)
@@ -375,9 +351,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         """
         self.log.debug("Starting startScan")
         self.assert_enabled()
-        self.assert_substate(
-            substates=[DetailedState.NOTREADINGSTATE], action="startScan"
-        )
+        self.assert_substate(substates=[DetailedState.NOTREADINGSTATE], action="startScan")
         try:
             await self.report_detailed_state(DetailedState.MANUALREADINGSTATE)
             await self.controller.start_scan(group_id=getattr(data, "groupId", None))
@@ -396,9 +370,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             The data for the command.
         """
         self.assert_enabled()
-        self.assert_substate(
-            substates=[DetailedState.NOTREADINGSTATE], action="startScanDt"
-        )
+        self.assert_substate(substates=[DetailedState.NOTREADINGSTATE], action="startScanDt")
         try:
             await self.report_detailed_state(DetailedState.SETDURATIONREADINGSTATE)
             await self.cmd_startScanDt.ack_in_progress(
@@ -452,9 +424,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
 
     async def do_setVoltageSource(self, data):
         self.assert_enabled()
-        self.assert_substate(
-            substates=[DetailedState.NOTREADINGSTATE], action="setRange"
-        )
+        self.assert_substate(substates=[DetailedState.NOTREADINGSTATE], action="setRange")
         try:
             await self.report_detailed_state(DetailedState.CONFIGURINGSTATE)
             await self.controller.toggle_voltage_source(data.status)

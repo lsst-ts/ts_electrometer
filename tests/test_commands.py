@@ -30,9 +30,7 @@ class TestElectrometerCommandFactory(unittest.TestCase):
         self.commands = KeithleyElectrometerCommandFactory()
 
     def test_activate_filter(self):
-        reply = self.commands.activate_filter(
-            mode=enums.UnitMode.CURR, filter_type=1, active=1
-        )
+        reply = self.commands.activate_filter(mode=enums.UnitMode.CURR, filter_type=1, active=1)
         self.assertEqual(reply, ":sens:CURR:MED:stat 1;")
 
     def test_get_filter_status(self):
@@ -112,9 +110,7 @@ class TestElectrometerCommandFactory(unittest.TestCase):
         self.assertEqual(reply, ":sens:func 'CHAR';")
 
     def test_set_range(self):
-        reply = self.commands.set_range(
-            auto=False, range_value=0.001, mode=enums.UnitMode.CURR
-        )
+        reply = self.commands.set_range(auto=False, range_value=0.001, mode=enums.UnitMode.CURR)
         self.assertEqual(reply, ":sens:CURR:rang:auto OFF;\n:sens:CURR:rang 0.001;")
 
     def test_enable_sync(self):

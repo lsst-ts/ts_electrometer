@@ -115,37 +115,17 @@ class MockKeysight:
         self.mode = UnitMode.CURR
         self.commands = {
             re.compile(r"^\*idn\?;$"): self.do_get_hardware_info,
-            re.compile(
-                r"^:sens:(CURR|CHAR|VOlT|RES):aper \d\.\d+;$"
-            ): self.do_integration_time,
-            re.compile(
-                r"^:sens:(CURR|CHAR|VOLT|RES):aper\?;$"
-            ): self.do_get_integration_time,
-            re.compile(
-                r"^:syst:zch (?P<parameter>ON|OFF);$"
-            ): self.do_enable_zero_check,
-            re.compile(
-                r"^:sens:func:on (?P<parameter>'CURR'|'CHAR'|'VOLT'|'RES');$"
-            ): self.do_set_mode,
-            re.compile(
-                r"^:sens:(CURR|CHAR|VOLT|RES):rang:auto (OFF|ON);$"
-            ): self.do_set_range,
+            re.compile(r"^:sens:(CURR|CHAR|VOlT|RES):aper \d\.\d+;$"): self.do_integration_time,
+            re.compile(r"^:sens:(CURR|CHAR|VOLT|RES):aper\?;$"): self.do_get_integration_time,
+            re.compile(r"^:syst:zch (?P<parameter>ON|OFF);$"): self.do_enable_zero_check,
+            re.compile(r"^:sens:func:on (?P<parameter>'CURR'|'CHAR'|'VOLT'|'RES');$"): self.do_set_mode,
+            re.compile(r"^:sens:(CURR|CHAR|VOLT|RES):rang:auto (OFF|ON);$"): self.do_set_range,
             re.compile(r"^:sens:(CURR|CHAR|VOLT|RES):rang\?;$"): self.do_get_range,
-            re.compile(
-                r"^:inp:zcor (?P<parameter>ON|OFF);$"
-            ): self.do_enable_zero_correction,
-            re.compile(
-                r"^:sens:(CURR|CHAR|VOLT|RES):(MED|AVER):stat (0|1);$"
-            ): self.do_activate_filter,
-            re.compile(
-                r"^:sens:(CURR|CHAR|VOLT|RES):AVER:mov:stat (0|1);$"
-            ): self.do_set_avg_filter_status,
-            re.compile(
-                r"^:sens:(CURR|CHAR|VOLT|RES):AVER:mov:stat\?;$"
-            ): self.do_get_avg_filter_status,
-            re.compile(
-                r"^:sens:(CURR|CHAR|VOLT|RES):MED:stat\?;$"
-            ): self.do_get_med_filter_status,
+            re.compile(r"^:inp:zcor (?P<parameter>ON|OFF);$"): self.do_enable_zero_correction,
+            re.compile(r"^:sens:(CURR|CHAR|VOLT|RES):(MED|AVER):stat (0|1);$"): self.do_activate_filter,
+            re.compile(r"^:sens:(CURR|CHAR|VOLT|RES):AVER:mov:stat (0|1);$"): self.do_set_avg_filter_status,
+            re.compile(r"^:sens:(CURR|CHAR|VOLT|RES):AVER:mov:stat\?;$"): self.do_get_avg_filter_status,
+            re.compile(r"^:sens:(CURR|CHAR|VOLT|RES):MED:stat\?;$"): self.do_get_med_filter_status,
             re.compile(r"^:syst:err:next\?;$"): self.do_get_last_error,
             re.compile(r"^:sens:func\?;$"): self.do_get_mode,
             re.compile(r"^:trac:cle;$"): self.do_clear_buffer,
@@ -158,9 +138,7 @@ class MockKeysight:
             re.compile(r"^:trac:points 50000;$"): self.do_set_buffer_size,
             re.compile(r"^:trig:count 50000;$"): self.do_set_buffer_size,
             re.compile(r"^:trig:sour IMM;$"): self.do_select_device_timer,
-            re.compile(
-                r"^:trig:tim (?P<parameter>\d\.\d\d\d);$"
-            ): self.do_select_device_timer,
+            re.compile(r"^:trig:tim (?P<parameter>\d\.\d\d\d);$"): self.do_select_device_timer,
             re.compile(r"^:sens:data:latest\?;$"): self.get_intensity,
             re.compile(r"^:trac:feed:cont NEXT;$"): self.do_next_read,
             re.compile(r"^:init:acq;$"): self.do_init_buffer,
@@ -170,13 +148,9 @@ class MockKeysight:
             re.compile(r"^TST:TYPE RTC;$"): self.do_rtc_time,
             re.compile(r"^:sens:curr:nplc (?P<parameter>.*);$"): self.do_change_nplc,
             re.compile(r"^:sens:curr:nplc\?;$"): self.do_get_nplc,
-            re.compile(
-                r"^:syst:lsyn:stat (?P<parameter>ON|OFF);$"
-            ): self.do_change_nplc,
+            re.compile(r"^:syst:lsyn:stat (?P<parameter>ON|OFF);$"): self.do_change_nplc,
             re.compile(r"^:disp:enab (?P<parameter>ON|OFF);$"): self.do_change_nplc,
-            re.compile(
-                r"^:sens:res:man:vso:oper (?P<parameter>ON|OFF);$"
-            ): self.do_toggle_voltage_source,
+            re.compile(r"^:sens:res:man:vso:oper (?P<parameter>ON|OFF);$"): self.do_toggle_voltage_source,
             re.compile(r"^:sens:res:man:vso:oper\?;$"): self.get_voltage_source_status,
             re.compile(r"^:sour:volt:lim:ampl 2;$"): self.set_voltage_limit,
             re.compile(r"^:sour:volt:lim:stat\?;$"): self.get_voltage_limit,
@@ -195,12 +169,8 @@ class MockKeysight:
             re.compile(r"^:sens:CURR:aper:auto .*;$"): self.do_nothing,
             re.compile(r"^:trac:cle;$"): self.do_nothing,
             re.compile(r"^:SENS:TOUT:STAT (ON|OFF);$"): self.do_nothing,
-            re.compile(
-                r"^:(sens|SENS):(CURR|CHAR|VOLT|RES):rang .*;$"
-            ): self.do_nothing,
-            re.compile(
-                r"^:(trig|TRIG):(ACQ|acq):(TOUT|tout):(SIGN|sign) .*;$"
-            ): self.do_nothing,
+            re.compile(r"^:(sens|SENS):(CURR|CHAR|VOLT|RES):rang .*;$"): self.do_nothing,
+            re.compile(r"^:(trig|TRIG):(ACQ|acq):(TOUT|tout):(SIGN|sign) .*;$"): self.do_nothing,
             re.compile(r"^:(inp|INP) .*;$"): self.do_nothing,
             re.compile(r"^:(FORM|form):(ELEM|elem):sens .*;$"): self.do_nothing,
         }
@@ -434,37 +404,17 @@ class MockKeithley:
         self.mode = UnitMode.CURR
         self.commands = {
             re.compile(r"^\*idn\?;$"): self.do_get_hardware_info,
-            re.compile(
-                r"^:sens:(CURR|CHAR|VOlT|RES):aper \d\.\d+;$"
-            ): self.do_integration_time,
-            re.compile(
-                r"^:sens:(CURR|CHAR|VOLT|RES):aper\?;$"
-            ): self.do_get_integration_time,
-            re.compile(
-                r"^:syst:zch (?P<parameter>ON|OFF);$"
-            ): self.do_enable_zero_check,
-            re.compile(
-                r"^:sens:func (?P<parameter>'CURR'|'CHAR'|'VOLT'|'RES');$"
-            ): self.do_set_mode,
-            re.compile(
-                r"^:sens:(CURR|CHAR|VOLT|RES):rang:auto (OFF|ON);$"
-            ): self.do_set_range,
+            re.compile(r"^:sens:(CURR|CHAR|VOlT|RES):aper \d\.\d+;$"): self.do_integration_time,
+            re.compile(r"^:sens:(CURR|CHAR|VOLT|RES):aper\?;$"): self.do_get_integration_time,
+            re.compile(r"^:syst:zch (?P<parameter>ON|OFF);$"): self.do_enable_zero_check,
+            re.compile(r"^:sens:func (?P<parameter>'CURR'|'CHAR'|'VOLT'|'RES');$"): self.do_set_mode,
+            re.compile(r"^:sens:(CURR|CHAR|VOLT|RES):rang:auto (OFF|ON);$"): self.do_set_range,
             re.compile(r"^:sens:(CURR|CHAR|VOLT|RES):rang\?;$"): self.do_get_range,
-            re.compile(
-                r"^:syst:zcor (?P<parameter>ON|OFF);$"
-            ): self.do_enable_zero_correction,
-            re.compile(
-                r"^:sens:(CURR|CHAR|VOLT|RES):(MED|AVER):stat (0|1);$"
-            ): self.do_activate_filter,
-            re.compile(
-                r"^:sens:(CURR|CHAR|VOLT|RES):AVER:move:stat\?;$"
-            ): self.do_set_avg_filter_status,
-            re.compile(
-                r"^:sens:(CURR|CHAR|VOLT|RES):AVER:stat\?;$"
-            ): self.do_get_avg_filter_status,
-            re.compile(
-                r"^:sens:(CURR|CHAR|VOLT|RES):MED:stat\?;$"
-            ): self.do_get_med_filter_status,
+            re.compile(r"^:syst:zcor (?P<parameter>ON|OFF);$"): self.do_enable_zero_correction,
+            re.compile(r"^:sens:(CURR|CHAR|VOLT|RES):(MED|AVER):stat (0|1);$"): self.do_activate_filter,
+            re.compile(r"^:sens:(CURR|CHAR|VOLT|RES):AVER:move:stat\?;$"): self.do_set_avg_filter_status,
+            re.compile(r"^:sens:(CURR|CHAR|VOLT|RES):AVER:stat\?;$"): self.do_get_avg_filter_status,
+            re.compile(r"^:sens:(CURR|CHAR|VOLT|RES):MED:stat\?;$"): self.do_get_med_filter_status,
             re.compile(r"^:syst:err\?;$"): self.do_get_last_error,
             re.compile(r"^:sens:func\?;$"): self.do_get_mode,
             re.compile(r"^:trac:cle;$"): self.do_clear_buffer,
@@ -474,9 +424,7 @@ class MockKeithley:
             re.compile(r"^:trac:points 50000;$"): self.do_set_buffer_size,
             re.compile(r"^:trig:count 50000;$"): self.do_set_buffer_size,
             re.compile(r"^:trig:sour IMM;$"): self.do_select_device_timer,
-            re.compile(
-                r"^:trig:tim (?P<parameter>\d\.\d\d\d);$"
-            ): self.do_select_device_timer,
+            re.compile(r"^:trig:tim (?P<parameter>\d\.\d\d\d);$"): self.do_select_device_timer,
             re.compile(r"^:trac:feed:cont NEXT;$"): self.do_next_read,
             re.compile(r"^:init;$"): self.do_init_buffer,
             re.compile(r"^:trac:feed:cont NEV;$"): self.do_stop_storing_buffer,
@@ -485,13 +433,9 @@ class MockKeithley:
             re.compile(r"^TST:TYPE RTC;$"): self.do_rtc_time,
             re.compile(r"^:sens:curr:nplc (?P<parameter>.*);$"): self.do_change_nplc,
             re.compile(r"^:sens:curr:nplc\?;$"): self.do_get_nplc,
-            re.compile(
-                r"^:syst:lsyn:stat (?P<parameter>ON|OFF);$"
-            ): self.do_change_nplc,
+            re.compile(r"^:syst:lsyn:stat (?P<parameter>ON|OFF);$"): self.do_change_nplc,
             re.compile(r"^:disp:enab (?P<parameter>ON|OFF);$"): self.do_change_nplc,
-            re.compile(
-                r"^:vsou:oper (?P<parameter>ON|OFF);$"
-            ): self.do_toggle_voltage_source,
+            re.compile(r"^:vsou:oper (?P<parameter>ON|OFF);$"): self.do_toggle_voltage_source,
             re.compile(r"^:vsou:oper\?;$"): self.get_voltage_source_status,
             re.compile(r"^:sour:volt:lim:ampl 2;$"): self.set_voltage_limit,
             re.compile(r"^:sour:volt:lim:stat\?;$"): self.get_voltage_limit,
@@ -503,16 +447,12 @@ class MockKeithley:
             re.compile(r"\*RST;$"): self.do_reset_device,
             re.compile(r"^:SENS:TOUT:SIGN 3;$"): self.do_output_trigger_line,
             re.compile(r"^:TRIG:ACQ:TOUT ON;$"): self.do_output_trigger_line,
-            re.compile(
-                r"^:sens:(CURR|CHAR|VOLT|RES):aper:auto (OFF|ON);$"
-            ): self.do_nothing,
+            re.compile(r"^:sens:(CURR|CHAR|VOLT|RES):aper:auto (OFF|ON);$"): self.do_nothing,
             re.compile(r"^:trac:elem .*;$"): self.do_nothing,
             re.compile(r"^:sens:CURR:aper:auto .*;$"): self.do_nothing,
             re.compile(r"^:SENS:TOUT:STAT (ON|OFF);$"): self.do_nothing,
             re.compile(r"^:trac:cle;$"): self.do_nothing,
-            re.compile(
-                r"^:(sens|SENS):(CURR|CHAR|VOLT|RES):rang .*;$"
-            ): self.do_nothing,
+            re.compile(r"^:(sens|SENS):(CURR|CHAR|VOLT|RES):rang .*;$"): self.do_nothing,
         }
 
     def parse_message(self, msg):
