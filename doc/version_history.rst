@@ -1,3 +1,12 @@
+v0.13.1 (2026-01-29)
+====================
+
+Other Changes and Additions
+---------------------------
+
+- Added build string to add python version to conda package file. (`OSW-1715 <https://rubinobs.atlassian.net//browse/OSW-1715>`_)
+
+
 v0.13.0 (2025-08-12)
 ====================
 
