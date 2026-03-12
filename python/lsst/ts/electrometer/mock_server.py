@@ -43,7 +43,7 @@ class MockServer(tcpip.OneClientReadLoopServer):
         The task that tracks the read loop.
     """
 
-    def __init__(self, brand, unstable=False) -> None:
+    def __init__(self, brand, unstable=False, disconnect_reply_after_bytes=None) -> None:
         log = logging.getLogger(type(self).__name__)
         self.brand = brand
         if self.brand == "Keithley":
@@ -56,6 +56,9 @@ class MockServer(tcpip.OneClientReadLoopServer):
             encoding = "latin_1"
         self.lock = asyncio.Lock()
         self.unstable = unstable
+        self.disconnect_reply_after_bytes = disconnect_reply_after_bytes
+        self._reply_disconnect_triggered = False
+        self._pending_reply = b""
         super().__init__(
             name="Electrometer Mock Server",
             host=tcpip.LOCAL_HOST,
@@ -86,7 +89,19 @@ class MockServer(tcpip.OneClientReadLoopServer):
                     else:
                         write = 0
                     await asyncio.sleep(write)
-                    await self.write_str(reply)
+                    reply_data = reply.encode(self.encoding) + self.terminator
+                    if (
+                        self.disconnect_reply_after_bytes is not None
+                        and not self._reply_disconnect_triggered
+                        and 0 < self.disconnect_reply_after_bytes < len(reply_data)
+                    ):
+                        self._reply_disconnect_triggered = True
+                        split_at = self.disconnect_reply_after_bytes
+                        self._pending_reply = reply_data[split_at:]
+                        await self.write(reply_data[:split_at])
+                        await self.close_client(cancel_read_loop_task=False)
+                        return
+                    await self.write(reply_data)
 
     async def connect_callback(self, server):
         """Start the command loop when client is connected.
@@ -98,6 +113,10 @@ class MockServer(tcpip.OneClientReadLoopServer):
         """
         if server.connected and server.brand == "Keysight":
             await server.write_str("something")
+        if server.connected and server._pending_reply:
+            pending_reply = server._pending_reply
+            server._pending_reply = b""
+            await server.write(pending_reply)
 
 
 class MockKeysight:
