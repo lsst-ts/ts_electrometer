@@ -29,7 +29,7 @@ from lsst.ts import tcpip
 LIMIT = 2**16
 DEFAULT_TIMEOUT = 240
 RETRY_DELAY = 1
-RECONNECTION_DELAY = 1
+RECONNECTION_DELAY = 30
 NUMBER_OF_RETRIES = 10
 
 
@@ -72,7 +72,7 @@ class Commander:
         self.lock: asyncio.Lock = asyncio.Lock()
         self.hostname: str = tcpip.LOCAL_HOST
         self.port: int = 9999
-        self.timeout: int = 10
+        self.timeout: int = DEFAULT_TIMEOUT
         self.long_timeout: int = 30
         self.brand: str | None = brand
         self.client: tcpip.Client = tcpip.Client(host="", port=None, log=log)
@@ -83,25 +83,38 @@ class Commander:
 
     async def connect(self) -> None:
         """Connect to the electrometer"""
-        if self.brand == "Keysight":
-            self.client = tcpip.Client(
-                host=self.hostname,
-                port=self.port,
-                name=f"{self.brand} Client",
-                log=self.log,
-                encoding="latin_1",
-                limit=LIMIT,
-            )
-        else:
-            self.client = tcpip.Client(
-                host=self.hostname,
-                port=self.port,
-                name=f"{self.brand} Client",
-                log=self.log,
-                terminator=b"\r",
-                limit=LIMIT,
-            )
-        await self.client.start_task
+        for _ in range(NUMBER_OF_RETRIES):
+            match self.brand:
+                case "Keysight":
+                    self.client = tcpip.Client(
+                        host=self.hostname,
+                        port=self.port,
+                        name=f"{self.brand} Client",
+                        log=self.log,
+                        encoding="latin_1",
+                        limit=LIMIT,
+                    )
+                case "Keithley":
+                    self.client = tcpip.Client(
+                        host=self.hostname,
+                        port=self.port,
+                        name=f"{self.brand} Client",
+                        log=self.log,
+                        terminator=b"\r",
+                        limit=LIMIT,
+                    )
+                case _:
+                    raise RuntimeError(f"{self.brand=} is not supported.")
+            try:
+                await self.client.start_task
+            except ConnectionRefusedError:
+                self.log.exception("Connection refused. Closing client and trying again.")
+                await self.disconnect()
+                await asyncio.sleep(RECONNECTION_DELAY)
+            else:
+                break
+        if not self.client.connected:
+            raise RuntimeError("Not able to connect after retrying.")
         if self.brand == "Keysight":
             # ignore welcome message
             async with self.lock:
@@ -132,7 +145,7 @@ class Commander:
         None | str
             Return the reply if expected else return None.
         """
-        if not timeout:
+        if timeout is None:
             timeout = self.timeout
         else:
             timeout = timeout
@@ -140,11 +153,12 @@ class Commander:
             if not self.connected:
                 await self.connect()
             await self.client.write_str(msg)
+            # Ignore echo sent by keysight
             if self.brand == "Keysight":
-                async with asyncio.timeout(DEFAULT_TIMEOUT):
+                async with asyncio.timeout(timeout):
                     await self.client.read_str()
             if has_reply:
-                async with asyncio.timeout(DEFAULT_TIMEOUT):
+                async with asyncio.timeout(timeout):
                     reply = b""
                     while not reply.endswith(self.client.terminator):
                         for _ in range(NUMBER_OF_RETRIES):
