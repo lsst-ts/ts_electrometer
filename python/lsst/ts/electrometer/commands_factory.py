@@ -728,7 +728,7 @@ class KeysightElectrometerCommandFactory(ElectrometerCommandFactory):
             The generated command string
         """
         command = (
-            f"{self.set_mode(mode=mode)} {self.set_range(auto=auto, range_value=range_value, mode=mode)} "
+            f"{self.set_mode(mode=mode)} {self.set_range(auto=auto, range_value=range_value, mode=mode)}"
         )
         return command
 
