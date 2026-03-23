@@ -554,7 +554,7 @@ class ElectrometerController(abc.ABC):
 
         await self.send_command(self.commands.auto_nplc_on(mode=self.mode))
 
-        await self.send_command(self.commands.integration_time(self.mode, value=int_time))
+        await self.send_command(self.commands.integration_time(self.mode, time=int_time))
 
         await self.get_integration_time()
 
@@ -772,7 +772,7 @@ class ElectrometerController(abc.ABC):
         """Get the integration time value."""
         res = await self.send_command(f"{self.commands.get_integration_time(self.mode)}", has_reply=True)
         self.integration_time = float(res)
-        await self.csc.evt_integrationTime.set_write(intTime=self.integration_time, force_output=True)
+        await self.csc.evt_integrationTime.set_write(intTime=self.integration_time, force_output=False)
 
     async def toggle_voltage_source(self, toggle):
         await self.send_command(self.commands.toggle_voltage_source(toggle))
