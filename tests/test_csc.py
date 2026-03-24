@@ -126,9 +126,11 @@ class KeysightTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase)
             simulation_mode=2,
             config_dir=TEST_CONFIG_DIR,
         ):
-            await self.remote.cmd_setIntegrationTime.set_start(intTime=0.01, timeout=STD_TIMEOUT)
-            topic = await self.assert_next_sample(topic=self.remote.evt_integrationTime)
-            self.assertAlmostEqual(topic.intTime, 0.01)
+            await self.remote.cmd_setIntegrationTime.set_start(intTime=0.02, timeout=STD_TIMEOUT)
+            topic1 = await self.assert_next_sample(topic=self.remote.evt_integrationTime)
+            self.assertAlmostEqual(topic1.intTime, 0.01)
+            topic2 = await self.assert_next_sample(topic=self.remote.evt_integrationTime)
+            self.assertAlmostEqual(topic2.intTime, 0.02)
 
     @parameterized.parameterized.expand(INDICES)
     async def test_set_mode(self, index):

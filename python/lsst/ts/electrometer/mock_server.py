@@ -134,7 +134,9 @@ class MockKeysight:
         self.mode = UnitMode.CURR
         self.commands = {
             re.compile(r"^\*idn\?;$"): self.do_get_hardware_info,
-            re.compile(r"^:sens:(CURR|CHAR|VOlT|RES):aper \d\.\d+;$"): self.do_integration_time,
+            re.compile(
+                r"^:sens:(CURR|CHAR|VOlT|RES):aper (?P<parameter>\d\.\d+);$"
+            ): self.do_integration_time,
             re.compile(r"^:sens:(CURR|CHAR|VOLT|RES):aper\?;$"): self.do_get_integration_time,
             re.compile(r"^:syst:zch (?P<parameter>ON|OFF);$"): self.do_enable_zero_check,
             re.compile(r"^:sens:func:on (?P<parameter>'CURR'|'CHAR'|'VOLT'|'RES');$"): self.do_set_mode,
@@ -193,6 +195,7 @@ class MockKeysight:
             re.compile(r"^:(inp|INP) .*;$"): self.do_nothing,
             re.compile(r"^:(FORM|form):(ELEM|elem):sens .*;$"): self.do_nothing,
         }
+        self.integration_time = 0.01
 
     def parse_message(self, msg):
         """Parse and return the result of the message.
@@ -328,13 +331,14 @@ class MockKeysight:
         """Get the state of the filter in median mode."""
         return "1"
 
-    def do_integration_time(self):
+    def do_integration_time(self, parameter):
         """Set the integration time setting."""
+        self.integration_time = float(parameter)
         return ""
 
     def do_get_integration_time(self):
         """Get the integration time setting."""
-        return "0.01"
+        return f"{self.integration_time}"
 
     def do_get_range(self):
         """Get the range setting."""
@@ -423,7 +427,9 @@ class MockKeithley:
         self.mode = UnitMode.CURR
         self.commands = {
             re.compile(r"^\*idn\?;$"): self.do_get_hardware_info,
-            re.compile(r"^:sens:(CURR|CHAR|VOlT|RES):aper \d\.\d+;$"): self.do_integration_time,
+            re.compile(
+                r"^:sens:(CURR|CHAR|VOlT|RES):aper (?P<parameter>\d\.\d+);$"
+            ): self.do_integration_time,
             re.compile(r"^:sens:(CURR|CHAR|VOLT|RES):aper\?;$"): self.do_get_integration_time,
             re.compile(r"^:syst:zch (?P<parameter>ON|OFF);$"): self.do_enable_zero_check,
             re.compile(r"^:sens:func (?P<parameter>'CURR'|'CHAR'|'VOLT'|'RES');$"): self.do_set_mode,
@@ -472,7 +478,10 @@ class MockKeithley:
             re.compile(r"^:SENS:TOUT:STAT (ON|OFF);$"): self.do_nothing,
             re.compile(r"^:trac:cle;$"): self.do_nothing,
             re.compile(r"^:(sens|SENS):(CURR|CHAR|VOLT|RES):rang .*;$"): self.do_nothing,
+            re.compile(r"^\*CLS;$"): self.do_nothing,
+            re.compile(r"^:sens:CURR:nplc:auto (ON|OFF);$"): self.do_nothing,
         }
+        self.integration_time = 0.01
 
     def parse_message(self, msg):
         """Parse and return the result of the message.
@@ -607,13 +616,14 @@ class MockKeithley:
         """Get the state of the filter in median mode."""
         return "1"
 
-    def do_integration_time(self):
+    def do_integration_time(self, parameter):
         """Set the integration time setting."""
+        self.integration_time = float(parameter)
         return ""
 
     def do_get_integration_time(self):
         """Get the integration time setting."""
-        return "0.01"
+        return f"{self.integration_time}"
 
     def do_get_range(self):
         """Get the range setting."""
