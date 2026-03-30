@@ -1,1 +1,0 @@
-Changed value to time in set_integration_time method, fixing wrong parameter name.

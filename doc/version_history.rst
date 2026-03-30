@@ -1,3 +1,13 @@
+v0.13.3 (2026-03-24)
+====================
+
+Bug Fixes
+---------
+
+- Fixed reconnection handling. (`OSW-1979 <https://rubinobs.atlassian.net//browse/OSW-1979>`_)
+- Changed value to time in set_integration_time method, fixing wrong parameter name. (`OSW-2052 <https://rubinobs.atlassian.net//browse/OSW-2052>`_)
+
+
 v0.13.1 (2026-01-29)
 ====================
 
