@@ -227,7 +227,6 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
                 mode=None, auto=None, set_range=None, integration_time=None
             )
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
-            self.log.info("Zero Calibration Completed")
         except Exception:
             self.log.exception("performZeroCalibration failed.")
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
@@ -260,7 +259,6 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
                 f"median_filter_active={self.controller.median_filter_active}"
             )
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
-            self.log.info("setDigitalFilter Completed")
         except Exception:
             self.log.exception("setDigitalFilter failed.")
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)

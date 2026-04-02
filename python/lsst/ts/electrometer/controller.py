@@ -226,7 +226,10 @@ class ElectrometerController(abc.ABC):
             source="Electrometer",
         )
         await self.commander.connect()
-        id = await self.send_command(command=self.commands.get_hardware_info(), has_reply=True)
+        try:
+            id = await self.send_command(command=self.commands.get_hardware_info(), has_reply=True)
+        except Exception:
+            raise TimeoutError("No ID recieved.")
         expected_type = self.electrometer_type
         match expected_type:
             case "Keithley":
