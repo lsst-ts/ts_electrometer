@@ -29,15 +29,47 @@ from . import enums
 
 
 class ElectrometerCommandFactory:
+    """Format SCPI commands common to supported electrometers."""
+
     def __init__(self):
         pass
 
     def activate_filter(self, mode, filter_type, active):
+        """Return a command to enable or disable a digital filter.
+
+        Parameters
+        ----------
+        mode : `str` or `enums.UnitMode`
+            Measurement mode.
+        filter_type : `int` or `enums.Filter`
+            Filter type.
+        active : `bool`
+            Whether to enable the filter.
+
+        Returns
+        -------
+        command : `str`
+            The generated command string.
+        """
         unit = enums.UnitMode(mode).name
         filter = enums.Filter(filter_type).name
         return f":sens:{unit}:{filter}:stat {int(active)};"
 
     def get_filter_status(self, mode, filter_type):
+        """Return a command to query a digital filter status.
+
+        Parameters
+        ----------
+        mode : `str` or `enums.UnitMode`
+            Measurement mode.
+        filter_type : `int` or `enums.Filter`
+            Filter type.
+
+        Returns
+        -------
+        command : `str`
+            The generated command string.
+        """
         unit = enums.UnitMode(mode).name
         filter = enums.Filter(filter_type).name
         return f":sens:{unit}:{filter}:stat?;"
@@ -47,7 +79,7 @@ class ElectrometerCommandFactory:
 
         Returns
         -------
-        commmand : `str`
+        command : `str`
             The generated command string. An array of all data in the buffer.
         """
         return f":trac:feed:cont alw;{self.init_buffer()}"
@@ -316,6 +348,18 @@ class ElectrometerCommandFactory:
         return command
 
     def select_source(self, source=enums.Source.TIM):
+        """Return a command to select the trigger source.
+
+        Parameters
+        ----------
+        source : `enums.Source`, optional
+            Trigger source.
+
+        Returns
+        -------
+        command : `str`
+            The generated command string.
+        """
         command = f":trig:sour {enums.Source(source).name};"
         return command
 
@@ -376,7 +420,7 @@ class ElectrometerCommandFactory:
         Parameters
         ----------
         mode : `UnitMode`
-            The unit of the aperature to set.
+            The unit of the aperture to set.
         time : `float`
             The integration time of the aperture.
 
@@ -390,6 +434,18 @@ class ElectrometerCommandFactory:
         return command
 
     def auto_integration_time_on(self, mode):
+        """Return a command to enable automatic integration time.
+
+        Parameters
+        ----------
+        mode : `str` or `enums.UnitMode`
+            Measurement mode.
+
+        Returns
+        -------
+        command : `str`
+            The generated command string.
+        """
         unit = enums.UnitMode(mode).name
         command = f":sens:{unit}:aper:auto ON;"
         return command
@@ -653,42 +709,52 @@ class ElectrometerCommandFactory:
         return command
 
     def toggle_voltage_source(self, enable):
+        """Return a command to enable or disable the voltage source."""
         command = ":vsou:oper ON;" if enable else ":vsou:oper OFF;"
         return command
 
     def get_voltage_source_status(self):
+        """Return a command to query voltage source status."""
         command = ":vsou:oper?;"
         return command
 
     def get_voltage_level(self):
+        """Return a command to query voltage source level."""
         command = ":sour:volt:lev:imm:ampl?;"
         return command
 
     def set_voltage_level(self, amplititude):
+        """Return a command to set voltage source level."""
         command = f":sour:volt:lev:imm:ampl {amplititude};"
         return command
 
     def get_voltage_range(self):
+        """Return a command to query voltage source range."""
         command = ":sour:volt:rang?;"
         return command
 
     def set_voltage_range(self, range):
+        """Return a command to set voltage source range."""
         command = f":sour:volt:rang {range};"
         return command
 
     def get_voltage_limit(self):
+        """Return a command to query voltage source limit."""
         command = ":sour:volt:lim:stat?;"
         return command
 
     def set_voltage_limit(self, limit):
+        """Return a command to set voltage source limit."""
         command = f":sour:volt:lim:ampl {limit};"
         return command
 
     def set_resolution(self, mode, digit):
+        """Return a command to set measurement resolution."""
         command = f":sens:{enums.UnitMode(mode).value}:dig {digit};"
         return command
 
     def clear(self):
+        """Return a command to clear device status."""
         return "*CLS;"
 
 
@@ -790,7 +856,7 @@ class KeysightElectrometerCommandFactory(ElectrometerCommandFactory):
 
         Returns
         -------
-        commmand : `str`
+        command : `str`
             The generated command string. An array of all data in the buffer.
         """
         command = ":trac:data?"
@@ -1009,10 +1075,12 @@ class KeysightElectrometerCommandFactory(ElectrometerCommandFactory):
         return command
 
     def toggle_voltage_source(self, enable):
+        """Return a command to enable or disable the voltage source."""
         command = ":sens:res:man:vso:oper ON;" if enable else ":sens:res:man:vso:oper OFF;"
         return command
 
     def get_voltage_source_status(self):
+        """Return a command to query voltage source status."""
         command = ":sens:res:man:vso:oper?;"
         return command
 
@@ -1033,7 +1101,7 @@ class KeysightElectrometerCommandFactory(ElectrometerCommandFactory):
         Parameters
         ----------
         mode : `UnitMode`
-            The unit of the aperature to set.
+            The unit of the aperture to set.
         time : `float`
             The integration time of the aperture.
 
