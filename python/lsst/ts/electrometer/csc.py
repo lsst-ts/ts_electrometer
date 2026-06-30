@@ -215,6 +215,24 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         """
         await self.evt_detailedState.set_write(detailedState=new_state)
 
+    def get_mode_index(self) -> int:
+        """Get the SAL index for the controller's current measurement mode.
+
+        Returns
+        -------
+        mode_index : `int`
+            SAL enum index matching the controller measurement mode.
+        """
+        controller = self.active_controller
+        return int([num for num, mode in controller.modes.items() if controller.mode == mode.name][0])
+
+    async def publish_controller_settings(self) -> None:
+        """Publish controller settings represented as SAL events."""
+        controller = self.active_controller
+        await self.evt_measureType.set_write(mode=self.get_mode_index(), force_output=False)
+        await self.evt_measureRange.set_write(rangeValue=controller.range, force_output=True)
+        await self.evt_integrationTime.set_write(intTime=controller.integration_time, force_output=False)
+
     async def write_scan_result(self, scan_result: controller.ScanResult) -> None:
         """Write scan data to object storage and publish the LFA event.
 
@@ -340,6 +358,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
                     self.log.exception("Connection failed.")
                     await self.fault(code=enums.Error.CONNECTION, report="Connection failed.")
                     return
+            await self.publish_controller_settings()
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
         else:
             if self.controller is not None:
@@ -368,6 +387,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             await controller.perform_zero_calibration(
                 mode=None, auto=None, set_range=None, integration_time=None
             )
+            await self.publish_controller_settings()
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
         except Exception:
             self.log.exception("performZeroCalibration failed.")
@@ -403,6 +423,11 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
                 f"avg_filter_active={controller.avg_filter_active},"
                 f"median_filter_active={controller.median_filter_active}"
             )
+            await self.evt_digitalFilterChange.set_write(
+                activateFilter=controller.filter_active,
+                activateMedianFilter=controller.median_filter_active,
+                activateAverageFilter=controller.avg_filter_active,
+            )
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
         except Exception:
             self.log.exception("setDigitalFilter failed.")
@@ -427,6 +452,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             await self.report_detailed_state(DetailedState.CONFIGURINGSTATE)
             controller = self.active_controller
             await controller.set_integration_time(data.intTime)
+            await self.evt_integrationTime.set_write(intTime=controller.integration_time)
         except Exception:
             self.log.exception("setIntegrationTime failed.")
             raise
@@ -446,6 +472,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         try:
             controller = self.active_controller
             await controller.set_timer(data.value)
+            await self.evt_changedNPLC.set_write(value=float(controller.nplc))
         except Exception:
             self.log.exception("Failed to change NPLC.")
             raise
@@ -467,6 +494,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             controller = self.active_controller
             self.log.debug(f"Setting mode: {data.mode}")
             await controller.set_mode(mode=data.mode)
+            await self.evt_measureType.set_write(mode=self.get_mode_index())
         except Exception:
             self.log.exception("setMode failed.")
             raise
@@ -487,6 +515,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             await self.report_detailed_state(DetailedState.CONFIGURINGSTATE)
             controller = self.active_controller
             await controller.set_range(set_range=data.setRange)
+            await self.evt_measureRange.set_write(rangeValue=controller.range, force_output=True)
         except Exception:
             self.log.exception("setRange failed.")
             raise
@@ -593,9 +622,13 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             await self.report_detailed_state(DetailedState.CONFIGURINGSTATE)
             controller = self.active_controller
             await controller.toggle_voltage_source(data.status)
+            await self.evt_voltageSourceChanged.set_write(status=controller.voltage_source)
             await controller.set_voltage_limit(data.voltage_limit)
+            await self.evt_voltageSourceChanged.set_write(voltage_limit=controller.voltage_limit)
             await controller.set_voltage_range(data.range)
+            await self.evt_voltageSourceChanged.set_write(range=controller.voltage_range)
             await controller.set_voltage_level(data.level)
+            await self.evt_voltageSourceChanged.set_write(level=controller.voltage_level)
         except Exception:
             self.log.exception("SetVoltageSource failed.")
             raise

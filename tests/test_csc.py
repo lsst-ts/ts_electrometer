@@ -160,6 +160,12 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 timeout=STD_TIMEOUT,
             )
             await self.assert_next_sample(
+                topic=self.remote.evt_digitalFilterChange,
+                activateMedianFilter=True,
+                activateFilter=True,
+                activateAverageFilter=False,
+            )
+            await self.assert_next_sample(
                 topic=self.remote.evt_detailedState, detailedState=DetailedState.CONFIGURINGSTATE
             )
             await self.assert_next_sample(
@@ -207,6 +213,8 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
         ):
             self.remote.evt_measureRange.flush()
             await self.remote.cmd_setRange.set_start(setRange=0.1, timeout=STD_TIMEOUT)
+            data = await self.assert_next_sample(topic=self.remote.evt_measureRange)
+            self.assertAlmostEqual(data.rangeValue, 0.1)
 
     @parameterized.parameterized.expand(INDICES)
     async def test_start_scan(self, index):
