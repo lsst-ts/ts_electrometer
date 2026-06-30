@@ -27,19 +27,17 @@ __all__ = [
 
 import abc
 import asyncio
+import dataclasses
 import io
 import logging
-import pathlib
 import re
 import types
 
 import astropy.io.fits as fits
-import astropy.time
 import yaml
 from astropy import table
 
 from lsst.ts import utils
-from lsst.ts.xml.enums.Electrometer import DetailedState
 
 from . import commander, commands_factory, enums
 
@@ -49,17 +47,47 @@ TIME_PER_LINE = 0.0047
 OVERHEAD_FACTOR = 1.3
 """Assume a 30% overhead when gathering data from the buffer."""
 SLEEP = 2
+MAX_ERROR_DRAIN = 10
+ERROR_DRAIN_TIMEOUT = 10
+ZERO_CALIBRATION_DELAY = 2
 
 
-class ElectrometerController(abc.ABC):
-    """Class that provides high level control for electrometer.
+@dataclasses.dataclass
+class ScanResult:
+    """Data collected during one electrometer scan.
 
     Parameters
     ----------
-    csc : `ElectrometerCSC`
-        A copy of the CSC.
-    log : `None` or `logging.Logger`
-        A logger.
+    data : `dict` [`str`, `list` [`float`]]
+        Parsed scan samples keyed by data column name.
+    trace_elements : `list` [`str`]
+        Column names reported by the electrometer trace format.
+    start_time : `float`
+        Scan start time, TAI seconds.
+    end_time : `float`
+        Scan end time, TAI seconds.
+    duration : `float`
+        Scan duration, in seconds.
+    group_id : `str` or `None`
+        Optional observing group identifier associated with the scan.
+    """
+
+    data: dict[str, list[float]]
+    trace_elements: list[str]
+    start_time: float
+    end_time: float
+    duration: float
+    group_id: str | None
+
+
+class ElectrometerController(abc.ABC):
+    """Provide high-level control for an electrometer.
+
+    Parameters
+    ----------
+    log : `logging.Logger` or `None`, optional
+        Logger for controller messages. If `None`, a logger named for the
+        concrete controller class is created.
 
     Attributes
     ----------
@@ -67,22 +95,20 @@ class ElectrometerController(abc.ABC):
         The tcpip interface for writing and reading from the device.
     commands : `ElectrometerCommandFactory`
         The interface for providing formatted commands for the commander.
-    mode : `UnitMode`
-        The mode/unit of the electrometer.
+    mode : `str` or `None`
+        The current measurement mode name.
     range : `float`
-        The range of intensities that the electrometer can read.
+        The current measurement range.
     integration_time : `float`
-        The amount of time the electrometer reads per scan.
+        Integration time for one measurement, in seconds.
     median_filter_active : `bool`
         Whether the median filter is active.
     filter_active : `bool`
         Whether any filter is active.
     avg_filter_active : `bool`
         Whether the average filter is active.
-    connected : `bool`
-        Whether the port is open.
     last_value : `int`
-        The last value of the electrometer intensity read.
+        The last intensity value read from the electrometer.
     read_freq : `float`
         The frequency that readings are gotten from the device buffer.
     configuration_delay : `float`
@@ -93,19 +119,25 @@ class ElectrometerController(abc.ABC):
         The start TAI time of a scan [s].
     manual_end_time : `float`
         The end TAI time of a scan [s].
-    serial_lock : `asyncio.Lock`
-        The lock for protecting the synchronous serial communication.
     modes : `dict`
         Associate SAL Command number with electrometer UnitMode enum.
-    voltage_status : `bool`
-        Is voltage source enabled.
-    temperature : `float`
-        The temperature (deg_C) returned from the probe.
-    vsource : `float`
-        The voltage (V) source input.
+    group_id : `str` or `None`
+        Optional observing group identifier for the current scan.
+    voltage_source : `bool`
+        Whether the voltage source is enabled.
+    voltage_range : `int`
+        Voltage source range.
+    voltage_limit : `int`
+        Voltage source limit.
+    voltage_level : `int`
+        Voltage source level.
+    temperature : `float` or `None`
+        Temperature returned from the probe, in degrees C.
+    vsource : `float` or `None`
+        Voltage source input, in volts.
     """
 
-    def __init__(self, csc, log=None):
+    def __init__(self, log=None):
         # Create a logger if none were passed during the instantiation of
         # the class
         if log is None:
@@ -113,7 +145,6 @@ class ElectrometerController(abc.ABC):
         else:
             self.log = log.getChild(type(self).__name__)
 
-        self.csc = csc
         self.mode = None
         self.range = 0.1
         self.integration_time = 0.01
@@ -142,6 +173,7 @@ class ElectrometerController(abc.ABC):
 
     @property
     def connected(self):
+        """Whether the TCP/IP client is connected."""
         return self.commander.connected
 
     def parse_buffer(self, response, num_categories=2):
@@ -151,19 +183,13 @@ class ElectrometerController(abc.ABC):
         ----------
         response : `str`
             The response from the read buffer command.
+        num_categories : `int`, optional
+            Number of values in each sample.
 
         Returns
         -------
-        intensity : `list`
-            The intensity values
-        time : `list`
-            The time values
-        temperature : `list`
-            The temperature values.
-        unit : `list`
-            The unit values.
-        voltage : `list`
-            The voltage values.
+        categorized_lists : `list` [`list` [`float`]]
+            Parsed values grouped by category.
         """
         regex_numbers = r"[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?"
         # regex_strings = "(?!E+)[a-zA-Z]+"
@@ -181,6 +207,13 @@ class ElectrometerController(abc.ABC):
 
     @abc.abstractmethod
     def configure(self, config):
+        """Configure the controller.
+
+        Parameters
+        ----------
+        config : `types.SimpleNamespace`
+            Configuration for one electrometer instance.
+        """
         self.default = types.SimpleNamespace(
             mode=config.mode,
             range=config.range,
@@ -210,9 +243,27 @@ class ElectrometerController(abc.ABC):
     @classmethod
     @abc.abstractmethod
     def get_config_schema(cls):
+        """Return the JSON schema for this controller configuration."""
         pass
 
     async def send_command(self, command, has_reply=False, timeout=None):
+        """Send a command to the electrometer.
+
+        Parameters
+        ----------
+        command : `str`
+            Command string to send.
+        has_reply : `bool`, optional
+            Whether a reply is expected.
+        timeout : `float` or `None`, optional
+            Timeout for the command reply, in seconds.
+
+        Returns
+        -------
+        reply : `str` or `None`
+            Reply from the electrometer if ``has_reply`` is true; otherwise
+            `None`.
+        """
         return await self.commander.send_command(
             msg=command,
             has_reply=has_reply,
@@ -220,16 +271,12 @@ class ElectrometerController(abc.ABC):
         )
 
     async def connect(self):
-        self.image_service_client = utils.ImageNameServiceClient(
-            url=self.image_name_service,
-            csc_index=self.csc.salinfo.index,
-            source="Electrometer",
-        )
+        """Connect to, identify, and initialize the electrometer."""
         await self.commander.connect()
         try:
             id = await self.send_command(command=self.commands.get_hardware_info(), has_reply=True)
-        except Exception:
-            raise TimeoutError("No ID recieved.")
+        except Exception as e:
+            raise TimeoutError("No ID received.") from e
         expected_type = self.electrometer_type
         match expected_type:
             case "Keithley":
@@ -244,7 +291,6 @@ class ElectrometerController(abc.ABC):
                     raise RuntimeError("Electrometer did not report expected type.")
             case _:
                 raise RuntimeError("Expected type is not valid.")
-        await self.csc.report_detailed_state(DetailedState.NOTREADINGSTATE)
         await self.send_command(command=self.commands.reset_device())
         await self.send_command(command=self.commands.clear())
         match expected_type:
@@ -263,6 +309,7 @@ class ElectrometerController(abc.ABC):
         )
 
     async def disconnect(self):
+        """Disconnect from the electrometer."""
         self.image_service_client = None
         await self.commander.disconnect()
 
@@ -295,7 +342,7 @@ class ElectrometerController(abc.ABC):
         await self.send_command(
             self.commands.perform_zero_calibration(mode, auto, set_range, integration_time)
         )
-        await asyncio.sleep(2)
+        await asyncio.sleep(ZERO_CALIBRATION_DELAY)
         await self.check_error("perform_zero_calibration")
 
         self.log.debug("Zero calibration command sent")
@@ -314,6 +361,7 @@ class ElectrometerController(abc.ABC):
         activate_med_filter : `bool`
             Whether the median filter should be activated.
         """
+        self.filter_active = activate_filter
         filter_active = activate_avg_filter and activate_filter
         await self.send_command(f"{self.commands.activate_filter(self.mode, enums.Filter(2), filter_active)}")
         filter_active = activate_med_filter and activate_filter
@@ -321,24 +369,22 @@ class ElectrometerController(abc.ABC):
             await self.send_command(
                 f"{self.commands.activate_filter(self.mode, enums.Filter(1), filter_active)}"
             )
-        await self.csc.evt_digitalFilterChange.set_write(activateFilter=filter_active)
         await self.get_avg_filter_status()
         if self.electrometer_type == "Keithley" or self.mode == "CURR":
             await self.get_med_filter_status()
         await self.check_error("set_digital_filter")
 
     async def get_avg_filter_status(self):
-        """Get the average filter status."""
+        """Get and cache the average filter status."""
         res = await self.send_command(f"{self.commands.get_filter_status(self.mode, 2)}", has_reply=True)
         self.log.debug(f"Average filter response is {res}")
         if res == "":
             self.avg_filter_active = False
         else:
             self.avg_filter_active = bool(int(res))
-        await self.csc.evt_digitalFilterChange.set_write(activateAverageFilter=self.avg_filter_active)
 
     async def get_med_filter_status(self):
-        """Get the median filter status."""
+        """Get and cache the median filter status."""
         if self.electrometer_type == "Keithley" or self.mode == "CURR":
             res = await self.send_command(f"{self.commands.get_filter_status(self.mode, 1)}", has_reply=True)
         else:
@@ -346,17 +392,16 @@ class ElectrometerController(abc.ABC):
             res = 0
         self.log.debug(f"median filter response is {res}")
         self.median_filter_active = bool(int(res))
-        await self.csc.evt_digitalFilterChange.set_write(activateMedianFilter=self.median_filter_active)
 
     async def setup_scan(self):
-        """Sets up the electrometer to prepare for scan."""
+        """Set up the electrometer to prepare for a scan."""
         await self.send_command(self.commands.set_resolution(mode=self.mode, digit=7))
         await self.send_command(self.commands.enable_sync(False))
         await self.send_command(f"{self.commands.output_trigger_line(3)}")
         await self.send_command(f"{self.commands.clear_buffer()}")
 
     async def prepare_scan(self):
-        """Prepare the keithley for scanning."""
+        """Prepare the electrometer trace format for scanning."""
         await self.setup_scan()
 
         format_trac_args = {}
@@ -374,11 +419,8 @@ class ElectrometerController(abc.ABC):
         Parameters
         ----------
         group_id : `str` | None
-            The group id generated by the image server.
-            This is passed into this method as it is called
-            in the CSC, but it is used in write_fits_file
+            Optional observing group identifier to store with the scan.
         """
-        assert self.image_service_client is not None
         self.group_id = group_id
         await self.prepare_scan()
         await self.perform_zero_calibration()
@@ -410,11 +452,8 @@ class ElectrometerController(abc.ABC):
         scan_duration : `float`
             The amount of time to store values for.
         group_id : `str` | None
-            The group id generated by the image server.
-            This is passed into this method as it is called
-            in the CSC, but it is used in write_fits_file
+            Optional observing group identifier to store with the scan.
         """
-        assert self.image_service_client is not None
         self.group_id = group_id
         await self.prepare_scan()
         await self.perform_zero_calibration()
@@ -443,16 +482,26 @@ class ElectrometerController(abc.ABC):
         await self.continuous_scan(scan_duration)
 
     async def continuous_scan(self, scan_duration):
-        """Part of start scan dt for Keithley"""
+        """Collect readings for a timed Keithley scan.
+
+        Parameters
+        ----------
+        scan_duration : `float`
+            Length of time to collect readings, in seconds.
+        """
         dt = 0
         while dt < scan_duration:
-            await self.get_intensity()
-            await self.csc.evt_intensity.set_write(intensity=self.last_value)
             await asyncio.sleep(self.integration_time)
             dt = utils.current_tai() - self.manual_start_time
 
-    async def stop_scan(self):
-        """Stop storing values in the electrometer."""
+    async def stop_scan(self) -> ScanResult:
+        """Stop storing values and read the scan buffer.
+
+        Returns
+        -------
+        scan_result : `ScanResult`
+            Parsed scan data and scan metadata.
+        """
         self.log.debug("Stopping scan")
         self.manual_end_time = utils.current_tai()
         self.scan_duration = self.manual_end_time - self.manual_start_time
@@ -493,10 +542,17 @@ class ElectrometerController(abc.ABC):
         self.log.debug(f"data format is {trace_elements}, number of categories is {len(trace_elements)}")
         data = self.parse_buffer(res, num_categories=len(trace_elements))
 
-        await self.write_fits_file(data, trace_elements)
+        return ScanResult(
+            data=data,
+            trace_elements=trace_elements,
+            start_time=self.manual_start_time,
+            end_time=self.manual_end_time,
+            duration=self.scan_duration,
+            group_id=self.group_id,
+        )
 
     async def get_mode(self):
-        """Get the mode/unit."""
+        """Get and cache the measurement mode."""
         res = await self.send_command(f"{self.commands.get_mode()}", has_reply=True)
         self.log.debug(f"Mode returns {res}")
         if str(res) in ['"CURR"', '"CHAR"', '"VOLT"', '"RES"']:
@@ -516,15 +572,11 @@ class ElectrometerController(abc.ABC):
         self.log.debug(f"Mode is {mode}")
 
         self.mode = enums.UnitMode(mode).name
-        await self.csc.evt_measureType.set_write(
-            mode=int([num for num, mode in self.modes.items() if self.mode == mode.name][0]),
-            force_output=False,
-        )
         # TO-DO: Change XML so that evt_measureType write mode as a str
         # DM-45177
 
     async def get_intensity(self):
-        """Get the intensity."""
+        """Get and cache the latest intensity reading."""
         res = await self.send_command(
             f"{self.commands.get_measure(enums.ReadingOption.LATEST)}", has_reply=True
         )
@@ -540,7 +592,7 @@ class ElectrometerController(abc.ABC):
             return  # return early
         # If the range saturates the intensity positively, the device returns
         # +9.90000+E37
-        if res == self.positive_saturation:
+        if float(res[-1]) == self.positive_saturation:
             self.log.debug("Positive saturation reached")
             self.last_value = float("inf")
         self.log.debug(f"last value is {self.last_value}")
@@ -562,9 +614,17 @@ class ElectrometerController(abc.ABC):
         await self.get_integration_time()
 
     async def get_timer(self):
+        """Get and cache the NPLC timer value."""
         self.nplc = float(await self.send_command(self.commands.get_timer(self.mode), has_reply=True))
 
     async def set_timer(self, nplc):
+        """Set the NPLC timer value.
+
+        Parameters
+        ----------
+        nplc : `float`
+            Number of power line cycles.
+        """
         await self.send_command(self.commands.auto_integration_time_on(mode=self.mode))
         await self.send_command(self.commands.set_timer(self.mode, nplc))
         await self.get_timer()
@@ -610,31 +670,44 @@ class ElectrometerController(abc.ABC):
 
         await self.get_range()
 
-    def make_primary_header(self):
-        """Make primary header for fits file that follows Rubin Obs. format."""
+    def make_primary_header(self, scan_result: ScanResult, fits_data) -> fits.PrimaryHDU:
+        """Make the primary FITS header.
+
+        Parameters
+        ----------
+        scan_result : `ScanResult`
+            Scan data and timing metadata.
+        fits_data : object
+            Object with ``index``, ``name``, and ``obs_ids`` attributes.
+
+        Returns
+        -------
+        primary_hdu : `astropy.io.fits.PrimaryHDU`
+            Primary HDU containing Rubin Observatory metadata.
+        """
         primary_hdu = fits.PrimaryHDU()
         primary_hdu.header["FORMAT_V"] = ("1", "Header format version")
         primary_hdu.header["ORIGIN"] = "Vera C. Rubin Observatory"
         primary_hdu.header["INSTRUME"] = (
-            f"Electrometer_index_{self.csc.salinfo.index}",
+            f"Electrometer_index_{fits_data.index}",
             "Type of Instrument",
         )
         primary_hdu.header["MODEL"] = (self.model_id, "Model of instrument")
         primary_hdu.header["LOCATN"] = (self.location, "Location of Instrument")
         primary_hdu.header["CSCNAME"] = (
-            self.csc.salinfo.name,
+            fits_data.name,
             "Name of the CSC that produced this data.",
         )
         primary_hdu.header["DATE-BEG"] = (
-            self.manual_start_time,
+            scan_result.start_time,
             "When start scan command sent to CSC (TAI)",
         )
         primary_hdu.header["DATE-END"] = (
-            self.manual_end_time,
+            scan_result.end_time,
             "When stop scan command sent to CSC (TAI)",
         )
         primary_hdu.header["TIMESYS"] = ("TAI", "Format of timestamps")
-        primary_hdu.header["SCANTIME"] = (self.scan_duration, "Duration of scan [s]")
+        primary_hdu.header["SCANTIME"] = (scan_result.duration, "Duration of scan [s]")
         primary_hdu.header["SAMPTIME"] = (
             self.integration_time,
             "Duration of each sample [s]",
@@ -656,7 +729,7 @@ class ElectrometerController(abc.ABC):
         primary_hdu.header["SERIAL"] = (self.sensor_serial, "Sensor serial number")
         primary_hdu.header["TEMP"] = (
             self.temperature,
-            "Measurement from probe if attached and declared (Celcius)",
+            "Measurement from probe if attached and declared (Celsius)",
         )
         primary_hdu.header["VSOURCE"] = (
             self.vsource,
@@ -664,29 +737,25 @@ class ElectrometerController(abc.ABC):
         )
         return primary_hdu
 
-    async def write_fits_file(self, raw_data, data_format):
-        """Write fits file of the intensity, time, and temperature values.
+    async def write_fits_file(self, scan_result: ScanResult, data_format: list[str], fits_data) -> io.BytesIO:
+        """Write scan data to an in-memory FITS file.
 
         Parameters
         ----------
-        signal : `list` of `float`
-            The amount of photons in a given reading, unit depends on mode of
-            electrometer.
-            * Curr: Ampere - Measure current
-            * Volt: V - Measure volts
-            * Char: Coulomb - Measure charge
-        times : `list` of `float`
-            The time (TAI) of the signal data taken.
-        temperature : `list` of `float`
-            A consistent temperature value (deg_C) obtained from the
-            temperature probe over the period of signal acquisition.
-        unit : `list` of `str`
-            The unit of the signal data. (constant)
-        voltage : `list` of `float`
-            The source input in Volts maintained during signal acquisition.
+        scan_result : `ScanResult`
+            Scan data and timing metadata.
+        data_format : `list` [`str`]
+            Column names for the parsed scan data.
+        fits_data : object
+            Object with ``index``, ``name``, and ``obs_ids`` attributes.
+
+        Returns
+        -------
+        file_upload : `io.BytesIO`
+            FITS file content positioned at the beginning of the stream.
         """
         self.log.debug("Making primary header")
-        primary_hdu = self.make_primary_header()
+        primary_hdu = self.make_primary_header(scan_result=scan_result, fits_data=fits_data)
         self.log.debug("Primary header complete")
         data_metadata = {"name": "Single Electrometer scan readout"}
         data_format = [
@@ -700,134 +769,198 @@ class ElectrometerController(abc.ABC):
 
         if self.electrometer_type == "Keithley":
             _format = ["Signal", "RNUM", "Elapsed Time"]
-            if len(data_format) == 3 & set(_format).issuperset(set(data_format)):
+            if len(data_format) == 3 and set(_format).issuperset(set(data_format)):
                 data_format = _format
                 self.log.debug(f"Changed data format for Keithley: {data_format}")
 
-        data = {header: raw_data[i] for i, header in enumerate(data_format)}
+        data = {header: scan_result.data[i] for i, header in enumerate(data_format)}
         self.log.debug("Making data table")
         data_table = table.QTable(data=data, meta=data_metadata)
         table_hdu = fits.table_to_hdu(data_table)
         self.log.debug("Making fits file")
         hdul = fits.HDUList([primary_hdu, table_hdu])
-        image_sequence_array, obs_ids = await self.image_service_client.get_next_obs_id(num_images=1)
         hdul[0].header["CALIBCLS"] = "lsst.ip.isr.PhotodiodeCalib"
-        hdul[0].header["OBSID"] = obs_ids[0]
+        hdul[0].header["OBSID"] = fits_data.obs_ids[0]
         hdul[0].header["GROUPID"] = self.group_id
-        filename = f"{obs_ids[0]}.fits"
 
-        try:
-            file_upload = io.BytesIO()
-            hdul.writeto(file_upload)
-            file_upload.seek(0)
-            key_name = self.csc.bucket.make_key(
-                salname="Electrometer",
-                salindexname=self.csc.salinfo.index,
-                generator="fits",
-                date=astropy.time.Time(self.manual_end_time, format="unix_tai"),
-                other=obs_ids[0],
-                suffix=".fits",
-            )
-            key_name = key_name[: key_name.rfind("/") + 1] + filename
-            url = await self.csc.bucket.upload(fileobj=file_upload, key=key_name)
-            await self.csc.evt_largeFileObjectAvailable.set_write(
-                url=url,
-                id=self.group_id,
-                generator=f"{self.csc.salinfo.name}:{self.csc.salinfo.index}",
-            )
-        except Exception:
-            self.log.exception("Uploading file to s3 bucket failed.")
-
-            try:
-                pathlib.Path(self.fits_file_path).mkdir(parents=True, exist_ok=True)
-                hdul.writeto(f"{self.fits_file_path}/{filename}")
-            except Exception as e:
-                msg = "Writing file to local disk failed."
-                self.log.exception(msg)
-                raise RuntimeError(e)
+        file_upload = io.BytesIO()
+        hdul.writeto(file_upload)
+        file_upload.seek(0)
+        return file_upload
 
     async def check_error(self, from_command: str | None):
-        """Check the error.
-        Parameter
-        ---------
+        """Drain and log the electrometer error queue.
+
+        Parameters
+        ----------
         from_command : `str` | None
-            Tells us where the check error is being called from
+            Command name that triggered the error check.
         """
 
         async def get_error():
+            """Read and parse one error from the electrometer queue."""
             res = await self.send_command(self.commands.get_last_error(), has_reply=True)
-            error_code, message = res.split(",")
-            error_code = int(error_code)
-            return error_code, message
+            try:
+                error_code, message = res.split(",", maxsplit=1)
+                return int(error_code), message
+            except Exception as e:
+                raise RuntimeError(f"Malformed error response from electrometer: {res!r}") from e
 
-        error_code, message = await get_error()
-        while error_code != 0:
-            self.log.info(f"Non zero error code from {from_command}: {error_code=} {message=}")
-            error_code, message = await get_error()
+        async with asyncio.timeout(ERROR_DRAIN_TIMEOUT):
+            for _ in range(MAX_ERROR_DRAIN):
+                error_code, message = await get_error()
+                if error_code == 0:
+                    return
+                self.log.warning(f"Non zero error code from {from_command}: {error_code=} {message=}")
+
+        self.log.warning(
+            f"Electrometer error queue did not drain after "
+            f"{MAX_ERROR_DRAIN} reads from {from_command}: "
+            f"{error_code=} {message=}"
+        )
 
     async def get_range(self):
-        """Get the range value."""
+        """Get and cache the measurement range.
+
+        Returns
+        -------
+        range : `float`
+            Current measurement range.
+        """
         res = await self.send_command(f"{self.commands.get_range(self.mode)}", has_reply=True)
         self.range = float(res)
-        await self.csc.evt_measureRange.set_write(rangeValue=self.range, force_output=True)
+        return self.range
 
     async def get_integration_time(self):
-        """Get the integration time value."""
+        """Get and cache the integration time.
+
+        Returns
+        -------
+        integration_time : `float`
+            Current integration time, in seconds.
+        """
         res = await self.send_command(f"{self.commands.get_integration_time(self.mode)}", has_reply=True)
         self.integration_time = float(res)
-        await self.csc.evt_integrationTime.set_write(intTime=self.integration_time, force_output=False)
+        return self.integration_time
 
     async def toggle_voltage_source(self, toggle):
+        """Enable or disable the voltage source.
+
+        Parameters
+        ----------
+        toggle : `bool`
+            Whether to enable the voltage source.
+        """
         await self.send_command(self.commands.toggle_voltage_source(toggle))
         await self.get_voltage_source_status()
 
     async def get_voltage_source_status(self):
+        """Get and cache the voltage source status.
+
+        Returns
+        -------
+        voltage_source : `bool`
+            Whether the voltage source is enabled.
+        """
         res = await self.send_command(self.commands.get_voltage_source_status(), has_reply=True)
-        self.voltage_source = bool(res)
-        await self.csc.evt_voltageSourceChanged.set_write(status=self.voltage_source)
+        match str(res).strip().upper():
+            case "ON":
+                self.voltage_source = True
+            case "OFF":
+                self.voltage_source = False
+            case _:
+                self.voltage_source = bool(int(res))
+        return self.voltage_source
 
     async def get_voltage_range(self):
+        """Get and cache the voltage source range.
+
+        Returns
+        -------
+        voltage_range : `int`
+            Voltage source range.
+        """
         res = await self.send_command(self.commands.get_voltage_range(), has_reply=True)
         self.voltage_range = int(res)
-        await self.csc.evt_voltageSourceChanged.set_write(range=self.voltage_range)
+        return self.voltage_range
 
     async def set_voltage_range(self, range):
+        """Set the voltage source range.
+
+        Parameters
+        ----------
+        range : `int`
+            Voltage source range.
+        """
         await self.send_command(self.commands.set_voltage_range(range))
         await self.get_voltage_range()
 
     async def get_voltage_limit(self):
+        """Get and cache the voltage source limit.
+
+        Returns
+        -------
+        voltage_limit : `int`
+            Voltage source limit.
+        """
         res = await self.send_command(self.commands.get_voltage_limit(), has_reply=True)
         self.voltage_limit = int(res)
-        await self.csc.evt_voltageSourceChanged.set_write(voltage_limit=self.voltage_limit)
+        return self.voltage_limit
 
     async def set_voltage_limit(self, limit):
+        """Set the voltage source limit.
+
+        Parameters
+        ----------
+        limit : `int`
+            Voltage source limit.
+        """
         await self.send_command(self.commands.set_voltage_limit(limit))
         await self.get_voltage_limit()
 
     async def get_voltage_level(self):
+        """Get and cache the voltage source level.
+
+        Returns
+        -------
+        voltage_level : `int`
+            Voltage source level.
+        """
         res = await self.send_command(self.commands.get_voltage_level(), has_reply=True)
         self.voltage_level = int(res)
+        return self.voltage_level
 
     async def set_voltage_level(self, level):
+        """Set the voltage source level.
+
+        Parameters
+        ----------
+        level : `int`
+            Voltage source level.
+        """
         await self.send_command(self.commands.set_voltage_level(amplititude=level))
         await self.get_voltage_level()
-        await self.csc.evt_voltageSourceChanged.set_write(level=self.voltage_level)
 
 
 class KeithleyElectrometerController(ElectrometerController):
-    """Class that provides high level control for the Keithley electrometer.
-    It inherits methods from the general electrometer controller
+    """Provide high-level control for a Keithley electrometer.
 
+    Parameters
+    ----------
+    log : `logging.Logger` or `None`, optional
+        Logger for controller messages. If `None`, a logger named for this
+        class is created.
     """
 
-    def __init__(self, csc, log=None):
-        super().__init__(csc, log=log)
+    def __init__(self, log=None):
+        super().__init__(log=log)
         self.commands = commands_factory.KeithleyElectrometerCommandFactory()
         # Intensity value when saturated in the positive direction.
         self.positive_saturation = 9.9e37
 
     @classmethod
     def get_config_schema(cls):
+        """Return the JSON schema for Keithley-specific configuration."""
         return yaml.safe_load(
             """
 $schema: http://json-schema.org/draft-07/schema#
@@ -841,23 +974,35 @@ additionalProperties: false
         )
 
     def configure(self, config):
+        """Configure the Keithley controller.
+
+        Parameters
+        ----------
+        config : `types.SimpleNamespace`
+            Configuration for one electrometer instance.
+        """
         super().configure(config)
 
 
 class KeysightElectrometerController(ElectrometerController):
-    """Class that provides high level control for the Keithley electrometer.
-    It inherits methods from the general electrometer controller
+    """Provide high-level control for a Keysight electrometer.
 
+    Parameters
+    ----------
+    log : `logging.Logger` or `None`, optional
+        Logger for controller messages. If `None`, a logger named for this
+        class is created.
     """
 
-    def __init__(self, csc, log=None):
-        super().__init__(csc, log=log)
+    def __init__(self, log=None):
+        super().__init__(log=log)
         self.commands = commands_factory.KeysightElectrometerCommandFactory()
         # Intensity value when saturated in the positive direction.
         self.positive_saturation = 9.91e37
 
     @classmethod
     def get_config_schema(cls):
+        """Return the JSON schema for Keysight-specific configuration."""
         return yaml.safe_load(
             """
 $schema: http://json-schema.org/draft-07/schema#
@@ -870,15 +1015,28 @@ properties: {}
         )
 
     async def setup_scan(self):
-        """Sets up the electrometer to prepare for scan."""
+        """Set up the Keysight electrometer to prepare for a scan."""
         await self.send_command(f"{self.commands.output_trigger_line()}")
         await self.send_command(f"{self.commands.clear_buffer()}")
 
     async def continuous_scan(self, scan_duration):
-        """Part of start scan dt for Keysight."""
+        """Acquire data for a timed Keysight scan.
+
+        Parameters
+        ----------
+        scan_duration : `float`
+            Length of time to acquire data, in seconds.
+        """
         await self.send_command(f"{self.commands.acquire_data()}")
         await asyncio.sleep(scan_duration)
         await self.send_command(f"{self.commands.stop_taking_data()}")
 
     def configure(self, config):
+        """Configure the Keysight controller.
+
+        Parameters
+        ----------
+        config : `types.SimpleNamespace`
+            Configuration for one electrometer instance.
+        """
         super().configure(config)

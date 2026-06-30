@@ -19,10 +19,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from dataclasses import dataclass
+
 __all__ = ["execute_csc", "command_csc", "ElectrometerCsc"]
 
 import asyncio
+import pathlib
 import types
+
+from astropy.time import Time
 
 from lsst.ts import salobj, utils
 from lsst.ts.xml.enums.Electrometer import DetailedState
@@ -34,41 +39,71 @@ READ_DURATION = 20
 
 
 def execute_csc() -> None:
+    """Run the indexed Electrometer CSC."""
     asyncio.run(ElectrometerCsc.amain(index=True))
 
 
 def command_csc() -> None:
+    """Run the command-line commander for the indexed Electrometer CSC."""
     asyncio.run(salobj.CscCommander.amain(name="Electrometer", index=True))
 
 
+@dataclass
+class FitsData:
+    """Metadata required to write a FITS file.
+
+    Parameters
+    ----------
+    index : `int`
+        SAL index of the CSC.
+    name : `str`
+        SAL component name.
+    obs_ids : `list` [`str`]
+        Observation identifiers allocated for the scan.
+    """
+
+    index: int
+    name: str
+    obs_ids: list[str]
+
+
+CONTROLLER_CLASSES: dict[str, type[controller.ElectrometerController]] = {
+    "Keithley": controller.KeithleyElectrometerController,
+    "Keysight": controller.KeysightElectrometerController,
+}
+
+
 class ElectrometerCsc(salobj.ConfigurableCsc):
-    """Class that implements the CSC for the electrometer.
+    """Implement the Electrometer CSC.
 
     Parameters
     ----------
     index : `int`
         The index of the CSC.
-    config_dir : `str`
-        Path to config directory.
-        One is provided for you in another method.
-    initial_state : `lsst.ts.salobj.State`
-        The initial state of the CSC.
-        Should be used for unit tests and development.
+    config_dir : `str` or `None`, optional
+        Path to the configuration directory.
+    initial_state : `lsst.ts.salobj.State`, optional
+        Initial summary state for the CSC.
     simulation_mode : `int`
         The simulation mode of the CSC.
 
     Attributes
     ----------
-    controller : `ElectrometerController`
-        The controller object for the electrometer.
+    simulator : `mock_server.MockServer` or `None`
+        Electrometer simulator used for simulation modes.
+    controller : `controller.ElectrometerController` or `None`
+        Controller object for the configured electrometer.
+    image_name_service_client : `lsst.ts.utils.ImageNameServiceClient` or
+            `None`
+        Client used to allocate observation identifiers for scan products.
     run_event_loop : `bool`
         Whether the event loop runs.
     event_loop_task : `asyncio.Task`
-        A task for handling the event loop.
-        Currently not implemented.
+        Done future reserved for compatibility with existing task cleanup.
     default_force_output : `bool`
         Force the output of an event.
-    bucket : `None` or `salobj.AsyncS3Bucket`
+    bucket : `salobj.AsyncS3Bucket` or `None`
+        Bucket used for large file object uploads.
     """
 
     valid_simulation_modes = (0, 1, 2)
@@ -88,14 +123,53 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             config_dir=config_dir,
             initial_state=initial_state,
             simulation_mode=simulation_mode,
-            extra_commands=["changeNPLC"],
         )
         self.simulator = None
         self.run_event_loop = False
         self.event_loop_task = utils.make_done_future()
         self.default_force_output = True
         self.bucket = None
-        self.controller = None
+        self.controller: controller.ElectrometerController | None = None
+        self.image_name_service_client = None
+
+    @property
+    def active_bucket(self) -> salobj.AsyncS3Bucket:
+        """Configured S3 bucket.
+
+        Raises
+        ------
+        RuntimeError
+            If the bucket has not been configured.
+        """
+        if self.bucket is None:
+            raise RuntimeError("Bucket has not been configured")
+        return self.bucket
+
+    @property
+    def active_controller(self) -> controller.ElectrometerController:
+        """Configured electrometer controller.
+
+        Raises
+        ------
+        RuntimeError
+            If the controller has not been configured.
+        """
+        if self.controller is None:
+            raise RuntimeError("Electrometer controller has not been configured")
+        return self.controller
+
+    @property
+    def active_image_name_service_client(self) -> utils.ImageNameServiceClient:
+        """Configured image name service client.
+
+        Raises
+        ------
+        RuntimeError
+            If the image name service client has not been configured.
+        """
+        if self.image_name_service_client is None:
+            raise RuntimeError("Image name service client is not configured.")
+        return self.image_name_service_client
 
     def assert_substate(self, substates, action):
         """Assert the CSC is in the proper substate.
@@ -116,6 +190,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             raise salobj.ExpectedError(f"command not allowed in {self.detailed_state!r}")
 
     def assert_valid_range(self):
+        """Assert that the requested measurement range is supported."""
         # TODO DM-51208 Write method that asserts value is in valid range.
         pass
 
@@ -131,8 +206,61 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         return self.evt_detailedState.data.detailedState
 
     async def report_detailed_state(self, new_state):
-        """Report the new detailed state."""
+        """Report the detailed state.
+
+        Parameters
+        ----------
+        new_state : `lsst.ts.xml.enums.Electrometer.DetailedState`
+            Detailed state to publish.
+        """
         await self.evt_detailedState.set_write(detailedState=new_state)
+
+    async def write_scan_result(self, scan_result: controller.ScanResult) -> None:
+        """Write scan data to object storage and publish the LFA event.
+
+        Parameters
+        ----------
+        scan_result : `controller.ScanResult`
+            Scan data and metadata returned by the active controller.
+        """
+        image_name_service_client = self.active_image_name_service_client
+        _, obs_ids = await image_name_service_client.get_next_obs_id(num_images=1)
+        fits_data = FitsData(index=self.salinfo.index, name=self.salinfo.name, obs_ids=obs_ids)
+        controller = self.active_controller
+        file = await controller.write_fits_file(
+            scan_result=scan_result,
+            data_format=scan_result.trace_elements,
+            fits_data=fits_data,
+        )
+        bucket = self.active_bucket
+        key_name = bucket.make_key(
+            salname=self.salinfo.name,
+            salindexname=self.salinfo.index,
+            generator="fits",
+            date=Time(scan_result.end_time, format="unix_tai"),
+            other=obs_ids[0],
+            suffix=".fits",
+        )
+        key_name = key_name[: key_name.rfind("/") + 1] + f"{obs_ids[0]}.fits"
+        try:
+            url = await bucket.upload(fileobj=file, key=key_name)
+        except Exception:
+            self.log.exception("Uploading file to S3 bucket failed.")
+            file.seek(0)
+            local_path = pathlib.Path(controller.fits_file_path).joinpath(f"{obs_ids[0]}.fits")
+            try:
+                local_path.parent.mkdir(parents=True, exist_ok=True)
+                local_path.write_bytes(file.read())
+            except Exception as e:
+                msg = "Writing file to local disk failed."
+                self.log.exception(msg)
+                raise RuntimeError(msg) from e
+        else:
+            await self.evt_largeFileObjectAvailable.set_write(
+                url=url,
+                id=scan_result.group_id,
+                generator=f"{self.salinfo.name}:{self.salinfo.index}",
+            )
 
     async def configure(self, config):
         """Configure the Electrometer CSC.
@@ -150,23 +278,32 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         self.log.debug(f"instance is {instance}")
         self.log.debug(f"electrometer type is {instance['electrometer_type']}")
         electrometer_type = instance["electrometer_type"]
-        controller_class = getattr(controller, f"{electrometer_type}ElectrometerController")
+        try:
+            controller_class = CONTROLLER_CLASSES[electrometer_type]
+        except KeyError as e:
+            raise RuntimeError(f"Unsupported electrometer type: {electrometer_type!r}") from e
         self.validator = salobj.DefaultingValidator(controller_class.get_config_schema())
         # self.validator.validate(instance)
-        self.controller = controller_class(csc=self, log=self.log)
+        self.controller = controller_class(log=self.log)
         self.controller.configure(types.SimpleNamespace(**instance))
+        self.image_name_service_client = utils.ImageNameServiceClient(
+            url=instance["image_name_service"],
+            csc_index=self.salinfo.index,
+            source="Electrometer",
+        )
         self.log.debug(f"brand={electrometer_type}")
 
     async def handle_summary_state(self):
-        """Handle the summary of the CSC.
+        """Handle transitions into and out of active summary states.
 
-        If transitioning to the disabled or enabled state
+        If transitioning to the disabled or enabled state:
 
         * Start the simulator if simulation_mode is true.
         * Create a bucket object for LFA support.
-        * Connect to the server if it is not connected already.
+        * Connect the controller to the electrometer if needed.
+        * Publish the controller settings as SAL events.
 
-        If leaving the disabled state
+        If leaving the disabled or enabled state:
 
         * Disconnect from the server, if connected.
         * If the simulator is running, stop it.
@@ -175,17 +312,19 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         create = False
         if self.disabled_or_enabled:
             if self.simulation_mode and self.simulator is None:
-                self.simulator = mock_server.MockServer(self.controller.electrometer_type, False)
+                controller = self.active_controller
+                self.simulator = mock_server.MockServer(controller.electrometer_type, False)
                 await self.simulator.start_task
-                self.controller.commander.host = self.simulator.host
-                self.controller.commander.port = self.simulator.port
+                controller.commander.hostname = self.simulator.host
+                controller.commander.port = self.simulator.port
             if self.simulation_mode == 2:
                 do_mock = True
                 create = True
             if self.bucket is None:
                 try:
+                    controller = self.active_controller
                     self.bucket = salobj.AsyncS3Bucket(
-                        salobj.AsyncS3Bucket.make_bucket_name(s3instance=self.controller.s3_instance),
+                        salobj.AsyncS3Bucket.make_bucket_name(s3instance=controller.s3_instance),
                         create=create,
                         domock=do_mock,
                     )
@@ -193,13 +332,15 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
                     self.log.exception("Bucket creation failed.")
                     await self.fault(code=enums.Error.BUCKET, report="Bucket creation failed.")
                     return
-            if not self.controller.connected:
+            controller = self.active_controller
+            if not controller.connected:
                 try:
-                    await self.controller.connect()
+                    await controller.connect()
                 except Exception:
                     self.log.exception("Connection failed.")
                     await self.fault(code=enums.Error.CONNECTION, report="Connection failed.")
                     return
+            await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
         else:
             if self.controller is not None:
                 if self.controller.connected:
@@ -223,12 +364,15 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         )
         try:
             await self.report_detailed_state(DetailedState.CONFIGURINGSTATE)
-            await self.controller.perform_zero_calibration(
+            controller = self.active_controller
+            await controller.perform_zero_calibration(
                 mode=None, auto=None, set_range=None, integration_time=None
             )
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
         except Exception:
             self.log.exception("performZeroCalibration failed.")
+            raise
+        finally:
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
 
     async def do_setDigitalFilter(self, data):
@@ -247,20 +391,23 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         )
         try:
             await self.report_detailed_state(DetailedState.CONFIGURINGSTATE)
-            await self.controller.set_digital_filter(
+            controller = self.active_controller
+            await controller.set_digital_filter(
                 activate_filter=data.activateFilter,
                 activate_avg_filter=data.activateAvgFilter,
                 activate_med_filter=data.activateMedFilter,
             )
             self.log.debug("setDigitalFilter controller interaction completed")
             self.log.debug(
-                f"filter_active={self.controller.filter_active},"
-                f"avg_filter_active={self.controller.avg_filter_active},"
-                f"median_filter_active={self.controller.median_filter_active}"
+                f"filter_active={controller.filter_active},"
+                f"avg_filter_active={controller.avg_filter_active},"
+                f"median_filter_active={controller.median_filter_active}"
             )
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
         except Exception:
             self.log.exception("setDigitalFilter failed.")
+            raise
+        finally:
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
 
     async def do_setIntegrationTime(self, data):
@@ -278,9 +425,11 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         )
         try:
             await self.report_detailed_state(DetailedState.CONFIGURINGSTATE)
-            await self.controller.set_integration_time(data.intTime)
+            controller = self.active_controller
+            await controller.set_integration_time(data.intTime)
         except Exception:
             self.log.exception("setIntegrationTime failed.")
+            raise
         finally:
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
 
@@ -295,10 +444,11 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         self.assert_enabled()
         self.assert_substate(substates=[DetailedState.NOTREADINGSTATE], action="changeNPLC")
         try:
-            await self.controller.set_timer(data.value)
-            await self.evt_changedNPLC.set_write(value=float(self.controller.nplc))
+            controller = self.active_controller
+            await controller.set_timer(data.value)
         except Exception:
             self.log.exception("Failed to change NPLC.")
+            raise
         finally:
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
 
@@ -314,10 +464,12 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         self.assert_substate(substates=[DetailedState.NOTREADINGSTATE], action="setMode")
         try:
             await self.report_detailed_state(DetailedState.CONFIGURINGSTATE)
+            controller = self.active_controller
             self.log.debug(f"Setting mode: {data.mode}")
-            await self.controller.set_mode(mode=data.mode)
+            await controller.set_mode(mode=data.mode)
         except Exception:
             self.log.exception("setMode failed.")
+            raise
         finally:
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
 
@@ -333,9 +485,11 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         self.assert_substate(substates=[DetailedState.NOTREADINGSTATE], action="setRange")
         try:
             await self.report_detailed_state(DetailedState.CONFIGURINGSTATE)
-            await self.controller.set_range(set_range=data.setRange)
+            controller = self.active_controller
+            await controller.set_range(set_range=data.setRange)
         except Exception:
             self.log.exception("setRange failed.")
+            raise
         finally:
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
 
@@ -352,7 +506,8 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         self.assert_substate(substates=[DetailedState.NOTREADINGSTATE], action="startScan")
         try:
             await self.report_detailed_state(DetailedState.MANUALREADINGSTATE)
-            await self.controller.start_scan(group_id=getattr(data, "groupId", None))
+            controller = self.active_controller
+            await controller.start_scan(group_id=getattr(data, "groupId", None))
         except Exception as e:
             msg = "startScan failed."
             await self.fault(code=enums.Error.FILE_ERROR, report=f"{msg}: {repr(e)}")
@@ -371,12 +526,13 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         self.assert_substate(substates=[DetailedState.NOTREADINGSTATE], action="startScanDt")
         try:
             await self.report_detailed_state(DetailedState.SETDURATIONREADINGSTATE)
+            controller = self.active_controller
             await self.cmd_startScanDt.ack_in_progress(
                 data=data,
                 timeout=data.scanDuration,
                 result="Starting scan on controller.",
             )
-            await self.controller.start_scan_dt(
+            await controller.start_scan_dt(
                 scan_duration=data.scanDuration, group_id=getattr(data, "groupId", None)
             )
             await self.report_detailed_state(DetailedState.READINGBUFFERSTATE)
@@ -385,7 +541,8 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
                 timeout=READ_DURATION,
                 result="Reading the buffer from controller.",
             )
-            await self.controller.stop_scan()
+            scan_result = await controller.stop_scan()
+            await self.write_scan_result(scan_result)
         except Exception as e:
             msg = "startScanDt failed."
             self.log.exception(msg)
@@ -412,7 +569,9 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         )
         try:
             await self.report_detailed_state(DetailedState.READINGBUFFERSTATE)
-            await self.controller.stop_scan()
+            controller = self.active_controller
+            scan_result = await controller.stop_scan()
+            await self.write_scan_result(scan_result)
         except Exception as e:
             msg = "stopScan failed."
             self.log.exception(msg)
@@ -421,16 +580,25 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
 
     async def do_setVoltageSource(self, data):
+        """Set voltage source settings.
+
+        Parameters
+        ----------
+        data : `cmd_setVoltageSource.DataType`
+            The data for the command.
+        """
         self.assert_enabled()
         self.assert_substate(substates=[DetailedState.NOTREADINGSTATE], action="setRange")
         try:
             await self.report_detailed_state(DetailedState.CONFIGURINGSTATE)
-            await self.controller.toggle_voltage_source(data.status)
-            await self.controller.set_voltage_limit(data.voltage_limit)
-            await self.controller.set_voltage_range(data.range)
-            await self.controller.set_voltage_level(data.level)
+            controller = self.active_controller
+            await controller.toggle_voltage_source(data.status)
+            await controller.set_voltage_limit(data.voltage_limit)
+            await controller.set_voltage_range(data.range)
+            await controller.set_voltage_level(data.level)
         except Exception:
             self.log.exception("SetVoltageSource failed.")
+            raise
         finally:
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
 
