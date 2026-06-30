@@ -1,0 +1,70 @@
+[workspace]
+authors = ["Eric Coughlin <ecoughlin@lsst.org>"]
+channels = ["conda-forge", "lsstts"]
+description = "Electrometer is a Commandable SAL Component for the Vera C. Rubin Observatory."
+documentation = "https://ts-electrometer.lsst.io"
+license = "GPL-3.0-or-later"
+name = "ts-electrometer"
+platforms = ["osx-arm64"]
+readme = "README.rst"
+repository = "https://github.com/lsst-ts/ts_electrometer"
+version = "0.1.0"
+preview = ["pixi-build"]
+
+[package]
+name = "ts-electrometer"
+version = "0.1.0"
+
+[package.build]
+backend = {name = "pixi-build-python", version = "*"}
+
+[package.host-dependencies]
+python = ">=3.13"
+pip = "*"
+setuptools = ">45"
+setuptools-scm = ">=6.2"
+
+[package.run-dependencies]
+python = ">=3.13"
+ts-salobj = "*"
+ts-tcpip = "*"
+ts-utils = "*"
+ts-xml = "*"
+
+[tasks]
+command-electrometer = "command_electrometer"
+docs = "package-docs clean && package-docs build"
+format = "pre-commit run -a"
+run-electrometer = "run_electrometer"
+test = { cmd = "TS_CONFIG_OCS_DIR=$PIXI_PROJECT_ROOT/../ts_config_ocs pytest -n logical --cov lsst.ts.electrometer", env = { LSST_KAFKA_BROKER_ADDR = "localhost:9092", LSST_SCHEMA_REGISTRY_URL = "http://localhost:8081" } }
+
+[dependencies]
+pip = "*"
+pyserial = "*"
+python = ">=3.13"
+setuptools = ">45"
+setuptools-scm = ">=6.2"
+ts-salobj = "*"
+ts-tcpip = "*"
+ts-utils = "*"
+ts-xml = "*"
+
+[pypi-dependencies]
+ts-electrometer = { path = ".", editable = true }
+
+[feature.dev.dependencies]
+ts-pre-commit-config = "*"
+parameterized = "*"
+pytest = "*"
+pytest-asyncio = "*"
+pytest-xdist = "*"
+pytest-cov = "*"
+
+[feature.dev.pypi-dependencies]
+pytest-coverage = "*"
+
+[feature.docs.pypi-dependencies]
+documenteer = { extras = ["guide"], version = "*" }
+
+[environments]
+default = { features = ["dev", "docs"] }
