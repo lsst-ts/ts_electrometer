@@ -31,9 +31,6 @@ from . import enums
 class ElectrometerCommandFactory:
     """Format SCPI commands common to supported electrometers."""
 
-    def __init__(self):
-        pass
-
     def activate_filter(self, mode, filter_type, active):
         """Build a command that enables or disables a digital filter.
 
@@ -738,15 +735,15 @@ class ElectrometerCommandFactory:
         command = ":sour:volt:lev:imm:ampl?;"
         return command
 
-    def set_voltage_level(self, amplititude):
+    def set_voltage_level(self, amplitude):
         """Return a command to set voltage source level.
 
         Parameters
         ----------
-        amplititude : `float`
+        amplitude : `float`
             Voltage level to set.
         """
-        command = f":sour:volt:lev:imm:ampl {amplititude};"
+        command = f":sour:volt:lev:imm:ampl {amplitude};"
         return command
 
     def get_voltage_range(self):
@@ -802,18 +799,12 @@ class ElectrometerCommandFactory:
 class KeithleyElectrometerCommandFactory(ElectrometerCommandFactory):
     """Format Keithley-specific SCPI commands for RS-232 control."""
 
-    def __init__(self) -> None:
-        super().__init__()
-
 
 class KeysightElectrometerCommandFactory(ElectrometerCommandFactory):
     """Format Keysight-specific SCPI commands for RS-232 control.
 
     This class includes commands that differ from the Keithley command set.
     """
-
-    def __init__(self) -> None:
-        super().__init__()
 
     def perform_zero_calibration(self, mode, auto, range_value, int_time):
         """Build the command sequence for zero calibration.

@@ -1055,7 +1055,7 @@ class ElectrometerController(abc.ABC):
         level : `int`
             Voltage source level.
         """
-        await self.send_command(self.commands.set_voltage_level(amplititude=level))
+        await self.send_command(self.commands.set_voltage_level(amplitude=level))
         await self.get_voltage_level()
         return self.get_settings()
 
