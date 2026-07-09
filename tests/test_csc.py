@@ -227,7 +227,12 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             self.csc.image_name_service_client.get_next_obs_id = unittest.mock.AsyncMock(
                 return_value=([1], ["EM1_O_20221130_000001"])
             )
+            self.remote.evt_detailedState.flush()
             await self.remote.cmd_startScan.set_start(timeout=STD_TIMEOUT)
+            await self.assert_next_sample(
+                topic=self.remote.evt_detailedState,
+                detailedState=DetailedState.MANUALREADINGSTATE,
+            )
 
     @parameterized.parameterized.expand(INDICES)
     async def test_start_scan_dt(self, index):
@@ -253,7 +258,7 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             config_dir=TEST_CONFIG_DIR,
         ):
             with tempfile.TemporaryDirectory() as tmpdir:
-                self.csc.controller.fits_file_path = tmpdir
+                self.csc.fits_file_path = tmpdir
                 self.csc.image_name_service_client.get_next_obs_id = unittest.mock.AsyncMock(
                     return_value=([3], [obs_id])
                 )
