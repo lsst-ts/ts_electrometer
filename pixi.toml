@@ -1,5 +1,5 @@
 [workspace]
-authors = ["Eric Coughlin <ecoughlin@lsst.org>"]
+authors = ["Eric Coughlin <ecoughlin@noirlab.edu>"]
 channels = ["conda-forge", "lsstts"]
 description = "Electrometer is a Commandable SAL Component for the Vera C. Rubin Observatory."
 documentation = "https://ts-electrometer.lsst.io"

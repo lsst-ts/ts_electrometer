@@ -35,7 +35,7 @@ class ElectrometerCommandFactory:
         pass
 
     def activate_filter(self, mode, filter_type, active):
-        """Return a command to enable or disable a digital filter.
+        """Build a command that enables or disables a digital filter.
 
         Parameters
         ----------
@@ -56,7 +56,7 @@ class ElectrometerCommandFactory:
         return f":sens:{unit}:{filter}:stat {int(active)};"
 
     def get_filter_status(self, mode, filter_type):
-        """Return a command to query a digital filter status.
+        """Build a command that queries a digital filter status.
 
         Parameters
         ----------
@@ -75,17 +75,17 @@ class ElectrometerCommandFactory:
         return f":sens:{unit}:{filter}:stat?;"
 
     def always_read(self) -> str:
-        """Return always read buffer.
+        """Build a command that reads the full buffer continuously.
 
         Returns
         -------
         command : `str`
-            The generated command string. An array of all data in the buffer.
+            Generated command string.
         """
         return f":trac:feed:cont alw;{self.init_buffer()}"
 
     def next_read(self):
-        """Return the latest measurement data from buffer
+        """Build a command that reads the next buffer sample.
 
         Returns
         -------
@@ -95,17 +95,17 @@ class ElectrometerCommandFactory:
         return f":trac:feed:cont NEXT;{self.init_buffer()}"
 
     def acquire_data(self):
-        """Returns the command to start acquiring data
+        """Build a command that starts acquiring data.
 
         Returns
         -------
         command : `str`
-            The generated command string
+            Generated command string.
         """
         return f":trac:feed:cont NEXT;{self.init_buffer()}"
 
     def clear_buffer(self):
-        """Return clear buffer.
+        """Build a command that clears the buffer.
 
         Returns
         -------
@@ -116,7 +116,7 @@ class ElectrometerCommandFactory:
         return command
 
     def clear_device(self):
-        """Return clear device.
+        """Build a command that clears the device.
 
         Returns
         -------
@@ -127,7 +127,7 @@ class ElectrometerCommandFactory:
         return command
 
     def get_last_error(self):
-        """Return get last error.
+        """Build a command that queries the last error.
 
         Returns
         -------
@@ -146,7 +146,7 @@ class ElectrometerCommandFactory:
         mode="VOLT",
         channel=False,
     ):
-        """Return format data stored to the buffer.
+        """Build a command that configures the trace buffer format.
 
         Parameters
         ----------
@@ -200,7 +200,7 @@ class ElectrometerCommandFactory:
         return command
 
     def get_trace_format(self):
-        """Returns the format of the trace.
+        """Build a command that queries the trace format.
 
         Returns
         -------
@@ -211,7 +211,7 @@ class ElectrometerCommandFactory:
         return command
 
     def get_buffer_quantity(self):
-        """Return get buffer quantity.
+        """Build a command that queries the number of buffered samples.
 
         Returns
         -------
@@ -222,7 +222,7 @@ class ElectrometerCommandFactory:
         return command
 
     def get_hardware_info(self):
-        """Return get hardware info.
+        """Build a command that queries the hardware identification string.
 
         Returns
         -------
@@ -233,7 +233,7 @@ class ElectrometerCommandFactory:
         return command
 
     def set_autodischarge(self, autodischarge_state):
-        """Sets the autodischarge state.
+        """Build a command that sets the autodischarge state.
 
         Returns
         -------
@@ -421,8 +421,8 @@ class ElectrometerCommandFactory:
         ----------
         mode : `UnitMode`
             The unit of the aperture to set.
-        time : `float`
-            The integration time of the aperture.
+        time : `float`, optional
+            The integration time of the aperture. Defaults to 0.001 seconds.
 
         Returns
         -------
@@ -641,6 +641,13 @@ class ElectrometerCommandFactory:
     def set_timer(self, mode, value):
         """Return set time command string.
 
+        Parameters
+        ----------
+        mode : `str` or `enums.UnitMode`
+            Measurement mode.
+        value : `float`
+            Timer value in power-line cycles.
+
         Returns
         -------
         command : `str`
@@ -683,6 +690,8 @@ class ElectrometerCommandFactory:
             Whether auto range is activated.
         range_value : `float`
             The range of the values.
+        int_time : `float`
+            Integration time to use for the calibration.
 
         Returns
         -------
@@ -709,7 +718,13 @@ class ElectrometerCommandFactory:
         return command
 
     def toggle_voltage_source(self, enable):
-        """Return a command to enable or disable the voltage source."""
+        """Return a command to enable or disable the voltage source.
+
+        Parameters
+        ----------
+        enable : `bool`
+            Whether to enable the voltage source.
+        """
         command = ":vsou:oper ON;" if enable else ":vsou:oper OFF;"
         return command
 
@@ -724,7 +739,13 @@ class ElectrometerCommandFactory:
         return command
 
     def set_voltage_level(self, amplititude):
-        """Return a command to set voltage source level."""
+        """Return a command to set voltage source level.
+
+        Parameters
+        ----------
+        amplititude : `float`
+            Voltage level to set.
+        """
         command = f":sour:volt:lev:imm:ampl {amplititude};"
         return command
 
@@ -734,7 +755,13 @@ class ElectrometerCommandFactory:
         return command
 
     def set_voltage_range(self, range):
-        """Return a command to set voltage source range."""
+        """Return a command to set voltage source range.
+
+        Parameters
+        ----------
+        range : `float`
+            Voltage range to set.
+        """
         command = f":sour:volt:rang {range};"
         return command
 
@@ -744,12 +771,26 @@ class ElectrometerCommandFactory:
         return command
 
     def set_voltage_limit(self, limit):
-        """Return a command to set voltage source limit."""
+        """Return a command to set voltage source limit.
+
+        Parameters
+        ----------
+        limit : `float`
+            Voltage limit to set.
+        """
         command = f":sour:volt:lim:ampl {limit};"
         return command
 
     def set_resolution(self, mode, digit):
-        """Return a command to set measurement resolution."""
+        """Return a command to set measurement resolution.
+
+        Parameters
+        ----------
+        mode : `str` or `enums.UnitMode`
+            Measurement mode.
+        digit : `int`
+            Number of resolution digits.
+        """
         command = f":sens:{enums.UnitMode(mode).value}:dig {digit};"
         return command
 
@@ -759,39 +800,42 @@ class ElectrometerCommandFactory:
 
 
 class KeithleyElectrometerCommandFactory(ElectrometerCommandFactory):
-    """Class that formats commands to control the electrometer via RS-232."""
+    """Format Keithley-specific SCPI commands for RS-232 control."""
 
     def __init__(self) -> None:
         super().__init__()
 
 
 class KeysightElectrometerCommandFactory(ElectrometerCommandFactory):
-    """Class that formats commands to control the electrometer via RS-232.
-    This class includes all commands that differ in some way from the Keithley
-    Electrometer.
+    """Format Keysight-specific SCPI commands for RS-232 control.
+
+    This class includes commands that differ from the Keithley command set.
     """
 
     def __init__(self) -> None:
         super().__init__()
 
     def perform_zero_calibration(self, mode, auto, range_value, int_time):
-        """Return combo of commands for perform zero calibration command.
-        Required when setting mode to Volts/Amps to cancel any internal
-        offsets. See page 4-10 in User's manual for sequence
+        """Build the command sequence for zero calibration.
+
+        Required when setting mode to volts or amps to cancel internal
+        offsets. See page 4-10 of the user manual for the sequence.
 
         Parameters
         ----------
         mode : `UnitMode`
-            The unit of the device
+            Measurement unit for the device.
         auto : `bool`
             Whether auto range is activated.
         range_value : `float`
             The range of the values.
+        int_time : `float`
+            Integration time to use for the calibration.
 
         Returns
         -------
         command : `str`
-            The generated command string
+            Generated command string.
         """
         command = (
             f"{self.set_mode(mode=mode)} {self.set_range(auto=auto, range_value=range_value, mode=mode)} "
@@ -799,16 +843,16 @@ class KeysightElectrometerCommandFactory(ElectrometerCommandFactory):
         return command
 
     def activate_filter(self, mode, filter_type, active) -> str:
-        """Return activate filter command.
+        """Build a command that enables or disables a digital filter.
 
         Parameters
         ----------
         mode : `UnitMode`
-            The unit of the filter to activate.
+            Measurement unit for the filter to activate.
         filter_type : `Filter`
-            The filter type to activate
+            Filter type to activate.
         active : `int`
-            Whether to activate or not.
+            Whether to activate the filter.
 
         Returns
         -------
@@ -908,12 +952,18 @@ class KeysightElectrometerCommandFactory(ElectrometerCommandFactory):
 
         Parameters
         ----------
-        channel : `bool`
-            Whether to store channel data.
         timestamp : `bool`
             Whether to store timestamp data.
         temperature : `bool`
             Whether to store temperature data.
+        voltage : `bool`
+            Whether to store voltage-source data.
+        set_mode : `bool`
+            Whether to store data for a specified measurement mode.
+        mode : `str`
+            Measurement mode to store when ``set_mode`` is true.
+        channel : `bool`
+            Whether to store channel data.
 
         Returns
         -------
@@ -1102,8 +1152,8 @@ class KeysightElectrometerCommandFactory(ElectrometerCommandFactory):
         ----------
         mode : `UnitMode`
             The unit of the aperture to set.
-        time : `float`
-            The integration time of the aperture.
+        time : `float`, optional
+            The integration time of the aperture. Defaults to 0.001 seconds.
 
         Returns
         -------
@@ -1127,6 +1177,13 @@ class KeysightElectrometerCommandFactory(ElectrometerCommandFactory):
 
     def set_timer(self, mode, value):
         """Return set time command string.
+
+        Parameters
+        ----------
+        mode : `str` or `enums.UnitMode`
+            Measurement mode.
+        value : `float`
+            Timer value in power-line cycles.
 
         Returns
         -------

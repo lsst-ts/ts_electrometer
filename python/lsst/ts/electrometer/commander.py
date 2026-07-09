@@ -23,6 +23,7 @@ __all__ = ["Commander"]
 
 import asyncio
 import logging
+from typing import Protocol
 
 from lsst.ts import tcpip
 
@@ -31,6 +32,14 @@ DEFAULT_TIMEOUT = 240
 RETRY_DELAY = 1
 RECONNECTION_DELAY = 30
 NUMBER_OF_RETRIES = 10
+
+
+class TcpipConfig(Protocol):
+    """Configuration values needed to connect to the electrometer."""
+
+    hostname: str
+    port: int
+    timeout: float
 
 
 class Commander:
@@ -236,21 +245,21 @@ class Commander:
         return reply.decode(self.client.encoding)
 
     async def send_command(self, msg: str, has_reply: bool, timeout: None | float = None) -> None | str:
-        """Send command to the device and receive reply if expected.
+        """Send a command to the device and receive a reply if expected.
 
         Parameters
         ----------
-        msg : str
+        msg : `str`
             The command to be sent.
-        has_reply : bool
-            Does the command expect a reply?
-        timeout : None | float, optional
-            How long to wait before timing out reply, by default None.
+        has_reply : `bool`
+            Whether the command expects a reply.
+        timeout : `float` or `None`, optional
+            How long to wait before timing out the reply.
 
         Returns
         -------
-        None | str
-            Return the reply if expected else return None.
+        reply : `str` or `None`
+            Command reply if expected; otherwise `None`.
         """
         timeout = self.timeout if timeout is None else timeout
         async with self.lock:
@@ -279,7 +288,7 @@ class Commander:
                 f"Command failed after {NUMBER_OF_RETRIES} attempts: {msg}"
             ) from last_exception
 
-    def configure(self, config):
+    def configure(self, config: TcpipConfig) -> None:
         """Configure the network endpoint.
 
         Parameters

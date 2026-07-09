@@ -82,9 +82,7 @@ class MockServer(tcpip.OneClientReadLoopServer):
         )
 
     async def read_and_dispatch(self) -> None:
-        """Read commands from the client and dispatch them to the mock
-        device.
-        """
+        """Read client commands and dispatch them to the mock device."""
         commands = await self.read_str()
         self.log.info(f"{commands=}")
         if self.brand == "Keysight":
@@ -217,17 +215,17 @@ class MockKeysight:
         self.integration_time = 0.01
 
     def parse_message(self, msg):
-        """Parse and return the result of the message.
+        """Parse a command message and return the device reply.
 
         Parameters
         ----------
-        msg : `bytes`
+        msg : `str`
             The message to parse.
 
         Returns
         -------
-        reply : `bytes`
-            The reply of the command parsed.
+        reply : `str` or `None`
+            Reply generated for the parsed command, if any.
 
         Raises
         ------
@@ -460,6 +458,7 @@ class MockKeithley:
         Current measurement mode.
     integration_time : `float`
         Current integration time, in seconds.
+
     """
 
     def __init__(self):
@@ -524,17 +523,17 @@ class MockKeithley:
         self.integration_time = 0.01
 
     def parse_message(self, msg):
-        """Parse and return the result of the message.
+        """Parse a command message and return the device reply.
 
         Parameters
         ----------
-        msg : `bytes`
+        msg : `str`
             The message to parse.
 
         Returns
         -------
-        reply : `bytes`
-            The reply of the command parsed.
+        reply : `str` or `None`
+            Reply generated for the parsed command, if any.
 
         Raises
         ------

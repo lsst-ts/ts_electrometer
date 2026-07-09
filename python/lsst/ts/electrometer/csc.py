@@ -50,7 +50,7 @@ def command_csc() -> None:
 
 @dataclass
 class FitsData:
-    """Metadata required to write a FITS file.
+    """Store metadata required to write a FITS file.
 
     Parameters
     ----------
@@ -104,6 +104,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         Force the output of an event.
     bucket : `salobj.AsyncS3Bucket` or `None`
         Bucket used for large file object uploads.
+
     """
 
     valid_simulation_modes = (0, 1, 2)
@@ -131,6 +132,8 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         self.bucket = None
         self.controller: controller.ElectrometerController | None = None
         self.image_name_service_client = None
+        self.fits_file_path: str | None = None
+        self.s3_instance: str | None = None
 
     @property
     def active_bucket(self) -> salobj.AsyncS3Bucket:
@@ -184,7 +187,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         Raises
         ------
         salobj.ExpectedError
-            If the current substate is not allowed to preform the action.
+            If the current substate is not allowed to perform the action.
         """
         if self.detailed_state not in [DetailedState(substate) for substate in substates]:
             raise salobj.ExpectedError(f"command not allowed in {self.detailed_state!r}")
@@ -206,7 +209,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         return self.evt_detailedState.data.detailedState
 
     async def report_detailed_state(self, new_state):
-        """Report the detailed state.
+        """Publish the detailed state.
 
         Parameters
         ----------
@@ -215,23 +218,86 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         """
         await self.evt_detailedState.set_write(detailedState=new_state)
 
-    def get_mode_index(self) -> int:
-        """Get the SAL index for the controller's current measurement mode.
+    def get_mode_index(self, mode_name: str | None = None) -> int:
+        """Get the SAL index for a controller measurement mode.
+
+        Parameters
+        ----------
+        mode_name : `str` or `None`, optional
+            Measurement mode to look up. Defaults to the active mode.
 
         Returns
         -------
         mode_index : `int`
             SAL enum index matching the controller measurement mode.
         """
-        controller = self.active_controller
-        return int([num for num, mode in controller.modes.items() if controller.mode == mode.name][0])
+        active_controller = self.active_controller
+        resolved_mode = active_controller.mode if mode_name is None else mode_name
+        return int([num for num, mode in active_controller.modes.items() if resolved_mode == mode.name][0])
 
-    async def publish_controller_settings(self) -> None:
-        """Publish controller settings represented as SAL events."""
-        controller = self.active_controller
-        await self.evt_measureType.set_write(mode=self.get_mode_index(), force_output=False)
-        await self.evt_measureRange.set_write(rangeValue=controller.range, force_output=True)
-        await self.evt_integrationTime.set_write(intTime=controller.integration_time, force_output=False)
+    async def publish_controller_settings(
+        self, settings: controller.ControllerSettings | None = None
+    ) -> None:
+        """Publish controller settings as SAL events.
+
+        Parameters
+        ----------
+        settings : `controller.ControllerSettings` or `None`, optional
+            Settings to publish. Defaults to the active controller settings.
+        """
+        resolved_settings = settings if settings is not None else self.active_controller.get_settings()
+        await self.evt_measureType.set_write(
+            mode=self.get_mode_index(resolved_settings.mode),
+            force_output=False,
+        )
+        await self.evt_measureRange.set_write(rangeValue=resolved_settings.range, force_output=True)
+        await self.evt_integrationTime.set_write(
+            intTime=resolved_settings.integration_time,
+            force_output=False,
+        )
+
+    async def publish_digital_filter_settings(self, settings: controller.ControllerSettings) -> None:
+        """Publish digital filter settings from a controller snapshot."""
+        await self.evt_digitalFilterChange.set_write(
+            activateFilter=settings.filter_active,
+            activateMedianFilter=settings.median_filter_active,
+            activateAverageFilter=settings.avg_filter_active,
+        )
+
+    async def run_controller_command(
+        self,
+        *,
+        action: str,
+        substates: list[DetailedState],
+        command,
+        working_state: DetailedState | None = None,
+        final_state: DetailedState | None = DetailedState.NOTREADINGSTATE,
+        error_message: str,
+        fault_code: enums.Error | None = None,
+    ):
+        """Run a controller-backed command with consistent state handling."""
+        self.assert_enabled()
+        self.assert_substate(substates=substates, action=action)
+        succeeded = False
+        try:
+            if working_state is not None:
+                await self.report_detailed_state(working_state)
+            result = await command(self.active_controller)
+            succeeded = True
+            return result
+        except Exception as e:
+            self.log.exception(error_message)
+            if fault_code is not None:
+                await self.fault(code=fault_code, report=f"{error_message}: {repr(e)}")
+                return None
+            raise
+        finally:
+            if succeeded:
+                target_state = final_state
+            else:
+                target_state = DetailedState.NOTREADINGSTATE
+            if target_state is not None:
+                await self.report_detailed_state(target_state)
 
     async def write_scan_result(self, scan_result: controller.ScanResult) -> None:
         """Write scan data to object storage and publish the LFA event.
@@ -265,7 +331,9 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         except Exception:
             self.log.exception("Uploading file to S3 bucket failed.")
             file.seek(0)
-            local_path = pathlib.Path(controller.fits_file_path).joinpath(f"{obs_ids[0]}.fits")
+            if self.fits_file_path is None:
+                raise RuntimeError("Local FITS fallback path has not been configured")
+            local_path = pathlib.Path(self.fits_file_path).joinpath(f"{obs_ids[0]}.fits")
             try:
                 local_path.parent.mkdir(parents=True, exist_ok=True)
                 local_path.write_bytes(file.read())
@@ -303,7 +371,9 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         self.validator = salobj.DefaultingValidator(controller_class.get_config_schema())
         # self.validator.validate(instance)
         self.controller = controller_class(log=self.log)
-        self.controller.configure(types.SimpleNamespace(**instance))
+        self.controller.configure(controller.ControllerConfig.from_config(types.SimpleNamespace(**instance)))
+        self.fits_file_path = instance["fits_file_path"]
+        self.s3_instance = instance["s3_instance"]
         self.image_name_service_client = utils.ImageNameServiceClient(
             url=instance["image_name_service"],
             csc_index=self.salinfo.index,
@@ -342,7 +412,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
                 try:
                     controller = self.active_controller
                     self.bucket = salobj.AsyncS3Bucket(
-                        salobj.AsyncS3Bucket.make_bucket_name(s3instance=controller.s3_instance),
+                        salobj.AsyncS3Bucket.make_bucket_name(s3instance=self.s3_instance),
                         create=create,
                         domock=do_mock,
                     )
@@ -358,7 +428,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
                     self.log.exception("Connection failed.")
                     await self.fault(code=enums.Error.CONNECTION, report="Connection failed.")
                     return
-            await self.publish_controller_settings()
+            await self.publish_controller_settings(controller.get_settings())
             await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
         else:
             if self.controller is not None:
@@ -376,24 +446,20 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         data : `cmd_performZeroCalib.DataType`
             The data for the command.
         """
-        self.assert_enabled()
-        self.assert_substate(
-            substates=[DetailedState.NOTREADINGSTATE],
-            action="performZeroCalib",
-        )
-        try:
-            await self.report_detailed_state(DetailedState.CONFIGURINGSTATE)
-            controller = self.active_controller
-            await controller.perform_zero_calibration(
+
+        async def command_fn(active_controller):
+            await active_controller.perform_zero_calibration(
                 mode=None, auto=None, set_range=None, integration_time=None
             )
-            await self.publish_controller_settings()
-            await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
-        except Exception:
-            self.log.exception("performZeroCalibration failed.")
-            raise
-        finally:
-            await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
+            await self.publish_controller_settings(active_controller.get_settings())
+
+        await self.run_controller_command(
+            action="performZeroCalib",
+            substates=[DetailedState.NOTREADINGSTATE],
+            command=command_fn,
+            working_state=DetailedState.CONFIGURINGSTATE,
+            error_message="performZeroCalibration failed.",
+        )
 
     async def do_setDigitalFilter(self, data):
         """Set the digital filter(s).
@@ -404,36 +470,28 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             The data for the command.
         """
         self.log.debug("setDigitalFilter Started")
-        self.assert_enabled()
-        self.assert_substate(
-            substates=[DetailedState.NOTREADINGSTATE],
-            action="setDigitalFilter",
-        )
-        try:
-            await self.report_detailed_state(DetailedState.CONFIGURINGSTATE)
-            controller = self.active_controller
-            await controller.set_digital_filter(
+
+        async def command_fn(active_controller):
+            settings = await active_controller.set_digital_filter(
                 activate_filter=data.activateFilter,
                 activate_avg_filter=data.activateAvgFilter,
                 activate_med_filter=data.activateMedFilter,
             )
             self.log.debug("setDigitalFilter controller interaction completed")
             self.log.debug(
-                f"filter_active={controller.filter_active},"
-                f"avg_filter_active={controller.avg_filter_active},"
-                f"median_filter_active={controller.median_filter_active}"
+                f"filter_active={settings.filter_active},"
+                f"avg_filter_active={settings.avg_filter_active},"
+                f"median_filter_active={settings.median_filter_active}"
             )
-            await self.evt_digitalFilterChange.set_write(
-                activateFilter=controller.filter_active,
-                activateMedianFilter=controller.median_filter_active,
-                activateAverageFilter=controller.avg_filter_active,
-            )
-            await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
-        except Exception:
-            self.log.exception("setDigitalFilter failed.")
-            raise
-        finally:
-            await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
+            await self.publish_digital_filter_settings(settings)
+
+        await self.run_controller_command(
+            action="setDigitalFilter",
+            substates=[DetailedState.NOTREADINGSTATE],
+            command=command_fn,
+            working_state=DetailedState.CONFIGURINGSTATE,
+            error_message="setDigitalFilter failed.",
+        )
 
     async def do_setIntegrationTime(self, data):
         """Set the integration time.
@@ -443,21 +501,20 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         data : `cmd_setIntegrationTime.DataType`
             The data for the command.
         """
-        self.assert_enabled()
-        self.assert_substate(
-            substates=[DetailedState.NOTREADINGSTATE],
+
+        async def command_fn(active_controller):
+            await active_controller.set_integration_time(data.intTime)
+            await self.evt_integrationTime.set_write(
+                intTime=active_controller.get_settings().integration_time
+            )
+
+        await self.run_controller_command(
             action="setIntegrationTime",
+            substates=[DetailedState.NOTREADINGSTATE],
+            command=command_fn,
+            working_state=DetailedState.CONFIGURINGSTATE,
+            error_message="setIntegrationTime failed.",
         )
-        try:
-            await self.report_detailed_state(DetailedState.CONFIGURINGSTATE)
-            controller = self.active_controller
-            await controller.set_integration_time(data.intTime)
-            await self.evt_integrationTime.set_write(intTime=controller.integration_time)
-        except Exception:
-            self.log.exception("setIntegrationTime failed.")
-            raise
-        finally:
-            await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
 
     async def do_changeNPLC(self, data):
         """Change the Number of Power Line Cycles (NPLC).
@@ -467,39 +524,39 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         data : `cmd_changeNPLC.DataType`
             The data for the command.
         """
-        self.assert_enabled()
-        self.assert_substate(substates=[DetailedState.NOTREADINGSTATE], action="changeNPLC")
-        try:
-            controller = self.active_controller
-            await controller.set_timer(data.value)
-            await self.evt_changedNPLC.set_write(value=float(controller.nplc))
-        except Exception:
-            self.log.exception("Failed to change NPLC.")
-            raise
-        finally:
-            await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
+
+        async def command_fn(active_controller):
+            await active_controller.set_timer(data.value)
+            await self.evt_changedNPLC.set_write(value=float(active_controller.get_settings().nplc))
+
+        await self.run_controller_command(
+            action="changeNPLC",
+            substates=[DetailedState.NOTREADINGSTATE],
+            command=command_fn,
+            error_message="Failed to change NPLC.",
+        )
 
     async def do_setMode(self, data):
-        """Set the mode/unit.
+        """Set the measurement mode.
 
         Parameters
         ----------
         data : `cmd_setMode.DataType`
             The data for the command.
         """
-        self.assert_enabled()
-        self.assert_substate(substates=[DetailedState.NOTREADINGSTATE], action="setMode")
-        try:
-            await self.report_detailed_state(DetailedState.CONFIGURINGSTATE)
-            controller = self.active_controller
+
+        async def command_fn(active_controller):
             self.log.debug(f"Setting mode: {data.mode}")
-            await controller.set_mode(mode=data.mode)
-            await self.evt_measureType.set_write(mode=self.get_mode_index())
-        except Exception:
-            self.log.exception("setMode failed.")
-            raise
-        finally:
-            await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
+            settings = await active_controller.set_mode(mode=data.mode)
+            await self.evt_measureType.set_write(mode=self.get_mode_index(settings.mode))
+
+        await self.run_controller_command(
+            action="setMode",
+            substates=[DetailedState.NOTREADINGSTATE],
+            command=command_fn,
+            working_state=DetailedState.CONFIGURINGSTATE,
+            error_message="setMode failed.",
+        )
 
     async def do_setRange(self, data):
         """Set the range.
@@ -509,21 +566,21 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         data : `cmd_setRange.DataType`
             The data for the command.
         """
-        self.assert_enabled()
-        self.assert_substate(substates=[DetailedState.NOTREADINGSTATE], action="setRange")
-        try:
-            await self.report_detailed_state(DetailedState.CONFIGURINGSTATE)
-            controller = self.active_controller
-            await controller.set_range(set_range=data.setRange)
-            await self.evt_measureRange.set_write(rangeValue=controller.range, force_output=True)
-        except Exception:
-            self.log.exception("setRange failed.")
-            raise
-        finally:
-            await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
+
+        async def command_fn(active_controller):
+            settings = await active_controller.set_range(set_range=data.setRange)
+            await self.evt_measureRange.set_write(rangeValue=settings.range, force_output=True)
+
+        await self.run_controller_command(
+            action="setRange",
+            substates=[DetailedState.NOTREADINGSTATE],
+            command=command_fn,
+            working_state=DetailedState.CONFIGURINGSTATE,
+            error_message="setRange failed.",
+        )
 
     async def do_startScan(self, data):
-        """Start scan.
+        """Start a manual scan.
 
         Parameters
         ----------
@@ -531,17 +588,19 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             The data for the command.
         """
         self.log.debug("Starting startScan")
-        self.assert_enabled()
-        self.assert_substate(substates=[DetailedState.NOTREADINGSTATE], action="startScan")
-        try:
-            await self.report_detailed_state(DetailedState.MANUALREADINGSTATE)
-            controller = self.active_controller
-            await controller.start_scan(group_id=getattr(data, "groupId", None))
-        except Exception as e:
-            msg = "startScan failed."
-            await self.fault(code=enums.Error.FILE_ERROR, report=f"{msg}: {repr(e)}")
-        finally:
-            await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
+
+        async def command_fn(active_controller):
+            await active_controller.start_scan(group_id=getattr(data, "groupId", None))
+
+        await self.run_controller_command(
+            action="startScan",
+            substates=[DetailedState.NOTREADINGSTATE],
+            command=command_fn,
+            working_state=DetailedState.MANUALREADINGSTATE,
+            final_state=None,
+            error_message="startScan failed.",
+            fault_code=enums.Error.FILE_ERROR,
+        )
 
     async def do_startScanDt(self, data):
         """Start the scan with a set duration.
@@ -555,13 +614,13 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         self.assert_substate(substates=[DetailedState.NOTREADINGSTATE], action="startScanDt")
         try:
             await self.report_detailed_state(DetailedState.SETDURATIONREADINGSTATE)
-            controller = self.active_controller
+            active_controller = self.active_controller
             await self.cmd_startScanDt.ack_in_progress(
                 data=data,
                 timeout=data.scanDuration,
                 result="Starting scan on controller.",
             )
-            await controller.start_scan_dt(
+            await active_controller.start_scan_dt(
                 scan_duration=data.scanDuration, group_id=getattr(data, "groupId", None)
             )
             await self.report_detailed_state(DetailedState.READINGBUFFERSTATE)
@@ -570,7 +629,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
                 timeout=READ_DURATION,
                 result="Reading the buffer from controller.",
             )
-            scan_result = await controller.stop_scan()
+            scan_result = await active_controller.stop_scan()
             await self.write_scan_result(scan_result)
         except Exception as e:
             msg = "startScanDt failed."
@@ -588,25 +647,22 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
             The data for the command.
         """
         self.log.debug("Starting stopScan")
-        self.assert_enabled()
-        self.assert_substate(
+
+        async def command_fn(active_controller):
+            scan_result = await active_controller.stop_scan()
+            await self.write_scan_result(scan_result)
+
+        await self.run_controller_command(
+            action="stopScan",
             substates=[
                 DetailedState.MANUALREADINGSTATE,
                 DetailedState.SETDURATIONREADINGSTATE,
             ],
-            action="stopScan",
+            command=command_fn,
+            working_state=DetailedState.READINGBUFFERSTATE,
+            error_message="stopScan failed.",
+            fault_code=enums.Error.FILE_ERROR,
         )
-        try:
-            await self.report_detailed_state(DetailedState.READINGBUFFERSTATE)
-            controller = self.active_controller
-            scan_result = await controller.stop_scan()
-            await self.write_scan_result(scan_result)
-        except Exception as e:
-            msg = "stopScan failed."
-            self.log.exception(msg)
-            await self.fault(code=enums.Error.FILE_ERROR, report=f"{msg}: {repr(e)}")
-        finally:
-            await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
 
     async def do_setVoltageSource(self, data):
         """Set voltage source settings.
@@ -616,24 +672,24 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         data : `cmd_setVoltageSource.DataType`
             The data for the command.
         """
-        self.assert_enabled()
-        self.assert_substate(substates=[DetailedState.NOTREADINGSTATE], action="setRange")
-        try:
-            await self.report_detailed_state(DetailedState.CONFIGURINGSTATE)
-            controller = self.active_controller
-            await controller.toggle_voltage_source(data.status)
-            await self.evt_voltageSourceChanged.set_write(status=controller.voltage_source)
-            await controller.set_voltage_limit(data.voltage_limit)
-            await self.evt_voltageSourceChanged.set_write(voltage_limit=controller.voltage_limit)
-            await controller.set_voltage_range(data.range)
-            await self.evt_voltageSourceChanged.set_write(range=controller.voltage_range)
-            await controller.set_voltage_level(data.level)
-            await self.evt_voltageSourceChanged.set_write(level=controller.voltage_level)
-        except Exception:
-            self.log.exception("SetVoltageSource failed.")
-            raise
-        finally:
-            await self.report_detailed_state(DetailedState.NOTREADINGSTATE)
+
+        async def command_fn(active_controller):
+            settings = await active_controller.toggle_voltage_source(data.status)
+            await self.evt_voltageSourceChanged.set_write(status=settings.voltage_source)
+            settings = await active_controller.set_voltage_limit(data.voltage_limit)
+            await self.evt_voltageSourceChanged.set_write(voltage_limit=settings.voltage_limit)
+            settings = await active_controller.set_voltage_range(data.range)
+            await self.evt_voltageSourceChanged.set_write(range=settings.voltage_range)
+            settings = await active_controller.set_voltage_level(data.level)
+            await self.evt_voltageSourceChanged.set_write(level=settings.voltage_level)
+
+        await self.run_controller_command(
+            action="setVoltageSource",
+            substates=[DetailedState.NOTREADINGSTATE],
+            command=command_fn,
+            working_state=DetailedState.CONFIGURINGSTATE,
+            error_message="SetVoltageSource failed.",
+        )
 
     @staticmethod
     def get_config_pkg():
@@ -647,7 +703,7 @@ class ElectrometerCsc(salobj.ConfigurableCsc):
         return "ts_config_ocs"
 
     async def close_tasks(self):
-        """Close unfinished tasks when CSC is stopped."""
+        """Close unfinished tasks when the CSC is stopped."""
         await super().close_tasks()
         if self.controller is not None:
             await self.controller.disconnect()
