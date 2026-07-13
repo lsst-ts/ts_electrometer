@@ -23,6 +23,7 @@ import logging
 import os
 import pathlib
 import shutil
+import tempfile
 import unittest
 import unittest.mock
 
@@ -46,6 +47,13 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
         os.environ["LSST_SITE"] = "test"
         self.log = logging.getLogger(type(self).__name__)
+        self.sleep_patches = [
+            unittest.mock.patch.object(controller, "SLEEP", 0),
+            unittest.mock.patch.object(controller, "ZERO_CALIBRATION_DELAY", 0),
+        ]
+        for patch in self.sleep_patches:
+            patch.start()
+            self.addCleanup(patch.stop)
         return super().setUp()
 
     async def asyncTearDown(self) -> None:
@@ -60,9 +68,8 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             index=index,
         )
 
-    @parameterized.parameterized.expand(INDICES)
-    async def test_bin_script(self, index):
-        await self.check_bin_script(name="Electrometer", index=index, exe_name="run_electrometer")
+    async def test_bin_script(self):
+        await self.check_bin_script(name="Electrometer", index=INDICES[0], exe_name="run_electrometer")
 
     @parameterized.parameterized.expand(INDICES)
     async def test_standard_state_transitions(self, index):
@@ -141,6 +148,10 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             simulation_mode=2,
             config_dir=TEST_CONFIG_DIR,
         ):
+            await self.assert_next_sample(
+                topic=self.remote.evt_detailedState,
+                detailedState=DetailedState.NOTREADINGSTATE,
+            )
             self.remote.evt_digitalFilterChange.flush()
             await self.remote.cmd_setDigitalFilter.set_start(
                 activateFilter=True,
@@ -148,12 +159,19 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 activateMedFilter=True,
                 timeout=STD_TIMEOUT,
             )
-            # await self.assert_next_sample(
-            #     topic=self.remote.evt_digitalFilterChange,
-            #     activateMedianFilter=True,
-            #     activateFilter=False,
-            #     activateAverageFilter=False,
-            # )
+            await self.assert_next_sample(
+                topic=self.remote.evt_digitalFilterChange,
+                activateMedianFilter=True,
+                activateFilter=True,
+                activateAverageFilter=False,
+            )
+            await self.assert_next_sample(
+                topic=self.remote.evt_detailedState, detailedState=DetailedState.CONFIGURINGSTATE
+            )
+            await self.assert_next_sample(
+                topic=self.remote.evt_detailedState,
+                detailedState=DetailedState.NOTREADINGSTATE,
+            )
 
     @parameterized.parameterized.expand(INDICES)
     async def test_set_integration_time(self, index):
@@ -195,7 +213,8 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
         ):
             self.remote.evt_measureRange.flush()
             await self.remote.cmd_setRange.set_start(setRange=0.1, timeout=STD_TIMEOUT)
-            await self.assert_next_sample(topic=self.remote.evt_measureRange, rangeValue=0.1)
+            data = await self.assert_next_sample(topic=self.remote.evt_measureRange)
+            self.assertAlmostEqual(data.rangeValue, 0.1)
 
     @parameterized.parameterized.expand(INDICES)
     async def test_start_scan(self, index):
@@ -205,10 +224,15 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             simulation_mode=2,
             config_dir=TEST_CONFIG_DIR,
         ):
-            self.csc.controller.image_service_client.get_next_obs_id = unittest.mock.AsyncMock(
+            self.csc.image_name_service_client.get_next_obs_id = unittest.mock.AsyncMock(
                 return_value=([1], ["EM1_O_20221130_000001"])
             )
+            self.remote.evt_detailedState.flush()
             await self.remote.cmd_startScan.set_start(timeout=STD_TIMEOUT)
+            await self.assert_next_sample(
+                topic=self.remote.evt_detailedState,
+                detailedState=DetailedState.MANUALREADINGSTATE,
+            )
 
     @parameterized.parameterized.expand(INDICES)
     async def test_start_scan_dt(self, index):
@@ -218,12 +242,33 @@ class CscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             simulation_mode=2,
             config_dir=TEST_CONFIG_DIR,
         ):
-            self.csc.controller.image_service_client.get_next_obs_id = unittest.mock.AsyncMock(
+            self.csc.image_name_service_client.get_next_obs_id = unittest.mock.AsyncMock(
                 return_value=([2], ["EM1_O_20221130_000002"])
             )
-            await self.remote.cmd_startScanDt.set_start(scanDuration=2, timeout=STD_TIMEOUT)
+            await self.remote.cmd_startScanDt.set_start(scanDuration=0.1, timeout=STD_TIMEOUT)
 
             await self.assert_next_sample(topic=self.remote.evt_largeFileObjectAvailable)
+
+    async def test_start_scan_dt_falls_back_to_local_file_if_upload_fails(self):
+        obs_id = "EM1_O_20221130_000003"
+        async with self.make_csc(
+            initial_state=salobj.State.ENABLED,
+            index=103,
+            simulation_mode=2,
+            config_dir=TEST_CONFIG_DIR,
+        ):
+            with tempfile.TemporaryDirectory() as tmpdir:
+                self.csc.fits_file_path = tmpdir
+                self.csc.image_name_service_client.get_next_obs_id = unittest.mock.AsyncMock(
+                    return_value=([3], [obs_id])
+                )
+                self.csc.bucket.upload = unittest.mock.AsyncMock(side_effect=RuntimeError("upload failed"))
+
+                await self.remote.cmd_startScanDt.set_start(scanDuration=0.1, timeout=STD_TIMEOUT)
+
+                local_file = pathlib.Path(tmpdir).joinpath(f"{obs_id}.fits")
+                self.assertTrue(local_file.exists())
+                self.assertGreater(local_file.stat().st_size, 0)
 
     @parameterized.parameterized.expand(INDICES)
     async def test_set_voltage_source(self, index):

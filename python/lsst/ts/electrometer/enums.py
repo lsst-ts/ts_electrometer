@@ -83,6 +83,8 @@ class ReadingOption(enum.IntEnum):
 
 
 class Error(enum.IntEnum):
+    """CSC fault error codes."""
+
     FILE_ERROR = 1
     """File failed to write properly."""
     CONNECTION = 2

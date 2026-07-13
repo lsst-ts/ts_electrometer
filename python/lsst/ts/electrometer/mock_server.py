@@ -31,7 +31,18 @@ from lsst.ts.electrometer.enums import UnitMode
 
 
 class MockServer(tcpip.OneClientReadLoopServer):
-    """Implements a mock server for the electrometer.
+    """Implement a mock server for the electrometer.
+
+    Parameters
+    ----------
+    brand : `str`
+        Electrometer brand to simulate.
+    unstable : `bool`, optional
+        If true, add random write latency to replies.
+    disconnect_reply_after_bytes : `int` or `None`, optional
+        If provided, close the client connection after writing this many
+        bytes of the first reply. The remaining bytes are sent after the
+        client reconnects.
 
     Attributes
     ----------
@@ -71,6 +82,7 @@ class MockServer(tcpip.OneClientReadLoopServer):
         )
 
     async def read_and_dispatch(self) -> None:
+        """Read client commands and dispatch them to the mock device."""
         commands = await self.read_str()
         self.log.info(f"{commands=}")
         if self.brand == "Keysight":
@@ -120,16 +132,21 @@ class MockServer(tcpip.OneClientReadLoopServer):
 
 
 class MockKeysight:
-    def __init__(self):
-        """Mock a keithley electrometer.
+    """Mock a Keysight electrometer command parser.
 
-        Attributes
-        ----------
-        log : `logging.Logger`
-            The log.
-        commands : `dict`
-            Regular expressions that correspond to a given command.
-        """
+    Attributes
+    ----------
+    log : `logging.Logger`
+        The log.
+    commands : `dict`
+        Regular expressions mapped to command handler methods.
+    mode : `UnitMode`
+        Current measurement mode.
+    integration_time : `float`
+        Current integration time, in seconds.
+    """
+
+    def __init__(self):
         self.log = logging.getLogger(__name__)
         self.mode = UnitMode.CURR
         self.commands = {
@@ -198,17 +215,17 @@ class MockKeysight:
         self.integration_time = 0.01
 
     def parse_message(self, msg):
-        """Parse and return the result of the message.
+        """Parse a command message and return the device reply.
 
         Parameters
         ----------
-        msg : `bytes`
+        msg : `str`
             The message to parse.
 
         Returns
         -------
-        reply : `bytes`
-            The reply of the command parsed.
+        reply : `str` or `None`
+            Reply generated for the parsed command, if any.
 
         Raises
         ------
@@ -238,12 +255,15 @@ class MockKeysight:
             self.log.exception("Parsing message failed.")
 
     def do_get_trace_format(self):
+        """Return the configured trace format."""
         return "TST, ETEM, VSO, CURR"
 
     def get_intensity(self):
+        """Return the latest intensity value."""
         return "0.001"
 
     def do_nothing(self):
+        """Accept a command without changing state or returning a reply."""
         return ""
 
     def do_get_hardware_info(self):
@@ -349,16 +369,17 @@ class MockKeysight:
         pass
 
     def do_change_nplc(self, nplc):
-        """Change the number of programmable logic cycles
+        """Change the number of programmable logic cycles.
 
         Parameters
         ----------
         nplc : `int`
             The number of cycles.
-        ."""
+        """
         pass
 
     def do_get_nplc(self):
+        """Get the NPLC value."""
         return "5"
 
     def do_change_sync(self, sync):
@@ -372,39 +393,51 @@ class MockKeysight:
         pass
 
     def do_toggle_voltage_source(self, toggle):
+        """Set voltage source status."""
         pass
 
     def get_voltage_source_status(self):
+        """Get voltage source status."""
         return "ON"
 
     def set_voltage_limit(self):
+        """Set voltage source limit."""
         pass
 
     def get_voltage_limit(self):
+        """Get voltage source limit."""
         return "2"
 
     def get_voltage_range(self):
+        """Get voltage source range."""
         return "1"
 
     def set_voltage_range(self):
+        """Set voltage source range."""
         pass
 
     def get_voltage_level(self):
+        """Get voltage source level."""
         return "2"
 
     def set_voltage_level(self):
+        """Set voltage source level."""
         pass
 
     def set_resolution(self):
+        """Set measurement resolution."""
         pass
 
     def do_reset_device(self):
+        """Reset the device."""
         pass
 
     def do_output_trigger_line(self):
+        """Configure the output trigger line."""
         pass
 
     def do_acquire_data(self):
+        """Acquire one mock data record."""
         self.temperature = "+1"
         self.intensity = "+0.01DC"
         self.voltage = "0.33E"
@@ -413,16 +446,22 @@ class MockKeysight:
 
 
 class MockKeithley:
-    def __init__(self):
-        """Mock a keithley electrometer.
+    """Mock a Keithley electrometer command parser.
 
-        Attributes
-        ----------
-        log : `logging.Logger`
-            The log.
-        commands : `dict`
-            Regular expressions that correspond to a given command.
-        """
+    Attributes
+    ----------
+    log : `logging.Logger`
+        The log.
+    commands : `dict`
+        Regular expressions mapped to command handler methods.
+    mode : `UnitMode`
+        Current measurement mode.
+    integration_time : `float`
+        Current integration time, in seconds.
+
+    """
+
+    def __init__(self):
         self.log = logging.getLogger(__name__)
         self.mode = UnitMode.CURR
         self.commands = {
@@ -484,17 +523,17 @@ class MockKeithley:
         self.integration_time = 0.01
 
     def parse_message(self, msg):
-        """Parse and return the result of the message.
+        """Parse a command message and return the device reply.
 
         Parameters
         ----------
-        msg : `bytes`
+        msg : `str`
             The message to parse.
 
         Returns
         -------
-        reply : `bytes`
-            The reply of the command parsed.
+        reply : `str` or `None`
+            Reply generated for the parsed command, if any.
 
         Raises
         ------
@@ -523,6 +562,7 @@ class MockKeithley:
             raise e
 
     def do_acquire_data(self):
+        """Acquire mock data records."""
         return "+0.01DC 0.33\n+0.01DC 0.33\n+0.01DC 0.33\n+0.01DC 0.33\n"
 
     def do_get_hardware_info(self):
@@ -539,6 +579,7 @@ class MockKeithley:
         return ""
 
     def get_intensity(self):
+        """Return the latest intensity value."""
         return "0.001"
 
     def do_set_range(self, *args):
@@ -546,6 +587,7 @@ class MockKeithley:
         return ""
 
     def do_nothing(self):
+        """Accept a command without changing state or returning a reply."""
         return ""
 
     def do_enable_zero_correction(self, *args):
@@ -634,16 +676,17 @@ class MockKeithley:
         pass
 
     def do_change_nplc(self, nplc):
-        """Change the number of programmable logic cycles
+        """Change the number of programmable logic cycles.
 
         Parameters
         ----------
         nplc : `int`
             The number of cycles.
-        ."""
+        """
         pass
 
     def do_get_nplc(self):
+        """Get the NPLC value."""
         return "5"
 
     def do_change_sync(self, sync):
@@ -657,34 +700,45 @@ class MockKeithley:
         pass
 
     def do_toggle_voltage_source(self, toggle):
+        """Set voltage source status."""
         pass
 
     def get_voltage_source_status(self):
+        """Get voltage source status."""
         return "ON"
 
     def set_voltage_limit(self):
+        """Set voltage source limit."""
         pass
 
     def get_voltage_limit(self):
+        """Get voltage source limit."""
         return "2"
 
     def get_voltage_range(self):
+        """Get voltage source range."""
         return "1"
 
     def set_voltage_range(self):
+        """Set voltage source range."""
         pass
 
     def get_voltage_level(self):
+        """Get voltage source level."""
         return "2"
 
     def set_voltage_level(self):
+        """Set voltage source level."""
         pass
 
     def set_resolution(self):
+        """Set measurement resolution."""
         pass
 
     def do_reset_device(self):
+        """Reset the device."""
         pass
 
     def do_output_trigger_line(self):
+        """Configure the output trigger line."""
         pass

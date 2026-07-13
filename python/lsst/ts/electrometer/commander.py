@@ -23,6 +23,7 @@ __all__ = ["Commander"]
 
 import asyncio
 import logging
+from typing import Protocol
 
 from lsst.ts import tcpip
 
@@ -33,31 +34,44 @@ RECONNECTION_DELAY = 30
 NUMBER_OF_RETRIES = 10
 
 
+class TcpipConfig(Protocol):
+    """Configuration values needed to connect to the electrometer."""
+
+    hostname: str
+    port: int
+    timeout: float
+
+
 class Commander:
     """Implement communication with the electrometer.
 
+    Parameters
+    ----------
+    log : `logging.Logger` or `None`, optional
+        Logger for command and connection messages. If `None`, a logger named
+        for this class is created.
+    brand : `str` or `None`, optional
+        Electrometer brand. Supported values are ``"Keithley"`` and
+        ``"Keysight"``.
+
     Attributes
     ----------
-    log : logging.Logger
+    log : `logging.Logger`
         The log for this class.
-    reader : asyncio.StreamReader
-        The reader for the tcpip stream.
-    writer : asyncio.StreamWriter
-        The writer for the tcpip stream.
-    reply_terminator : bytes
-        The reply termination character.
-    command_terminator : str
-        The command termination character.
-    lock : asyncio.Lock
-        The lock for protecting reading and writing handling.
-    host : str
-        The hostname or ip address for the electrometer.
-    port : int
+    lock : `asyncio.Lock`
+        Lock that serializes connection and command transactions.
+    hostname : `str`
+        The hostname or IP address for the electrometer.
+    port : `int`
         The port of the electrometer.
-    timeout : int
-        The amount of time to wait until a message is not received.
-    connected : bool
-        Whether the electrometer is connected or not.
+    timeout : `int`
+        Default command timeout, in seconds.
+    long_timeout : `int`
+        Longer timeout for operations that need it.
+    brand : `str` or `None`
+        Electrometer brand.
+    client : `lsst.ts.tcpip.Client`
+        TCP/IP client used to communicate with the electrometer.
     """
 
     def __init__(self, log: None | logging.Logger = None, brand: str | None = None) -> None:
@@ -79,10 +93,33 @@ class Commander:
 
     @property
     def connected(self) -> bool:
+        """Whether the TCP/IP client is connected."""
         return self.client.connected
 
     async def connect(self) -> None:
-        """Connect to the electrometer"""
+        """Connect to the electrometer."""
+        async with self.lock:
+            await self._connect()
+
+    async def disconnect(self) -> None:
+        """Disconnect from the electrometer."""
+        async with self.lock:
+            await self._disconnect()
+
+    async def _disconnect(self) -> None:
+        """Disconnect without acquiring the transaction lock."""
+        await self.client.close()
+        self.client = tcpip.Client(host="", port=None, log=self.log)
+
+    async def _connect(self) -> None:
+        """Connect without acquiring the transaction lock.
+
+        Raises
+        ------
+        RuntimeError
+            If the brand is unsupported or a connection cannot be established
+            after all retry attempts.
+        """
         for _ in range(NUMBER_OF_RETRIES):
             match self.brand:
                 case "Keysight":
@@ -109,7 +146,7 @@ class Commander:
                 await self.client.start_task
             except ConnectionRefusedError:
                 self.log.exception("Connection refused. Closing client and trying again.")
-                await self.disconnect()
+                await self._disconnect()
                 await asyncio.sleep(RECONNECTION_DELAY)
             else:
                 break
@@ -117,75 +154,148 @@ class Commander:
             raise RuntimeError("Not able to connect after retrying.")
         if self.brand == "Keysight":
             # ignore welcome message
-            async with self.lock:
-                try:
-                    await self.client.read_str()
-                except asyncio.IncompleteReadError as e:
-                    self.log.exception(f"{e.partial=}")
+            try:
+                await self.client.read_str()
+            except asyncio.IncompleteReadError as e:
+                self.log.exception(f"{e.partial=}")
 
-    async def disconnect(self) -> None:
-        """Disconnect from the electrometer."""
-        await self.client.close()
-        self.client = tcpip.Client(host="", port=None, log=self.log)
-
-    async def send_command(self, msg: str, has_reply: bool, timeout: None | float = None) -> None | str:
-        """Send command to the device and receive reply if expected.
+    async def _read_reply_chunked(self, timeout: float) -> bytes:
+        """Read a terminator-delimited reply in chunks.
 
         Parameters
         ----------
-        msg : str
-            The command to be sent.
-        has_reply : bool
-            Does the command expect a reply?
-        timeout : None | float, optional
-            How long to wait before timing out reply, by default None.
+        timeout : `float`
+            Maximum time to wait for a complete reply, in seconds.
 
         Returns
         -------
-        None | str
-            Return the reply if expected else return None.
-        """
-        if timeout is None:
-            timeout = self.timeout
-        else:
-            timeout = timeout
-        async with self.lock:
-            if not self.connected:
-                await self.connect()
-            await self.client.write_str(msg)
-            # Ignore echo sent by keysight
-            if self.brand == "Keysight":
-                async with asyncio.timeout(timeout):
-                    await self.client.read_str()
-            if has_reply:
-                async with asyncio.timeout(timeout):
-                    reply = b""
-                    while not reply.endswith(self.client.terminator):
-                        for _ in range(NUMBER_OF_RETRIES):
-                            try:
-                                byte = await self.client.read(1)
-                                if byte:
-                                    reply += byte
-                                    break
-                            except ConnectionError:
-                                self.log.exception(
-                                    f"Connection lost...Reconnecting in {RECONNECTION_DELAY} second(s)."
-                                )
-                                await self.disconnect()
-                                await asyncio.sleep(RECONNECTION_DELAY)
-                                await self.connect()
-                                continue
-                            except Exception:
-                                self.log.exception(
-                                    f"Getting reply failed... trying again in {RETRY_DELAY} second(s)."
-                                )
-                                await asyncio.sleep(RETRY_DELAY)
-                reply = reply.rstrip(self.client.terminator).decode(self.client.encoding)
-                return reply
-            else:
-                return None
+        reply : `bytes`
+            Reply bytes without the terminator.
 
-    def configure(self, config):
+        Raises
+        ------
+        ConnectionError
+            If the connection closes before a complete reply is received.
+        asyncio.TimeoutError
+            If the reply is not complete before ``timeout`` expires.
+        """
+        reply = bytearray()
+        terminator = self.client.terminator
+
+        async with asyncio.timeout(timeout):
+            while not reply.endswith(terminator):
+                chunk = await self.client.read(4096)
+                if not chunk:
+                    raise ConnectionError("Connection closed while reading reply.")
+                reply.extend(chunk)
+
+        return bytes(reply).removesuffix(terminator)
+
+    async def _discard_stale_reply(self, timeout: float = 0.1) -> None:
+        """Discard one stale reply if it is immediately available.
+
+        Parameters
+        ----------
+        timeout : `float`, optional
+            Maximum time to wait for a stale reply, in seconds.
+        """
+        try:
+            await self._read_reply_chunked(timeout)
+        except (asyncio.TimeoutError, asyncio.IncompleteReadError, ConnectionError):
+            pass
+
+    async def _send_command_once(
+        self, msg: str, has_reply: bool, timeout: float, discard_stale_reply: bool = False
+    ) -> None | str:
+        """Send one command transaction without retrying.
+
+        Parameters
+        ----------
+        msg : `str`
+            Command to send.
+        has_reply : `bool`
+            Whether a reply is expected.
+        timeout : `float`
+            Reply timeout, in seconds.
+        discard_stale_reply : `bool`, optional
+            Whether to drain one stale reply before sending the command.
+
+        Returns
+        -------
+        reply : `str` or `None`
+            Command reply if ``has_reply`` is true; otherwise `None`.
+        """
+        if not self.connected:
+            await self._connect()
+
+        if discard_stale_reply:
+            await self._discard_stale_reply()
+
+        await self.client.write_str(msg)
+        # Ignore echo sent by Keysight. The mock Keysight echo is not
+        # terminator-delimited, so keep the original read behavior here.
+        if self.brand == "Keysight":
+            async with asyncio.timeout(timeout):
+                await self.client.read_str()
+
+        if not has_reply:
+            return None
+
+        reply = await self._read_reply_chunked(timeout)
+        return reply.decode(self.client.encoding)
+
+    async def send_command(self, msg: str, has_reply: bool, timeout: None | float = None) -> None | str:
+        """Send a command to the device and receive a reply if expected.
+
+        Parameters
+        ----------
+        msg : `str`
+            The command to be sent.
+        has_reply : `bool`
+            Whether the command expects a reply.
+        timeout : `float` or `None`, optional
+            How long to wait before timing out the reply.
+
+        Returns
+        -------
+        reply : `str` or `None`
+            Command reply if expected; otherwise `None`.
+        """
+        timeout = self.timeout if timeout is None else timeout
+        async with self.lock:
+            last_exception = None
+            discard_stale_reply = False
+            for attempt in range(NUMBER_OF_RETRIES):
+                try:
+                    return await self._send_command_once(
+                        msg=msg,
+                        has_reply=has_reply,
+                        timeout=timeout,
+                        discard_stale_reply=discard_stale_reply,
+                    )
+                except (asyncio.TimeoutError, ConnectionError, asyncio.IncompleteReadError) as e:
+                    last_exception = e
+                    self.log.exception(
+                        f"Command attempt {attempt + 1}/{NUMBER_OF_RETRIES} failed; "
+                        f"reconnecting in {RECONNECTION_DELAY} second(s)."
+                    )
+                    await self._disconnect()
+                    await asyncio.sleep(RECONNECTION_DELAY)
+                    discard_stale_reply = True
+                    if reply := getattr(e, "partial", b""):
+                        self.log.debug(f"Discarding partial reply before retrying: {reply!r}")
+            raise TimeoutError(
+                f"Command failed after {NUMBER_OF_RETRIES} attempts: {msg}"
+            ) from last_exception
+
+    def configure(self, config: TcpipConfig) -> None:
+        """Configure the network endpoint.
+
+        Parameters
+        ----------
+        config : object
+            Object with ``hostname``, ``port``, and ``timeout`` attributes.
+        """
         self.hostname = config.hostname
         self.port = config.port
         self.timeout = config.timeout
