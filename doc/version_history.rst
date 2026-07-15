@@ -1,3 +1,19 @@
+v0.14.0 (2026-07-15)
+====================
+
+New Features
+------------
+
+- Completed scans were written as FITS files to the configured object store and announced through ``largeFileObjectAvailable`` events.
+  Electrometer setting changes were published through SAL events. (`OSW-843 <https://rubinobs.atlassian.net//browse/OSW-843>`_)
+
+
+Bug Fixes
+---------
+
+- If ID response not seen, go to fault state. (`OSW-2108 <https://rubinobs.atlassian.net//browse/OSW-2108>`_)
+
+
 v0.13.3 (2026-03-24)
 ====================
 
