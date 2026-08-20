@@ -1,1 +1,0 @@
-If ID response not seen, go to fault state.

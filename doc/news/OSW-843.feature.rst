@@ -1,2 +1,0 @@
-Completed scans were written as FITS files to the configured object store and announced through ``largeFileObjectAvailable`` events.
-Electrometer setting changes were published through SAL events.
