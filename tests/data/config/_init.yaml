@@ -9,7 +9,7 @@ instances:
     range: 2.0e-08
     tcpip:
       hostname: 'localhost'
-      port: 5024
+      port: 5025
       timeout: 2
     s3_instance: "ls"
     fits_file_path: '/home/saluser/develop/electrometerFitsFiles'
@@ -35,7 +35,7 @@ instances:
     range: 2.0e-08
     tcpip:
       hostname: 'localhost'
-      port: 5024
+      port: 5025
       timeout: 2
     s3_instance: "ls"
     fits_file_path: '/home/saluser/develop/electrometerFitsFiles'

@@ -1,0 +1,1 @@
+Switched Keysight from telnet to tcpip/SCPI raw socket.

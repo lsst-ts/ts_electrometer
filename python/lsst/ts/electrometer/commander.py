@@ -128,6 +128,7 @@ class Commander:
                         port=self.port,
                         name=f"{self.brand} Client",
                         log=self.log,
+                        terminator=b"\n",
                         encoding="latin_1",
                         limit=LIMIT,
                     )
@@ -152,12 +153,6 @@ class Commander:
                 break
         if not self.client.connected:
             raise RuntimeError("Not able to connect after retrying.")
-        if self.brand == "Keysight":
-            # ignore welcome message
-            try:
-                await self.client.read_str()
-            except asyncio.IncompleteReadError as e:
-                self.log.exception(f"{e.partial=}")
 
     async def _read_reply_chunked(self, timeout: float) -> bytes:
         """Read a terminator-delimited reply in chunks.
@@ -232,12 +227,6 @@ class Commander:
             await self._discard_stale_reply()
 
         await self.client.write_str(msg)
-        # Ignore echo sent by Keysight. The mock Keysight echo is not
-        # terminator-delimited, so keep the original read behavior here.
-        if self.brand == "Keysight":
-            async with asyncio.timeout(timeout):
-                await self.client.read_str()
-
         if not has_reply:
             return None
 

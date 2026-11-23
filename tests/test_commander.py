@@ -74,6 +74,21 @@ class CommanderIntegrationTestCase(unittest.IsolatedAsyncioTestCase):
 
         self.assertIn("KEITHLEY INSTRUMENTS INC.", reply)
 
+    async def test_keysight_commands_without_telnet_banner_or_echo(self):
+        self.server = mock_server.MockServer("Keysight")
+        await self.server.start_task
+
+        self.cmdr = commander.Commander(brand="Keysight", log=logging.getLogger(__file__))
+        self.cmdr.hostname = self.server.host
+        self.cmdr.port = self.server.port
+
+        async with asyncio.timeout(5):
+            await self.cmdr.connect()
+            await self.cmdr.send_command("*RST;", has_reply=False)
+            reply = await self.cmdr.send_command("*idn?;", has_reply=True)
+
+        self.assertTrue(reply.startswith("Keysight INSTRUMENTS INC."))
+
     async def test_connect_raises_when_retries_are_exhausted(self):
         self.server = None
         self.cmdr = commander.Commander(brand="Keithley", log=logging.getLogger(__file__))
