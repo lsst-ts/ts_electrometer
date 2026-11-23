@@ -148,3 +148,4 @@ towncrier.toml
 # pixi environments
 .pixi/*
 !.pixi/config.toml
+.LICENSE.txt
