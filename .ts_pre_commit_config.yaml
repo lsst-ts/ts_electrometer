@@ -7,3 +7,4 @@ mypy: false
 clang-format: false
 ruff: true
 towncrier: true
+insert-license: true

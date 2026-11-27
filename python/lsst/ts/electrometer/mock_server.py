@@ -1,6 +1,6 @@
 # This file is part of ts_electrometer.
 #
-# Developed for the Vera C. Rubin Observatory Telescope and Site System.
+# Developed for the Vera C. Rubin Observatory Telescope and Site Systems.
 # This product includes software developed by the LSST Project
 # (https://www.lsst.org).
 # See the COPYRIGHT file at the top-level directory of this distribution
@@ -13,11 +13,11 @@
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 __all__ = ["MockServer", "MockKeysight", "MockKeithley"]
 
@@ -63,7 +63,7 @@ class MockServer(tcpip.OneClientReadLoopServer):
             encoding = tcpip.DEFAULT_ENCODING
         elif self.brand == "Keysight":
             self.device = MockKeysight()
-            terminator = tcpip.DEFAULT_TERMINATOR
+            terminator = b"\n"
             encoding = "latin_1"
         self.lock = asyncio.Lock()
         self.unstable = unstable
@@ -85,9 +85,6 @@ class MockServer(tcpip.OneClientReadLoopServer):
         """Read client commands and dispatch them to the mock device."""
         commands = await self.read_str()
         self.log.info(f"{commands=}")
-        if self.brand == "Keysight":
-            self.log.info(f"Writing echo: {commands.strip()}")
-            await self.write_str(commands.strip())
         commands = commands.split(";")[:-1]
         self.log.info(commands)
         for command in commands:
@@ -123,8 +120,6 @@ class MockServer(tcpip.OneClientReadLoopServer):
         server : `MockServer`
             The server object.
         """
-        if server.connected and server.brand == "Keysight":
-            await server.write_str("something")
         if server.connected and server._pending_reply:
             pending_reply = server._pending_reply
             server._pending_reply = b""

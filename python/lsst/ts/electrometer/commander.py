@@ -1,6 +1,6 @@
 # This file is part of ts_electrometer.
 #
-# Developed for the Vera C. Rubin Observatory Telescope and Site System.
+# Developed for the Vera C. Rubin Observatory Telescope and Site Systems.
 # This product includes software developed by the LSST Project
 # (https://www.lsst.org).
 # See the COPYRIGHT file at the top-level directory of this distribution
@@ -13,11 +13,11 @@
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 __all__ = ["Commander"]
 
@@ -128,6 +128,7 @@ class Commander:
                         port=self.port,
                         name=f"{self.brand} Client",
                         log=self.log,
+                        terminator=b"\n",
                         encoding="latin_1",
                         limit=LIMIT,
                     )
@@ -152,12 +153,6 @@ class Commander:
                 break
         if not self.client.connected:
             raise RuntimeError("Not able to connect after retrying.")
-        if self.brand == "Keysight":
-            # ignore welcome message
-            try:
-                await self.client.read_str()
-            except asyncio.IncompleteReadError as e:
-                self.log.exception(f"{e.partial=}")
 
     async def _read_reply_chunked(self, timeout: float) -> bytes:
         """Read a terminator-delimited reply in chunks.
@@ -232,12 +227,6 @@ class Commander:
             await self._discard_stale_reply()
 
         await self.client.write_str(msg)
-        # Ignore echo sent by Keysight. The mock Keysight echo is not
-        # terminator-delimited, so keep the original read behavior here.
-        if self.brand == "Keysight":
-            async with asyncio.timeout(timeout):
-                await self.client.read_str()
-
         if not has_reply:
             return None
 

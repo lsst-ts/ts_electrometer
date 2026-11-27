@@ -1,3 +1,24 @@
+# This file is part of ts_electrometer.
+#
+# Developed for the Vera C. Rubin Observatory Telescope and Site Systems.
+# This product includes software developed by the LSST Project
+# (https://www.lsst.org).
+# See the COPYRIGHT file at the top-level directory of this distribution
+# for details of code ownership.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
+
 import asyncio
 import logging
 import socket
@@ -52,6 +73,21 @@ class CommanderIntegrationTestCase(unittest.IsolatedAsyncioTestCase):
             reply = await self.cmdr.send_command("*idn?;", has_reply=True, timeout=5)
 
         self.assertIn("KEITHLEY INSTRUMENTS INC.", reply)
+
+    async def test_keysight_commands_without_telnet_banner_or_echo(self):
+        self.server = mock_server.MockServer("Keysight")
+        await self.server.start_task
+
+        self.cmdr = commander.Commander(brand="Keysight", log=logging.getLogger(__file__))
+        self.cmdr.hostname = self.server.host
+        self.cmdr.port = self.server.port
+
+        async with asyncio.timeout(5):
+            await self.cmdr.connect()
+            await self.cmdr.send_command("*RST;", has_reply=False)
+            reply = await self.cmdr.send_command("*idn?;", has_reply=True)
+
+        self.assertTrue(reply.startswith("Keysight INSTRUMENTS INC."))
 
     async def test_connect_raises_when_retries_are_exhausted(self):
         self.server = None
